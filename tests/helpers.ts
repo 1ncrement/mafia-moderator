@@ -1,6 +1,8 @@
 import {
   applyPatch, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES, deriveState, execute, newSession, nextPhase,
 } from '../src/engine'
+import { createAppStore } from '../src/app/store'
+import type { AppStore } from '../src/app/store'
 import type { Command, CommandResult, GameState, Registry, RoleId, Session, SessionConfig } from '../src/engine'
 
 export const countBy = (xs: string[]): Record<string, number> =>
@@ -79,3 +81,45 @@ export const act = (actionId: string, actor: number | null, target: number | nul
 /** Начало Ночи 1. */
 export const n1 = (table = TABLE_11): Session =>
   play(toDay(game(table), 1), { type: 'startPhase', phase: { kind: 'night', n: 1 } })
+
+// ── Помощники для приложения ────────────────────────────────────────────────
+
+/** Хранилище в памяти; failWrites имитирует приватное окно и переполнение. */
+export function fakeKV() {
+  const map = new Map<string, string>()
+  return {
+    failWrites: false,
+    getItem: (k: string) => map.get(k) ?? null,
+    setItem(k: string, v: string) {
+      if (this.failWrites) throw new Error('QuotaExceededError')
+      map.set(k, v)
+    },
+    removeItem: (k: string) => {
+      map.delete(k)
+    },
+  }
+}
+
+/** Окружение для тестов: счётчик id, часы-переменная time, randomInt всегда 0. */
+export function testEnv(kv = fakeKV()) {
+  let n = 0
+  const env = {
+    kv,
+    time: 1_700_000_000_000,
+    now: () => env.time,
+    newId: () => `id${++n}`,
+    randomInt: () => 0,
+    registry: DEFAULT_REGISTRY,
+  }
+  return env
+}
+export type TestEnv = ReturnType<typeof testEnv>
+
+/** Приложение с розданной игрой на 11 игроков. */
+export function seeded(env: TestEnv): AppStore {
+  const app = createAppStore(env)
+  app.newGame()
+  app.editDraft({ playerCount: 11, composition: { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1 } })
+  app.dealDraft()
+  return app
+}

@@ -1119,7 +1119,7 @@ export function browserEnv(): Env;                      // localStorage, Date.no
 - `dealDraft` при ошибках `checkComposition` ничего не делает; иначе создаёт сессию, раздаёт через `dealRoles(deck, env.randomInt)`, запоминает `lastConfig`, ставит `mafia:active`.
 - `rematch` открывает `setup` с конфигурацией текущей сессии.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // tests/platform/storage.test.ts — fakeKV() из tests/helpers.ts: Map-хранилище с полем failWrites
@@ -1186,13 +1186,13 @@ test('битая активная сессия не роняет запуск', 
 
 `metaOf(session): SessionMeta` экспортируй из `src/app/store.ts`.
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/platform tests/app`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/platform tests/app`
 
-- [ ] **Step 3: Реализуй `storage.ts`, `store.ts`, `env.ts`, помощники `fakeKV`, `testEnv`, `seeded`.**
+- [x] **Step 3: Реализуй `storage.ts`, `store.ts`, `env.ts`, помощники `fakeKV`, `testEnv`, `seeded`.**
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npm run check`
+- [x] **Step 4: Run, verify PASS.** Run: `npm run check`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(app): хранение в браузере и состояние приложения с отменой"
