@@ -1749,7 +1749,7 @@ git add -A && git commit -m "feat(ui): голосование, решения в
 - У группы прошлого дня есть «Добавить запись…»: выставление или смена статуса с `phase` этого дня.
 - Предупреждение `night_outcome_changed` показывается строкой над журналом: «Итог Ночи 1 теперь другой: выбыть должен №9. Исправить статусы?» с кнопками «Исправить» (`acknowledgeNight` с `apply: true`) и «Оставить». Если `expected` равно `null`, текст — «никто не должен выбыть».
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // tests/ui/finish.test.tsx
@@ -1805,13 +1805,13 @@ test('настройки таймеров действуют со следующ
 
 Шаг счётчика длительности — 5 секунд, границы 10–300.
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/finish.test.tsx tests/ui/journal.test.tsx`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/finish.test.tsx tests/ui/journal.test.tsx`
 
-- [ ] **Step 3: Реализуй окно остановки, итоги, настройки таймеров, редактор записей.** Для изменения `session.config` добавь в `AppStore` метод `updateConfig(patch: Partial<SessionConfig>): void` с сохранением.
+- [x] **Step 3: Реализуй окно остановки, итоги, настройки таймеров, редактор записей.** Для изменения `session.config` добавь в `AppStore` метод `updateConfig(patch: Partial<SessionConfig>): void` с сохранением.
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npm run check`
+- [x] **Step 4: Run, verify PASS.** Run: `npm run check`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(ui): завершение игры, итоги, правка записей журнала"

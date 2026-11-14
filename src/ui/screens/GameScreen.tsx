@@ -2,13 +2,12 @@ import { useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { Button } from '../common/Button'
-import { Dialog } from '../common/Dialog'
 import { useHotkeys } from '../common/useHotkeys'
 import type { HotkeyMap } from '../common/useHotkeys'
 import { toggleTimer } from '../game/dayFlow'
 import { DigitKeysContext } from '../game/digitKeys'
 import { SUMMARY_STEP } from '../../engine'
-import type { GameState, Seat } from '../../engine'
+import type { GameState, JournalEntry, PhaseRef, Seat } from '../../engine'
 import { Header } from '../game/Header'
 import type { GameModal } from '../game/Header'
 import { JournalPanel } from '../game/JournalPanel'
@@ -18,12 +17,15 @@ import { NightPanel } from '../game/NightPanel'
 import { NightSummary } from '../game/NightSummary'
 import { PauseCurtain } from '../game/PauseCurtain'
 import { PlayerPanel } from '../game/PlayerPanel'
+import { AddRecord, isEditable, RecordEditor } from '../game/RecordEditor'
 import { SelectionProvider, useSelection } from '../game/selection'
 import { SpeechPanel, useNominationNotice } from '../game/SpeechPanel'
 import { StepNav } from '../game/StepNav'
+import { StopDialog } from '../game/StopDialog'
 import { Table } from '../game/Table'
 import { TableMarksProvider } from '../game/tableMarks'
 import { TimerPanel } from '../game/TimerPanel'
+import { TimerSettings } from '../game/TimerSettings'
 import { useTimerSignal } from '../game/useTimerSignal'
 import { VotePanel } from '../game/VotePanel'
 import '../game/game.css'
@@ -75,6 +77,8 @@ function Game({ game }: { game: GameState }) {
   const [panelSeat, setPanelSeat] = useState<Seat | null>(null)
   const [journalCollapsed, setJournalCollapsed] = useState(false)
   const [modal, setModal] = useState<GameModal>(null)
+  const [editing, setEditing] = useState<{ entry: JournalEntry; phase: PhaseRef } | null>(null)
+  const [adding, setAdding] = useState<PhaseRef | null>(null)
   const { selection } = useSelection()
   const flash = useTimerSignal()
   const digits = useRef<((n: number) => void) | null>(null)
@@ -119,9 +123,28 @@ function Game({ game }: { game: GameState }) {
           {notSpoken.length > 0 && <p className="step-warning">{t('day.notSpoken', { list: notSpoken.join(', ') })}</p>}
           <MainButton main={main} />
         </section>
-        <JournalPanel session={session} collapsed={journalCollapsed} onCollapse={setJournalCollapsed} />
+        <JournalPanel
+          session={session} collapsed={journalCollapsed} onCollapse={setJournalCollapsed}
+          editable={isEditable} onEntry={(entry, phase) => setEditing({ entry, phase })}
+          footer={(group) => group.phase.kind === 'day' && !group.current && (
+            <li><button type="button" className="journal-entry journal-add" onClick={() => setAdding(group.phase)}>{t('add.button')}</button></li>
+          )}
+        >
+          {game.warnings.flatMap((w) => (w.code === 'night_outcome_changed' ? [w] : [])).map((w) => (
+            <div key={w.night} className="journal-warning" role="alert">
+              <span>{w.expected === null ? t('warn.night.none', { night: w.night }) : t('warn.night', { night: w.night, n: w.expected })}</span>
+              <div className="speech-secondary">
+                <Button onClick={() => store.dispatch({ type: 'acknowledgeNight', night: w.night, apply: true })}>{t('warn.fix')}</Button>
+                <Button variant="outline" onClick={() => store.dispatch({ type: 'acknowledgeNight', night: w.night, apply: false })}>{t('warn.keep')}</Button>
+              </div>
+            </div>
+          ))}
+        </JournalPanel>
       </main>
-      {modal === 'stop' && <Dialog title={t('menu.stop')} onClose={() => setModal(null)}>{null}</Dialog>}
+      {modal === 'stop' && <StopDialog game={game} onClose={() => setModal(null)} />}
+      {modal === 'timers' && <TimerSettings onClose={() => setModal(null)} />}
+      {editing && <RecordEditor entry={editing.entry} phase={editing.phase} onClose={() => setEditing(null)} />}
+      {adding && <AddRecord phase={adding} onClose={() => setAdding(null)} />}
     </>
   )
 }

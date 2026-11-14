@@ -10,13 +10,15 @@ type Props = {
   session: Session
   /** Клик по записи — открыть её редактор. Без обработчика записи только читаются. */
   onEntry?(entry: JournalEntry, phase: PhaseRef): void
+  /** Какие записи открываются по клику (по умолчанию все). */
+  editable?(entry: JournalEntry): boolean
   /** Что показать внизу раскрытой группы (например, «Добавить запись…»). */
   footer?(group: JournalGroup): React.ReactNode
   /** Все группы раскрыты и не сворачиваются — для итогового экрана. */
   expandAll?: boolean
 }
 
-export function JournalGroups({ session, onEntry, footer, expandAll }: Props) {
+export function JournalGroups({ session, onEntry, editable, footer, expandAll }: Props) {
   const store = useStore()
   const t = useT()
   const lang = useLang()
@@ -53,7 +55,7 @@ export function JournalGroups({ session, onEntry, footer, expandAll }: Props) {
                   )
                   return (
                     <li key={entry.eventId ?? `${entry.kind}-${i}`}>
-                      {onEntry
+                      {onEntry && (editable?.(entry) ?? true)
                         ? <button type="button" className={cx('journal-entry', entry.kind === 'night_missing' && 'journal-entry-missing')} onClick={() => onEntry(entry, group.phase)}>{content}</button>
                         : <div className={cx('journal-entry', entry.kind === 'night_missing' && 'journal-entry-missing')}>{content}</div>}
                     </li>

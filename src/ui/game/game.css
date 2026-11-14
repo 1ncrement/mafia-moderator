@@ -1156,3 +1156,169 @@ button.journal-entry:hover {
   background: var(--night-tint);
   color: var(--night);
 }
+
+/* Окно остановки */
+.stop-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stop-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 68px;
+  padding: 8px 16px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.stop-option:last-child {
+  border-style: dashed;
+}
+.stop-option:hover {
+  border-color: var(--border-strong);
+}
+.stop-option[aria-checked='true'] {
+  border: 2px solid var(--text);
+  background: var(--card);
+}
+.stop-option .dot {
+  width: 18px;
+  height: 18px;
+}
+.stop-option-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+}
+.stop-option-title {
+  font-size: 19px;
+  font-weight: 700;
+}
+.stop-actions .btn {
+  flex: 1 1 200px;
+  min-height: 60px;
+  font-size: 17px;
+}
+
+/* Редактор записей */
+.edit-record {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: var(--r-s);
+  background: var(--card);
+  font-weight: 500;
+}
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.seat-btn {
+  height: 56px;
+  border-radius: var(--r-s);
+  border: 2px solid var(--border);
+  background: var(--card);
+  font-weight: 600;
+  font-size: 26px;
+  text-align: center;
+}
+.seat-btn:hover:not(:disabled) {
+  border-color: var(--night);
+}
+.seat-btn:disabled {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+.seat-btn[aria-pressed='true'] {
+  border-color: var(--night);
+  background: var(--night-tint);
+  color: var(--night);
+}
+.seat-btn-wide {
+  grid-column: span 2;
+  border-style: dashed;
+  font-family: var(--font-ui);
+  font-size: 16px;
+}
+.add-mode {
+  align-self: flex-start;
+}
+.journal-add {
+  color: var(--text-2);
+}
+.journal-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-m);
+  background: var(--alert-tint);
+  color: var(--alert);
+  font-weight: 500;
+}
+.journal-warning .btn {
+  color: var(--text);
+}
+
+/* Итоги */
+.summary-head {
+  flex: 1 1 420px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+.summary-winner {
+  font-size: 34px;
+}
+.summary-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+.summary-players,
+.summary-actions,
+.summary-journal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.summary-side-col {
+  flex: 1 1 420px;
+  gap: 20px;
+}
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+.summary-table th {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.summary-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.summary-num {
+  width: 72px;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1;
+}
+.summary-out td {
+  color: var(--text-2);
+}
+.summary-out .summary-num {
+  color: var(--text-3);
+}
