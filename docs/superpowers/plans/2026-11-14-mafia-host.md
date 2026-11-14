@@ -915,7 +915,7 @@ export function journal(session: Session, registry: Registry): JournalGroup[];  
 - `removeEvent` удаляет событие по id; неизвестный id → `unknown_event`.
 - `deriveState` и `journal` не бросают исключений ни на каком журнале: ссылка на отсутствующее событие, место вне диапазона, голос за снятого кандидата пропускаются.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 test('группы журнала: текущая фаза первой, служебные события скрыты', () => {
@@ -966,13 +966,13 @@ test('журнал с висячими ссылками не роняет выв
 
 `n1` и `act` перенеси из `night.test.ts` в `tests/helpers.ts`.
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/engine/journal.test.ts`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/engine/journal.test.ts`
 
-- [ ] **Step 3: Реализуй `journal.ts`, запись в прошлую фазу, `acknowledgeNight`, `removeEvent`, устойчивость вывода.**
+- [x] **Step 3: Реализуй `journal.ts`, запись в прошлую фазу, `acknowledgeNight`, `removeEvent`, устойчивость вывода.**
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/engine`
+- [x] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/engine`
 
-- [ ] **Step 5: Напиши сценарную партию.** `tests/scenarios/full-game.test.ts` — один тест, который командами движка проходит приёмочный сценарий из раздела 8 спецификации на `TABLE_11` и после каждого шага сценария проверяет состояние:
+- [x] **Step 5: Напиши сценарную партию.** `tests/scenarios/full-game.test.ts` — один тест, который командами движка проходит приёмочный сценарий из раздела 8 спецификации на `TABLE_11` и после каждого шага сценария проверяет состояние:
 
 | Шаг сценария | Что проверить |
 |---|---|
@@ -988,9 +988,9 @@ test('журнал с висячими ссылками не роняет выв
 
 Шаги 4 и 10 сценария относятся к приложению и проверяются в задачах 10–12.
 
-- [ ] **Step 6: Run the whole suite.** Run: `npm run check`. Expected: PASS
+- [x] **Step 6: Run the whole suite.** Run: `npm run check`. Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A && git commit -m "feat(engine): журнал для показа, правка прошлых записей, сценарная партия"

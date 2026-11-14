@@ -271,3 +271,22 @@ export type NightState = {
   complete: boolean
   confirmed: { hinted: Seat | null; chosen: Seat | null } | null
 }
+
+// ── Журнал для показа ───────────────────────────────────────────────────────
+
+export type JournalEntry = { eventId: string | null; edited: boolean; manual: boolean } & (
+  | { kind: 'deal'; counts: Record<RoleId, number> }
+  /** numbered — у действия этой ночью несколько исполнителей, в подписи нужен номер. */
+  | { kind: 'night_action'; actionId: string; performerRole: RoleId; actor: Seat | null; target: Seat | null; answer?: CheckAnswer; numbered?: true }
+  /** Шаг прошлой ночи без записи. */
+  | { kind: 'night_missing'; actionId: string; actor: Seat | null; numbered?: true }
+  | { kind: 'night_result'; dies: Seat | null; reason: NightOutcome['reason'] }
+  | { kind: 'circle'; first: Seat }
+  | { kind: 'nomination'; index: number; by: Seat | null; target: Seat }
+  | { kind: 'votes'; ballot: 1 | 2; voters: number; entries: { candidate: Seat; count: number }[] }
+  | { kind: 'vote_result'; ballot: 1 | 2; outcome: VoteOutcome; seats: Seat[] }
+  | { kind: 'status'; seat: Seat; status: 'alive' | 'out'; cause?: OutCause }
+  | { kind: 'swap'; a: Seat; b: Seat }
+  | { kind: 'finish'; winner: SideId | null }
+)
+export type JournalGroup = { phase: PhaseRef; current: boolean; entries: JournalEntry[] }

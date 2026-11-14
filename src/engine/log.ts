@@ -14,6 +14,12 @@ export function nextPhase(p: PhaseRef): PhaseRef {
   return p.kind === 'day' ? { kind: 'night', n: p.n } : { kind: 'day', n: p.n + 1 }
 }
 
+/** Обратное к phaseOrder. */
+export function phaseAt(order: number): PhaseRef {
+  if (order <= 0) return { kind: 'deal' }
+  return order % 2 === 1 ? { kind: 'day', n: (order + 1) / 2 } : { kind: 'night', n: order / 2 }
+}
+
 export function samePhase(a: PhaseRef, b: PhaseRef): boolean {
   return phaseOrder(a) === phaseOrder(b)
 }

@@ -39,6 +39,14 @@ export function deriveState(session: Session, registry: Registry): GameState {
   if (night && step !== SUMMARY_STEP && !night.steps.some((x) => x.id === step)) step = defaultStep(session, phase, night)
 
   const warnings: StateWarning[] = []
+  // Правка прошлой записи не меняет статусы молча: расхождение итога ночи становится предупреждением.
+  const nights = phase.kind === 'deal' ? 0 : phase.n
+  for (let n = 1; n <= nights; n++) {
+    const past = night?.n === n ? night : nightState(session, registry, n)
+    if (past.confirmed && past.confirmed.hinted !== past.outcome.dies) {
+      warnings.push({ code: 'night_outcome_changed', night: n, expected: past.outcome.dies })
+    }
+  }
   for (const b of day?.ballots ?? []) if (b.overflow && !b.resolved) warnings.push({ code: 'votes_overflow', ballot: b.n })
 
   return {
@@ -52,6 +60,6 @@ export function deriveState(session: Session, registry: Registry): GameState {
     day,
     night,
     // Ночей в журнале не больше, чем номер текущей фазы.
-    permanentMarks: permanentMarks(session, registry, phase.kind === 'deal' ? 0 : phase.n),
+    permanentMarks: permanentMarks(session, registry, nights),
   }
 }

@@ -229,7 +229,18 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       return ok({ remove: eventsOf(log, phase).filter((e) => e.type === 'night_confirmed').map((e) => e.id), add: events })
     }
 
-    case 'acknowledgeNight':
-      return ok({})
+    case 'acknowledgeNight': {
+      const p: PhaseRef = { kind: 'night', n: cmd.night }
+      const confirmed = lastOf(eventsOf(log, p), 'night_confirmed')
+      if (!confirmed) return ok({})
+      const expected = nightState(session, registry, cmd.night).outcome.dies
+      // «Оставить»: статусы не трогаем, запоминаем новую подсказку — предупреждение уходит.
+      if (!cmd.apply) return ok({ replace: [{ ...confirmed, hinted: expected }] })
+      // «Исправить»: прежний выбывший этой ночи возвращается в игру, новый получает статус той же ночью.
+      const previous = eventsOf(log, p).filter((e) => e.type === 'status_set' && e.source === 'night').map((e) => e.id)
+      const events: NewEvent[] = expected === null ? []
+        : [{ type: 'status_set', phase: p, seat: expected, status: 'out', cause: 'shot', source: 'night' }]
+      return ok({ remove: previous, replace: [{ ...confirmed, hinted: expected, chosen: expected }], add: events })
+    }
   }
 }
