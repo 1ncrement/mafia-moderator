@@ -5,38 +5,39 @@ import { Button } from '../common/Button'
 import { PlayerCard } from './PlayerCard'
 import type { CardView } from './PlayerCard'
 import { useSelection } from './selection'
+import { useTableMarksValue } from './tableMarks'
+import type { SeatMark } from './tableMarks'
 
-/** Что нарисовать на карточках: метки дня, ярлыки выставления, постоянные метки проверок. */
+/** Что нарисовать на карточках: метки дня, ярлыки выставления, постоянные метки проверок и метки панели шага. */
 function useCards(game: GameState): CardView[] {
   const t = useT()
   const lang = useLang()
   const { selection } = useSelection()
+  const extra = useTableMarksValue()
   const day = game.day
-  const voting = day !== null && (game.step === 'vote' || game.step === 'revote')
-  const ballot = voting ? (game.step === 'revote' ? day.ballots[1] : day.ballots[0]) : undefined
 
   return game.players.map((player) => {
     const seat = player.seat
-    const dayParts: string[] = []
-    if (day?.spoken.includes(seat)) dayParts.push(t('card.spoke'))
-    if (day?.opener === seat) dayParts.push(t('card.opener'))
-    if (day?.skipped.includes(seat)) dayParts.push(t('card.skipped'))
+    const speaking = day?.speaking?.seat === seat
+    const marks: SeatMark[] = []
+    if (speaking) marks.push({ text: t('card.speaking'), tone: 'day' })
+    else {
+      const parts: string[] = []
+      if (day?.spoken.includes(seat)) parts.push(t('card.spoke'))
+      if (day?.opener === seat) parts.push(t('card.opener'))
+      if (day?.skipped.includes(seat)) parts.push(t('card.skipped'))
+      if (parts.length > 0) marks.push({ text: parts.join(' · '), tone: 'plain' })
+    }
+    marks.push(...(extra.marks[seat] ?? []))
+    // Постоянные метки: кого проверял шериф и кого искал глава мафии.
+    for (const m of game.permanentMarks) if (m.seat === seat) marks.push({ text: translateKey(lang, `action.${m.actionId}.mark`), tone: 'night' })
 
-    // В голосовании на месте номера выставления — число голосов.
-    let badge: string | null = null
     const nomination = day ? day.nominations.findIndex((x) => x.target === seat) : -1
-    const votes = ballot?.entries.find((e) => e.candidate === seat)
-    if (votes) badge = votes.count === null ? t('card.votes.none') : t('card.votes', { n: votes.count })
-    else if (nomination >= 0) badge = t('card.nominated', { n: nomination + 1 })
-
-    const nightMarks = game.permanentMarks.filter((m) => m.seat === seat).map((m) => translateKey(lang, `action.${m.actionId}.mark`))
-
     return {
       player,
-      speaking: day?.speaking?.seat === seat,
-      badge,
-      dayMark: dayParts.length > 0 ? dayParts.join(' · ') : null,
-      nightMarks,
+      highlight: speaking || extra.highlight === seat,
+      badge: nomination >= 0 ? t('card.nominated', { n: nomination + 1 }) : null,
+      marks,
       pick: selection
         ? { allowed: selection.allowed.includes(seat), picked: selection.picked === seat, mark: selection.marks[seat] ?? null }
         : null,
@@ -45,7 +46,7 @@ function useCards(game: GameState): CardView[] {
 }
 
 /** Стол: сетка карточек по порядку номеров, 4 колонки до 12 игроков и 5 от 13. Карточки не прыгают. */
-export function Table({ game, onOpen, extraMarks }: { game: GameState; onOpen(seat: Seat): void; extraMarks?: Record<Seat, string[]> }) {
+export function Table({ game, onOpen }: { game: GameState; onOpen(seat: Seat): void }) {
   const { settings } = useApp()
   const store = useStore()
   const t = useT()
@@ -64,15 +65,13 @@ export function Table({ game, onOpen, extraMarks }: { game: GameState; onOpen(se
       <ul className="table-grid" aria-label={t('table.label')} data-columns={game.players.length > 12 ? 5 : 4}>
         {cards.map((view) => (
           <PlayerCard
-            key={view.player.seat}
-            view={extraMarks?.[view.player.seat] ? { ...view, nightMarks: [...view.nightMarks, ...(extraMarks[view.player.seat] ?? [])] } : view}
-            registry={store.registry} rolesHidden={settings.rolesHidden}
+            key={view.player.seat} view={view} registry={store.registry} rolesHidden={settings.rolesHidden}
             onOpen={() => onOpen(view.player.seat)} onPick={() => selection?.onPick(view.player.seat)}
           />
         ))}
         {selection && selection.nobody !== false && (
           <li className="card-slot">
-            <button type="button" className={selection.picked === null ? 'card-nobody' : 'card-nobody'} onClick={() => selection.onPick(null)}>
+            <button type="button" className="card-nobody" aria-pressed={selection.nobodyPicked === true} onClick={() => selection.onPick(null)}>
               {t('table.nobody')}
             </button>
           </li>

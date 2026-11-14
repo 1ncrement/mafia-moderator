@@ -1,5 +1,5 @@
 import { translateKey } from '../../app/i18n'
-import { useLang, useStore, useT } from '../../app/StoreContext'
+import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { SUMMARY_STEP } from '../../engine'
 import type { DayState, DayStep, GameState, StepId } from '../../engine'
 import { nightStepLabel } from './labels'
@@ -18,6 +18,7 @@ export function daySteps(day: DayState, step: StepId | null, balaganFromDay: num
 
 /** Полоса шагов: кликабельна, можно вернуться к пройденному шагу или пропустить шаг. */
 export function StepNav({ game, balaganFromDay }: { game: GameState; balaganFromDay: number }) {
+  const { settings } = useApp()
   const store = useStore()
   const t = useT()
   const lang = useLang()
@@ -40,17 +41,39 @@ export function StepNav({ game, balaganFromDay }: { game: GameState; balaganFrom
   }
 
   if (game.night) {
-    const ids = [...game.night.steps.map((s) => s.id), SUMMARY_STEP]
+    const night = game.night
+    const seat = (n: number | null) => (n === null ? t('journal.nobody') : t('common.seat', { n }))
     return (
-      <nav className="steps steps-night" aria-label={t('steps.night')}>
-        {ids.map((id) => (
-          <button
-            key={id} type="button" className="step" data-step={id} aria-current={id === game.step ? 'step' : undefined}
-            onClick={() => id !== game.step && store.dispatch({ type: 'enterStep', step: id })}
-          >
-            {nightStepLabel(lang, store.registry, game.night, id)}
-          </button>
-        ))}
+      <nav aria-label={t('steps.night')}>
+        <ol className="night-steps">
+          {night.steps.map((s) => (
+            <li key={s.id}>
+              <button
+                type="button" className="night-step" data-step={s.id} data-grey={s.grey ? '' : undefined}
+                aria-current={s.id === game.step ? 'step' : undefined}
+                onClick={() => s.id !== game.step && store.dispatch({ type: 'enterStep', step: s.id })}
+              >
+                <span className="night-step-name">{nightStepLabel(lang, store.registry, night, s.id)}</span>
+                <span className="night-step-side">
+                  {s.grey ? <span className="night-step-last">{t('night.nav.grey')}</span> : (
+                    <>
+                      {s.recorded && !settings.rolesHidden && <span className="night-step-pick">→ {seat(s.target)}</span>}
+                      {s.lastNight.recorded && !settings.rolesHidden && <span className="night-step-last">{t('night.nav.last', { target: seat(s.lastNight.target) })}</span>}
+                    </>
+                  )}
+                </span>
+              </button>
+            </li>
+          ))}
+          <li>
+            <button
+              type="button" className="night-step" data-step={SUMMARY_STEP} aria-current={game.step === SUMMARY_STEP ? 'step' : undefined}
+              onClick={() => game.step !== SUMMARY_STEP && store.dispatch({ type: 'enterStep', step: SUMMARY_STEP })}
+            >
+              <span className="night-step-name">{t('step.summary')}</span>
+            </button>
+          </li>
+        </ol>
       </nav>
     )
   }

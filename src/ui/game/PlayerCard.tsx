@@ -5,17 +5,16 @@ import { cx } from '../common/Button'
 import { Dots } from '../common/icons'
 import { SideDot } from '../common/SideDot'
 import { statusText } from './labels'
+import type { SeatMark } from './tableMarks'
 
 export type CardView = {
   player: PlayerView
-  /** Говорит сейчас — самое заметное выделение на столе, оно одно. */
-  speaking: boolean
-  /** Ярлык в углу: «выставлен · 1» или число голосов. */
+  /** Говорит сейчас (или считаем его голоса) — самое заметное выделение на столе, оно одно. */
+  highlight: boolean
+  /** Ярлык в углу: «выставлен · 1». */
   badge: string | null
-  /** Метки дня: «говорил · начинал день». */
-  dayMark: string | null
-  /** Ночные и постоянные метки: «проверен шерифом», «прошлая ночь». Скрываются вместе с ролями. */
-  nightMarks: string[]
+  /** Метки внизу карточки. Ночные (tone: night) скрываются вместе с ролями. */
+  marks: SeatMark[]
   /** Режим выбора: null — режима нет; иначе можно ли выбрать и выбран ли. */
   pick: { allowed: boolean; picked: boolean; mark: string | null } | null
 }
@@ -30,10 +29,11 @@ export function PlayerCard({ view, registry, rolesHidden, onOpen, onPick }: Prop
   const out = player.status === 'out'
   const status = statusText(lang, player)
   const selectable = pick?.allowed === true
+  const marks = rolesHidden ? view.marks.filter((m) => m.tone !== 'night') : view.marks
   const className = cx(
     'card',
     out && 'card-out',
-    view.speaking && 'card-speaking',
+    view.highlight && 'card-speaking',
     pick?.picked && 'card-picked',
     pick && !selectable && 'card-locked',
     selectable && 'card-selectable',
@@ -56,9 +56,7 @@ export function PlayerCard({ view, registry, rolesHidden, onOpen, onPick }: Prop
           : <span className="card-role"><SideDot registry={registry} side={player.side} /><span>{roleText(lang, registry, player.roleId)}</span></span>}
         {status && <span className="card-status">{status}</span>}
         <span className="card-marks">
-          {view.speaking && <span className="card-mark card-mark-day">{t('card.speaking')}</span>}
-          {!view.speaking && view.dayMark && <span className="card-mark">{view.dayMark}</span>}
-          {!rolesHidden && view.nightMarks.map((m) => <span key={m} className="card-mark card-mark-night">{m}</span>)}
+          {marks.map((m) => <span key={`${m.tone}:${m.text}`} className={cx('card-mark', m.tone !== 'plain' && `card-mark-${m.tone}`)}>{m.text}</span>)}
           {pick?.picked && <span className="card-mark card-mark-night">{t('card.picked')}</span>}
           {pick?.mark && <span className="card-mark card-mark-night">{pick.mark}</span>}
         </span>

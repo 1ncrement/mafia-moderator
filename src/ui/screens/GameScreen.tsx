@@ -1,48 +1,42 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import type { FC, RefObject } from 'react'
+import { useRef, useState } from 'react'
+import type { FC } from 'react'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { Button } from '../common/Button'
 import { Dialog } from '../common/Dialog'
 import { useHotkeys } from '../common/useHotkeys'
 import type { HotkeyMap } from '../common/useHotkeys'
 import { toggleTimer } from '../game/dayFlow'
+import { DigitKeysContext } from '../game/digitKeys'
+import { SUMMARY_STEP } from '../../engine'
 import type { GameState, Seat } from '../../engine'
 import { Header } from '../game/Header'
 import type { GameModal } from '../game/Header'
 import { JournalPanel } from '../game/JournalPanel'
 import { stepLabel } from '../game/labels'
 import { MainActionProvider, MainButton, useMainPress } from '../game/MainButton'
+import { NightPanel } from '../game/NightPanel'
+import { NightSummary } from '../game/NightSummary'
 import { PauseCurtain } from '../game/PauseCurtain'
 import { PlayerPanel } from '../game/PlayerPanel'
 import { SelectionProvider, useSelection } from '../game/selection'
 import { SpeechPanel, useNominationNotice } from '../game/SpeechPanel'
 import { StepNav } from '../game/StepNav'
 import { Table } from '../game/Table'
+import { TableMarksProvider } from '../game/tableMarks'
 import { TimerPanel } from '../game/TimerPanel'
 import { useTimerSignal } from '../game/useTimerSignal'
+import { VotePanel } from '../game/VotePanel'
 import '../game/game.css'
 
 /** Панель шага. Следующие задачи добавляют панели в карту «шаг → компонент». */
 export type StepPanel = FC<{ game: GameState; flash?: boolean }>
 
-/** Цифровые клавиши отдаются панели шага (ввод голосов): слушатель клавиш на экране один. */
-const DigitKeysContext = createContext<RefObject<((n: number) => void) | null> | null>(null)
-
-export function useDigitKeys(handler: ((n: number) => void) | null): void {
-  const ref = useContext(DigitKeysContext)
-  useEffect(() => {
-    if (!ref) return
-    ref.current = handler
-    return () => {
-      ref.current = null
-    }
-  })
-}
-
 const SPEECH_STEPS = ['balagan', 'speeches', 'defense', 'tiebreak', 'farewell']
 
 function panelFor(game: GameState): StepPanel | null {
   if (game.day && game.step !== null && SPEECH_STEPS.includes(game.step)) return SpeechPanel
+  if (game.day && (game.step === 'vote' || game.step === 'revote')) return VotePanel
+  if (game.night) return game.step === SUMMARY_STEP ? NightSummary : NightPanel
   return null
 }
 
@@ -142,9 +136,11 @@ export function GameScreen() {
         ? <PauseCurtain game={game} />
         : (
           <SelectionProvider>
-            <MainActionProvider>
-              <Game game={game} />
-            </MainActionProvider>
+            <TableMarksProvider>
+              <MainActionProvider>
+                <Game game={game} />
+              </MainActionProvider>
+            </TableMarksProvider>
           </SelectionProvider>
         )}
     </div>

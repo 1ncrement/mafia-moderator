@@ -85,3 +85,11 @@ test('вымышленная роль с существующим эффекто
   expect(nightState(night, reg, 1).steps.map((x) => x.id)).toEqual(['mafia_shot', 'godfather_search:1', 'bodyguard_guard:2'])
   expect(nightState(night, reg, 1).outcome).toMatchObject({ dies: null, reason: 'healed' })
 })
+
+test('шаг знает, что его исполнитель заблокирован этой ночью', () => {
+  const blocked = (s: Session, id: string) => st(s).night!.steps.find((x) => x.id === id)!.blocked
+  const s = play(n1(), act('prostitute_block', 10, 1))
+  expect(blocked(s, 'sheriff_check:1')).toBe(true); expect(blocked(s, 'doctor_heal:4')).toBe(false)
+  expect(blocked(play(n1(), act('prostitute_block', 10, 8)), 'mafia_shot')).toBe(false)
+  expect(blocked(play(n1(), act('prostitute_block', 10, 3)), 'mafia_shot')).toBe(true)
+})

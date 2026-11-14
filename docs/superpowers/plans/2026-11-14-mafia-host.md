@@ -1619,7 +1619,7 @@ git add -A && git commit -m "feat(ui): сигнал таймера, горячи
 - **Итог ночи**: сводка по одной строке на шаг; крупно подсказка — «№6 застрелен», «Никто не выбыл: доктор вылечил №6», «Никто не выбыл: выстрела не было», «Никто не выбыл: мафия заблокирована». Если `complete` ложно — строка «Не записано: Шериф, Доктор». Главная кнопка «№6 застрелен · начать День 3» или «Никто не выбыл · начать День 3» (`confirmNight` с `outcome.dies`); вторичные «Никто не выбыл» (`confirmNight(null)`), «Выбыл другой…» (режим выбора), «Назад к шагам ночи».
 - Ночные метки на карточках (цель выстрела, заблокирован, вылечен) видны ночью и на итоге.
 
-- [ ] **Step 1: Write the failing test (голосование)**
+- [x] **Step 1: Write the failing test (голосование)**
 
 ```ts
 const voting = (a: AppStore) => { seedGame(a, TABLE_11, 2); a.dispatch({ type: 'setStatus', seat: 9, status: 'out', cause: 'shot' });
@@ -1650,13 +1650,13 @@ test('никто не выгнан — сразу ночь', async () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/vote.test.tsx`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/vote.test.tsx`
 
-- [ ] **Step 3: Реализуй `VotePanel` и `TieDecision`.**
+- [x] **Step 3: Реализуй `VotePanel` и `TieDecision`.**
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/ui/vote.test.tsx`
+- [x] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/ui/vote.test.tsx`
 
-- [ ] **Step 5: Write the failing test (ночь)**
+- [x] **Step 5: Write the failing test (ночь)**
 
 ```ts
 const night1 = (a: AppStore) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }); };
@@ -1707,13 +1707,13 @@ test('итог ночи: подсказка, подтверждение одно
 
 У каждой кнопки полосы шагов ночи есть атрибут `data-step` с id шага.
 
-- [ ] **Step 6: Run, verify FAIL.** Run: `npx vitest run tests/ui/night.test.tsx`
+- [x] **Step 6: Run, verify FAIL.** Run: `npx vitest run tests/ui/night.test.tsx`
 
-- [ ] **Step 7: Реализуй `NightPanel` и `NightSummary`.**
+- [x] **Step 7: Реализуй `NightPanel` и `NightSummary`.**
 
-- [ ] **Step 8: Run, verify PASS.** Run: `npm run check`
+- [x] **Step 8: Run, verify PASS.** Run: `npm run check`
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add -A && git commit -m "feat(ui): голосование, решения ведущего, ночные шаги и итог ночи"

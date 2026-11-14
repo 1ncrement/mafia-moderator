@@ -248,6 +248,8 @@ export type NightStep = {
   inherited: boolean
   /** Носителей в игре нет: шаг остаётся «для вида», записать в него нельзя. */
   grey: boolean
+  /** Исполнитель заблокирован этой ночью: действие не сработает. */
+  blocked: boolean
   recorded: boolean
   target: Seat | null
   answer?: CheckAnswer
