@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { answerText, roleName } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { aliveSeats, nightPlayers } from '../../engine'
@@ -6,7 +7,7 @@ import { Button } from '../common/Button'
 import { nightStepLabel } from './labels'
 import { useMainAction } from './MainButton'
 import { nightMarks } from './nightMarks'
-import { useAskOnce } from './selection'
+import { useAskOnce, useSelection } from './selection'
 import { useTableMarks } from './tableMarks'
 
 /** Подсказка итога ночи одной строкой. Ведущий подтверждает её или меняет. */
@@ -40,6 +41,9 @@ export function NightSummary({ game }: { game: GameState }) {
   const t = useT()
   const lang = useLang()
   const askOnce = useAskOnce()
+  const { clear } = useSelection()
+  // Ушли с итога ночи (подтвердили другой кнопкой, вернулись к шагам) — вопрос «Кто выбыл?» снимается.
+  useEffect(() => clear, [clear])
   const night = game.night
   const hint = useHintText(night)
   const dies = night?.outcome.dies ?? null

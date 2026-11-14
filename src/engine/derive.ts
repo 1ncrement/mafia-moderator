@@ -1,6 +1,6 @@
 import { dayState } from './day'
 import { currentPhase, lastOf, samePhase } from './log'
-import { nightState, permanentMarks } from './night'
+import { actionOfStepId, nightState, permanentMarks } from './night'
 import { playersNow } from './players'
 import { endHintFor } from './roles/rules'
 import type { GameState, NightState, PhaseRef, Registry, Session, SideId, StateWarning, StepId } from './types'
@@ -34,16 +34,21 @@ export function deriveState(session: Session, registry: Registry): GameState {
   const day = phase.kind === 'day' ? dayState(session, registry, phase.n) : null
   const night = phase.kind === 'night' ? nightState(session, registry, phase.n) : null
 
-  // Шаг ночи, которого больше нет (носитель выбыл задним числом), сбрасывается на первый.
+  // Носитель шага сменился (выбыл, вернулся, поменял роль) — ведущий остаётся на шаге того же действия.
+  // На первый шаг сбрасываемся, только если такого действия в ночи больше нет.
   let step = entered?.step ?? defaultStep(session, phase, night)
-  if (night && step !== SUMMARY_STEP && !night.steps.some((x) => x.id === step)) step = defaultStep(session, phase, night)
+  if (night && step !== null && step !== SUMMARY_STEP && !night.steps.some((x) => x.id === step)) {
+    const actionId = actionOfStepId(step)
+    step = night.steps.find((x) => x.actionId === actionId)?.id ?? defaultStep(session, phase, night)
+  }
 
   const warnings: StateWarning[] = []
   // Правка прошлой записи не меняет статусы молча: расхождение итога ночи становится предупреждением.
   const nights = phase.kind === 'deal' ? 0 : phase.n
   for (let n = 1; n <= nights; n++) {
     const past = night?.n === n ? night : nightState(session, registry, n)
-    if (past.confirmed && past.confirmed.hinted !== past.outcome.dies) {
+    // Подсказка изменилась, но совпала с отметкой ведущего — исправлять нечего.
+    if (past.confirmed && past.confirmed.hinted !== past.outcome.dies && past.confirmed.chosen !== past.outcome.dies) {
       warnings.push({ code: 'night_outcome_changed', night: n, expected: past.outcome.dies })
     }
   }

@@ -69,7 +69,7 @@ function DayActions({ game, seat, onDone }: { game: GameState; seat: Seat; onDon
 }
 
 function Game({ game }: { game: GameState }) {
-  const { session } = useApp()
+  const { session, settings } = useApp()
   const store = useStore()
   const t = useT()
   const lang = useLang()
@@ -98,9 +98,21 @@ function Game({ game }: { game: GameState }) {
 
   if (!session) return null
   const Panel = panelFor(game)
-  // Ведущий ушёл дальше через полосу шагов, а круг не закончен — предупреждение, не запрет.
+  // Ведущий ушёл дальше через полосу шагов, а круг не закончен или не начат вовсе — предупреждение, не запрет.
   const day = game.day
-  const notSpoken = day && day.opener !== null && game.step !== 'balagan' && game.step !== 'speeches' ? day.waiting : []
+  const notSpoken = day && game.step !== 'balagan' && game.step !== 'speeches' ? day.waiting : []
+
+  // Итог прошлой ночи разошёлся с отметкой — предложение исправить. Живёт в журнале,
+  // а при свёрнутом журнале переезжает в панель шага: ведущий должен его увидеть.
+  const nightOffers = game.warnings.flatMap((w) => (w.code === 'night_outcome_changed' ? [w] : [])).map((w) => (
+    <div key={w.night} className="journal-warning" role="alert">
+      <span>{w.expected === null ? t('warn.night.none', { night: w.night }) : t('warn.night', { night: w.night, n: w.expected })}</span>
+      <div className="speech-secondary">
+        <Button onClick={() => store.dispatch({ type: 'acknowledgeNight', night: w.night, apply: true })}>{t('warn.fix')}</Button>
+        <Button variant="outline" onClick={() => store.dispatch({ type: 'acknowledgeNight', night: w.night, apply: false })}>{t('warn.keep')}</Button>
+      </div>
+    </div>
+  ))
 
   return (
     <>
@@ -115,6 +127,7 @@ function Game({ game }: { game: GameState }) {
           )}
         </div>
         <section className="step-panel" aria-label={t('step.panel')}>
+          {journalCollapsed && !settings.rolesHidden && nightOffers}
           <StepNav game={game} balaganFromDay={session.config.rules.balaganFromDay} />
           {session.timer?.kind === 'free' && Panel !== SpeechPanel && <TimerPanel game={game} flash={flash} />}
           <DigitKeysContext.Provider value={digits}>
@@ -130,15 +143,7 @@ function Game({ game }: { game: GameState }) {
             <li><button type="button" className="journal-entry journal-add" onClick={() => setAdding(group.phase)}>{t('add.button')}</button></li>
           )}
         >
-          {game.warnings.flatMap((w) => (w.code === 'night_outcome_changed' ? [w] : [])).map((w) => (
-            <div key={w.night} className="journal-warning" role="alert">
-              <span>{w.expected === null ? t('warn.night.none', { night: w.night }) : t('warn.night', { night: w.night, n: w.expected })}</span>
-              <div className="speech-secondary">
-                <Button onClick={() => store.dispatch({ type: 'acknowledgeNight', night: w.night, apply: true })}>{t('warn.fix')}</Button>
-                <Button variant="outline" onClick={() => store.dispatch({ type: 'acknowledgeNight', night: w.night, apply: false })}>{t('warn.keep')}</Button>
-              </div>
-            </div>
-          ))}
+          {nightOffers}
         </JournalPanel>
       </main>
       {modal === 'stop' && <StopDialog game={game} onClose={() => setModal(null)} />}

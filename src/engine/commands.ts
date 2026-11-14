@@ -5,7 +5,7 @@ import { aliveSeats, isSeat, nightPlayers, playersAt, playersNow } from './playe
 import type {
   Command, CommandResult, EventOf, LogPatch, NewEvent, PhaseRef, Registry, RejectCode, Seat, Session,
 } from './types'
-import { maxVotesFor } from './vote'
+import { enteredVotes, maxVotesFor } from './vote'
 
 // Команда ведущего → пачка событий. Ничего не происходит само:
 // статус, фаза и шаг меняются только командой.
@@ -96,6 +96,13 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       return ok({ remove: [cmd.id] })
     }
 
+    case 'editStatus': {
+      const event = log.find((e) => e.id === cmd.id)
+      if (!event || event.type !== 'status_set') return no('unknown_event')
+      const { cause: _previous, ...rest } = event
+      return ok({ replace: [cmd.status === 'out' ? { ...rest, status: 'out', cause: cmd.cause } : { ...rest, status: 'alive' }] })
+    }
+
     // ── День: круг речей ──────────────────────────────────────────────────
 
     case 'openCircle': {
@@ -145,6 +152,18 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       return ok({ remove: idsIn(p, 'nominated', (e) => e.target === cmd.target).map((e) => e.id) })
     }
 
+    case 'editNomination': {
+      const event = log.find((e) => e.id === cmd.id)
+      if (!event || event.type !== 'nominated') return no('unknown_event')
+      if (event.target === cmd.target) return ok({})
+      const alive = aliveFor(event.phase)
+      if (!alive.has(cmd.target)) return no('not_alive')
+      if (nominationsOf(session, event.phase, alive).some((x) => x.target === cmd.target)) return no('already_nominated')
+      // Числа голосов записаны за этого кандидата — остаются за ним под исправленным номером.
+      const votes = idsIn(event.phase, 'votes_set', (e) => e.candidate === event.target)
+      return ok({ replace: [{ ...event, target: cmd.target }, ...votes.map((e) => ({ ...e, candidate: cmd.target }))] })
+    }
+
     case 'moveNomination': {
       if (phase.kind !== 'day') return no('wrong_phase')
       const listed = nominationsOf(session, phase, aliveFor(phase))
@@ -189,6 +208,9 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
     case 'setVoters': {
       if (phase.kind !== 'day') return no('wrong_phase')
       const count = Number.isFinite(cmd.count) ? Math.max(0, Math.floor(cmd.count)) : 0
+      // Тот же жёсткий запрет с другой стороны: голосующих не меньше, чем уже введено голосов.
+      const ballot = dayState(session, registry, phase.n).ballots.find((b) => b.n === cmd.ballot)
+      if (ballot && count < enteredVotes(ballot)) return no('votes_exceed')
       return ok({
         remove: idsIn(phase, 'voters_set', (e) => e.ballot === cmd.ballot).map((e) => e.id),
         add: [{ type: 'voters_set', phase, ballot: cmd.ballot, count }],
@@ -202,8 +224,13 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       const p = cmd.phase ?? phase
       if (p.kind !== 'day') return no('wrong_phase')
       const seats = cmd.outcome === 'nobody' ? [] : [...new Set(cmd.seats)].filter((s) => isSeat(session, s))
+      // Прежний исход этого тура был другим — новая запись получает метку «испр.».
+      const before = lastOf(eventsOf(log, p), 'vote_resolved', (e) => e.ballot === cmd.ballot)
+      const changed = before !== null && (before.outcome !== cmd.outcome || before.seats.join() !== seats.join())
       // Исход пишется раньше статусов: число голосующих тура считается на момент перед исходом.
-      const events: NewEvent[] = [{ type: 'vote_resolved', phase: p, ballot: cmd.ballot, outcome: cmd.outcome, seats }]
+      const events: NewEvent[] = [{
+        type: 'vote_resolved', phase: p, ballot: cmd.ballot, outcome: cmd.outcome, seats, ...(changed ? { edited: true as const } : {}),
+      }]
       if (cmd.outcome === 'eliminated') {
         for (const seat of seats) events.push({ type: 'status_set', phase: p, seat, status: 'out', cause: 'voted', source: 'vote' })
       }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { seatList } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { maxVotesFor } from '../../engine'
+import { enteredVotes, maxVotesFor } from '../../engine'
 import type { Command, GameState, Seat } from '../../engine'
 import { Button, cx } from '../common/Button'
 import { Stepper } from '../common/Stepper'
@@ -59,7 +59,8 @@ export function VotePanel({ game }: { game: GameState }) {
   const toNight: Command | null = day ? { type: 'startPhase', phase: { kind: 'night', n: day.n } } : null
   const decides = ballot !== undefined && ballot.n === 2 && ballot.complete && current === null && (ballot.hint?.outcome === 'tie' || ballot.voters === 0)
   let main: MainAction = null
-  if (day && ballot && durations && toNight && ballot.complete && current === null && ballot.hint && !decides) {
+  // Голосов введено больше, чем голосующих, — исход по такой таблице не подтверждается: сначала исправить числа.
+  if (day && ballot && durations && toNight && ballot.complete && !ballot.overflow && current === null && ballot.hint && !decides) {
     const { outcome, seats } = ballot.hint
     main = outcome === 'eliminated'
       ? {
@@ -147,7 +148,7 @@ export function VotePanel({ game }: { game: GameState }) {
         <div className="vote-voters">
           <span>{t('vote.voters.label')}</span>
           <Stepper
-            value={ballot.voters} min={0} max={game.counts.alive}
+            value={ballot.voters} min={enteredVotes(ballot)} max={game.counts.alive}
             lessLabel={t('stepper.less', { name: t('vote.voters.label') })} moreLabel={t('stepper.more', { name: t('vote.voters.label') })}
             onChange={(count) => store.dispatch({ type: 'setVoters', ballot: ballot.n, count })}
           />

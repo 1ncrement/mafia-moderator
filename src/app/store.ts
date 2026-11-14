@@ -1,6 +1,6 @@
 import {
   applyPatch, applyUndo, checkComposition, dealRoles, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES,
-  defaultComposition, deriveState, execute, newSession, newTimer, timerReduce,
+  defaultComposition, deriveState, execute, journal, newSession, newTimer, timerReduce,
 } from '../engine'
 import type {
   Command, CommandResult, GameEvent, GameState, RandomInt, Registry, Seat, Session, SessionConfig, SpeechKind,
@@ -153,6 +153,10 @@ export function createAppStore(env: Env): AppStore {
     return newTimer(speaking.kind, speaking.seat, session.config.durations[speaking.kind] * 1000)
   }
 
+  /** Полная длительность таймера по текущим настройкам сессии: новые длительности действуют со следующего запуска. */
+  const rebased = (session: Session, timer: NonNullable<Session['timer']>): NonNullable<Session['timer']> =>
+    (timer.kind === 'free' ? timer : { ...timer, durationMs: session.config.durations[timer.kind] * 1000 })
+
   /** Игры, которые не удалось сохранить: живут в памяти вкладки и остаются в списке на главной. */
   const unsaved = new Map<string, Session>()
   const listSessions = (): SessionMeta[] => [
@@ -160,10 +164,15 @@ export function createAppStore(env: Env): AppStore {
     ...storage.list().filter((m) => !unsaved.has(m.id)),
   ].sort((a, b) => b.updatedAt - a.updatedAt)
 
-  /** Вывод состояния не должен ронять запуск даже на журнале, который записала не эта версия. */
+  /**
+   * Вывод состояния не должен ронять запуск даже на журнале, который записала не эта версия.
+   * Журнал для показа строится тут же: игра, которую нельзя нарисовать, считается нечитаемой.
+   */
   const tryDerive = (session: Session): GameState | null => {
     try {
-      return deriveState(session, registry)
+      const game = deriveState(session, registry)
+      journal(session, registry)
+      return game
     } catch {
       return null
     }
@@ -200,7 +209,10 @@ export function createAppStore(env: Env): AppStore {
     const entry = diffLogs(start.log, log)
     // Команда без изменений в стек отмены не попадает.
     if (entry.added.length + entry.replaced.length + entry.removed.length === 0) return last
-    commit({ ...start, log, nextSeq, undo: [...start.undo, entry].slice(-UNDO_LIMIT), updatedAt: env.now() })
+    // Остановка и возобновление игры — не игровые действия: у них свои кнопки на итогах, в стек отмены они не идут.
+    const outsideUndo = cmds.every((cmd) => cmd.type === 'finishGame' || cmd.type === 'resumeGame')
+    const undo = outsideUndo ? start.undo : [...start.undo, entry].slice(-UNDO_LIMIT)
+    commit({ ...start, log, nextSeq, undo, updatedAt: env.now() })
     return last
   }
 
@@ -230,7 +242,7 @@ export function createAppStore(env: Env): AppStore {
         const entry = session.undo.at(-1)
         if (!entry) return session
         // После отмены таймер шага встаёт в «готов» — и принадлежит тому, кто говорит после отмены.
-        const reset = session.timer ? timerReduce(session.timer, { type: 'reset' }, env.now()) : null
+        const reset = session.timer ? timerReduce(rebased(session, session.timer), { type: 'reset' }, env.now()) : null
         const undone = { ...session, log: applyUndo(session.log, entry), undo: session.undo.slice(0, -1), timer: reset, updatedAt: env.now() }
         return { ...undone, timer: timerFor(undone, deriveState(undone, registry), reset) }
       })
@@ -247,7 +259,12 @@ export function createAppStore(env: Env): AppStore {
     },
 
     timer(action) {
-      withSession((session) => (session.timer ? { ...session, timer: timerReduce(session.timer, action, env.now()) } : session))
+      withSession((session) => {
+        if (!session.timer) return session
+        // «Заново» возвращает полную длительность из настроек, а не ту, с которой таймер был создан.
+        const timer = action.type === 'reset' ? rebased(session, session.timer) : session.timer
+        return { ...session, timer: timerReduce(timer, action, env.now()) }
+      })
     },
 
     freeTimer(seconds) {
@@ -263,7 +280,14 @@ export function createAppStore(env: Env): AppStore {
     },
 
     updateConfig(patch) {
-      withSession((session) => ({ ...session, config: { ...session.config, ...patch } }))
+      withSession((session) => {
+        const next = { ...session, config: { ...session.config, ...patch } }
+        const timer = next.timer
+        // Таймер, который ещё не запущен, сразу получает новую длительность (добавленные «+10 с» остаются).
+        if (!timer || timer.status !== 'ready') return next
+        const fresh = rebased(next, timer)
+        return { ...next, timer: { ...fresh, remainingMs: fresh.durationMs + (timer.remainingMs - timer.durationMs) } }
+      })
     },
 
     setPaused(paused) {

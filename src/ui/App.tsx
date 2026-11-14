@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { translate } from '../app/i18n'
 import { StoreProvider, useApp } from '../app/StoreContext'
 import type { AppStore } from '../app/store'
 import { DealScreen } from './screens/DealScreen'
@@ -11,6 +12,8 @@ function Screens() {
   const { screen, settings } = useApp()
   useEffect(() => {
     document.documentElement.lang = settings.lang
+    // Заголовок вкладки — тоже строка интерфейса: меняется вместе с языком.
+    document.title = translate(settings.lang, 'app.tabTitle')
   }, [settings.lang])
 
   switch (screen) {

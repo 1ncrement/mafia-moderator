@@ -105,7 +105,7 @@ export const RecordEditor: FC<{ entry: JournalEntry; phase: PhaseRef; onClose():
         <p className="dialog-text">{t('edit.nomination')}</p>
         <SeatGrid
           total={total} allowed={aliveIn(session, store, phase).filter((s) => s !== entry.target)} picked={entry.target}
-          onPick={(seat) => seat !== null && run({ type: 'removeNomination', target: entry.target, phase }, { type: 'nominate', by: entry.by, target: seat, phase })}
+          onPick={(seat) => seat !== null && run({ type: 'editNomination', id: entry.eventId ?? '', target: seat })}
         />
         <div className="dialog-actions">
           <Button size="l" variant="outline" onClick={() => run({ type: 'removeNomination', target: entry.target, phase })}>{t('edit.delete')}</Button>
@@ -138,7 +138,7 @@ export const RecordEditor: FC<{ entry: JournalEntry; phase: PhaseRef; onClose():
 
   if (entry.kind === 'status') {
     const set = (status: 'alive' | 'out', cause?: 'shot' | 'voted') =>
-      run({ type: 'removeEvent', id: entry.eventId ?? '' }, { type: 'setStatus', seat: entry.seat, status, cause, phase })
+      run({ type: 'editStatus', id: entry.eventId ?? '', status, cause })
     body = (
       <div className="player-panel-actions">
         <Button size="l" disabled={entry.status === 'out' && entry.cause === 'shot'} onClick={() => set('out', 'shot')}>{t('panel.shot')}</Button>

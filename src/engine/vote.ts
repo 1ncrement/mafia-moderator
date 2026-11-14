@@ -78,3 +78,8 @@ export function maxVotesFor(ballot: Ballot, candidate: Seat): number {
   const others = ballot.entries.reduce((sum, e) => (e.candidate !== candidate && !e.auto ? sum + (e.count ?? 0) : sum), 0)
   return Math.max(0, ballot.voters - others)
 }
+
+/** Сумма чисел, введённых ведущим: подставленные движком остаток и нули не считаются. */
+export function enteredVotes(ballot: Ballot): number {
+  return ballot.entries.reduce((sum, e) => (e.auto ? sum : sum + (e.count ?? 0)), 0)
+}

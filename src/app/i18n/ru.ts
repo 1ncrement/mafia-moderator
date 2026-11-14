@@ -62,6 +62,7 @@ export const ru = {
   // ── Общее ──
   'app.title': 'Мафия',
   'app.subtitle': 'пульт ведущего',
+  'app.tabTitle': 'Мафия — помощник ведущего',
   'common.cancel': 'Отмена',
   'common.and': 'и',
   'common.seat': '№{n}',

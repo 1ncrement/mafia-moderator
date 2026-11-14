@@ -25,7 +25,9 @@ export function DealScreen() {
   const start = () => {
     if (store.now() - openedAt.current >= PRESS_GUARD_MS) store.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } })
   }
-  useHotkeys({ enter: start, escape: () => setSwap(null) }, true)
+  // На этом экране вся раздача на виду — H прячет её так же, как на игровом экране.
+  const hide = () => store.setSettings({ rolesHidden: !store.getState().settings.rolesHidden })
+  useHotkeys({ enter: start, escape: () => setSwap(null), hide }, true)
   if (!session || !game) return null
 
   const hidden = settings.rolesHidden

@@ -40,7 +40,7 @@ test('правка записей дня: выставление, голоса, 
     a.dispatch({ type: 'setVotes', ballot: 1, candidate: 7, count: 4 }); a.dispatch({ type: 'setStatus', seat: 9, status: 'out', cause: 'shot' }); a.dispatch({ type: 'openCircle', first: 5 }) })
   await user.click(screen.getByRole('button', { name: /№5 выставил №7/ }))
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Выбрать игрока №10' }))
-  expect(app.getState().game!.day!.nominations.map((n) => [n.by, n.target])).toEqual([[6, 3], [5, 10]])
+  expect(app.getState().game!.day!.nominations.map((n) => [n.by, n.target])).toEqual([[5, 10], [6, 3]])
   await user.click(screen.getByRole('button', { name: /№6 выставил №3/ })); await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Удалить запись' }))
   expect(app.getState().game!.day!.nominations.map((n) => n.target)).toEqual([10])
   await user.click(screen.getByRole('button', { name: /№9 застрелен/ })); await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Выгнан' }))

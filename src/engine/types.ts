@@ -142,6 +142,8 @@ export type Command =
   | { type: 'finishGame'; winner: SideId | null }
   | { type: 'resumeGame' }
   | { type: 'removeEvent'; id: string }
+  /** Правка записи ручного статуса на месте: запись остаётся там же и получает метку «испр.». */
+  | { type: 'editStatus'; id: string; status: 'alive' | 'out'; cause?: OutCause }
   // день
   | { type: 'openCircle'; first: Seat }
   /** Завершает идущую речь и начинает новую. */
@@ -150,6 +152,8 @@ export type Command =
   | { type: 'skipSpeaker'; seat: Seat }
   | { type: 'nominate'; by: Seat | null; target: Seat; phase?: PhaseRef }
   | { type: 'removeNomination'; target: Seat; phase?: PhaseRef }
+  /** Правка записи выставления: меняется только номер выставленного, место в списке и автор остаются. */
+  | { type: 'editNomination'; id: string; target: Seat }
   | { type: 'moveNomination'; target: Seat; toIndex: number }
   | { type: 'setVotes'; ballot: 1 | 2; candidate: Seat; count: number; phase?: PhaseRef }
   | { type: 'setVoters'; ballot: 1 | 2; count: number }

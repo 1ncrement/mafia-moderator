@@ -45,8 +45,12 @@ export function NightPanel({ game }: { game: GameState }) {
   useEffect(() => {
     if (!session || !night || !step || grey) return
     const record = (seat: Seat | null, force?: true) => {
-      const result = store.dispatch({ type: 'recordNightAction', actionId: step.actionId, actor: step.actor, target: seat, force })
-      setRepeat(!result.ok && result.reason === 'repeat_target' && seat !== null ? { step: step.id, target: seat } : null)
+      // Клик может прийти раньше перерисовки стола: шаг берём из состояния на момент нажатия.
+      const now = store.getState().game
+      const current = now?.night?.steps.find((s) => s.id === now.step)
+      if (!current || current.grey) return
+      const result = store.dispatch({ type: 'recordNightAction', actionId: current.actionId, actor: current.actor, target: seat, force })
+      setRepeat(!result.ok && result.reason === 'repeat_target' && seat !== null ? { step: current.id, target: seat } : null)
     }
     ask({
       question,

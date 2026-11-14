@@ -14,6 +14,11 @@ export function stepIdOf(actionId: string, actor: Seat | null): string {
   return actor === null ? actionId : `${actionId}:${actor}`
 }
 
+/** Действие шага по его идентификатору: носитель меняется, действие — нет. */
+export function actionOfStepId(stepId: string): string {
+  return stepId.split(':')[0] ?? stepId
+}
+
 const unique = (seats: Seat[]): Seat[] => [...new Set(seats)]
 
 /**

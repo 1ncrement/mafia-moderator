@@ -63,6 +63,7 @@ export const uk: Dict = {
   // ── Загальне ──
   'app.title': 'Мафія',
   'app.subtitle': 'пульт ведучого',
+  'app.tabTitle': 'Мафія — помічник ведучого',
   'common.cancel': 'Скасувати',
   'common.and': 'і',
   'common.seat': '№{n}',

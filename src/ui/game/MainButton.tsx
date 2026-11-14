@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useStore } from '../../app/StoreContext'
+import { useApp, useStore } from '../../app/StoreContext'
+import { phaseOrder } from '../../engine'
 import { Button } from '../common/Button'
 
 // Главная кнопка одна на игровой экран. Панель шага сообщает подпись и действие,
@@ -17,9 +18,20 @@ export const PRESS_GUARD_MS = 400
 
 export function MainActionProvider({ children }: { children: ReactNode }) {
   const store = useStore()
+  const { game } = useApp()
   const [action, setAction] = useState<Registered>(null)
   const lastLabel = useRef<string | null>(null)
   const changedAt = useRef(-Infinity)
+
+  // Защита включается и при смене шага: подпись может остаться прежней
+  // (роли скрыты, два носителя одной роли — оба шага называются «Доктор»).
+  const stepKey = game?.phase ? `${phaseOrder(game.phase)}:${game.step ?? ''}` : null
+  const lastStep = useRef(stepKey)
+  useEffect(() => {
+    if (stepKey === lastStep.current) return
+    lastStep.current = stepKey
+    changedAt.current = store.now()
+  }, [stepKey, store])
 
   const set = useCallback((next: Registered) => {
     if (next && next.label !== lastLabel.current) {

@@ -30,10 +30,30 @@ const sessionKey = (id: string) => `mafia:session:${id}`
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
-/** Событие журнала, с которым вывод состояния не упадёт: есть id, порядок, тип и фаза. */
+/** Событие журнала, с которым вывод состояния не упадёт: есть id, порядок, тип и фаза; у раздачи — список ролей. */
 const looksLikeEvent = (e: unknown): boolean =>
   isRecord(e) && typeof e.id === 'string' && typeof e.seq === 'number' && typeof e.type === 'string'
   && isRecord(e.phase) && typeof e.phase.kind === 'string'
+  && (e.type !== 'roles_dealt' || (Array.isArray(e.assignment) && e.assignment.every((role) => typeof role === 'string')))
+
+const finite = (v: unknown, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback)
+
+/** Строка списка игр из хранилища: испорченные поля заменяются безопасными значениями, строка остаётся в списке. */
+function toMeta(m: unknown): SessionMeta | null {
+  if (!isRecord(m) || typeof m.id !== 'string' || typeof m.updatedAt !== 'number' || !Number.isFinite(m.updatedAt)) return null
+  const phase = isRecord(m.phase) ? m.phase : {}
+  const numbered = (phase.kind === 'day' || phase.kind === 'night') && typeof phase.n === 'number' && Number.isFinite(phase.n)
+  return {
+    id: m.id,
+    createdAt: finite(m.createdAt, m.updatedAt),
+    updatedAt: m.updatedAt,
+    status: m.status === 'deal' || m.status === 'finished' ? m.status : 'running',
+    playerCount: finite(m.playerCount, 0),
+    alive: finite(m.alive, 0),
+    phase: numbered ? { kind: phase.kind as 'day' | 'night', n: phase.n as number } : { kind: 'deal' },
+    winner: typeof m.winner === 'string' ? m.winner : null,
+  }
+}
 
 const DURATION_KEYS = ['speech', 'balagan', 'defense', 'tiebreak', 'farewell']
 
@@ -86,7 +106,7 @@ export function createStorage(kv: KV) {
     const data = parse(read(INDEX))
     if (!Array.isArray(data)) return []
     return (data as unknown[])
-      .filter((m): m is SessionMeta => isRecord(m) && typeof m.id === 'string' && typeof m.updatedAt === 'number' && isRecord(m.phase))
+      .flatMap((m) => toMeta(m) ?? [])
       .sort((a, b) => b.updatedAt - a.updatedAt)
   }
 
