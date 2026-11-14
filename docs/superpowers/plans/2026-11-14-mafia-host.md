@@ -90,13 +90,13 @@ tests/
 **Interfaces:**
 - Produces: команды `npm run dev`, `npm run build`, `npm run test`, `npm run lint`, `npm run check` (= `tsc -b && eslint . && vitest run`); переменные CSS из раздела 6.10 спецификации с именами `--bg`, `--panel`, `--card`, `--border`, `--border-strong`, `--text`, `--text-2`, `--text-3`, `--day`, `--day-ink`, `--day-tint`, `--night`, `--night-ink`, `--night-tint`, `--red`, `--black`, `--alert`, `--alert-tint`, `--font-ui`, `--font-num`.
 
-- [ ] **Step 1: Создай каркас.** Сгенерируй шаблон Vite `react-ts` во временной папке и перенеси его файлы в корень проекта, не трогая `docs/`. Установи dev-зависимости `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `vite-plugin-singlefile` и зависимости `@fontsource/golos-text`, `@fontsource/oswald`. Если пакета шрифта в npm нет, положи woff2 в `src/styles/fonts/` и подключи через `@font-face`.
+- [x] **Step 1: Создай каркас.** Сгенерируй шаблон Vite `react-ts` во временной папке и перенеси его файлы в корень проекта, не трогая `docs/`. Установи dev-зависимости `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `vite-plugin-singlefile` и зависимости `@fontsource/golos-text`, `@fontsource/oswald`. Если пакета шрифта в npm нет, положи woff2 в `src/styles/fonts/` и подключи через `@font-face`.
 
-- [ ] **Step 2: Настрой сборку и тесты.** В `vite.config.ts`: плагины `react()` и `viteSingleFile()`, `base: './'`, блок `test` с `environment: 'jsdom'`, `setupFiles: ['tests/setup.ts']`, `include: ['tests/**/*.test.{ts,tsx}']`. В `tests/setup.ts` подключи `@testing-library/jest-dom/vitest`. В `tsconfig` включи `strict`, `noUncheckedIndexedAccess`.
+- [x] **Step 2: Настрой сборку и тесты.** В `vite.config.ts`: плагины `react()` и `viteSingleFile()`, `base: './'`, блок `test` с `environment: 'jsdom'`, `setupFiles: ['tests/setup.ts']`, `include: ['tests/**/*.test.{ts,tsx}']`. В `tests/setup.ts` подключи `@testing-library/jest-dom/vitest`. В `tsconfig` включи `strict`, `noUncheckedIndexedAccess`.
 
-- [ ] **Step 3: Настрой границы слоёв в ESLint.** Для `src/engine/**`: `no-restricted-imports` на `react`, `react-dom` и пути `platform`, `app`, `ui`; `no-restricted-globals` на `document`, `window`, `localStorage`, `navigator`, `crypto`; `no-restricted-properties` на `Date.now` и `Math.random`; `no-restricted-syntax` на `new Date()`.
+- [x] **Step 3: Настрой границы слоёв в ESLint.** Для `src/engine/**`: `no-restricted-imports` на `react`, `react-dom` и пути `platform`, `app`, `ui`; `no-restricted-globals` на `document`, `window`, `localStorage`, `navigator`, `crypto`; `no-restricted-properties` на `Date.now` и `Math.random`; `no-restricted-syntax` на `new Date()`.
 
-- [ ] **Step 4: Напиши тест на литералы ролей**
+- [x] **Step 4: Напиши тест на литералы ролей**
 
 ```ts
 // tests/engine/purity.test.ts
@@ -109,9 +109,9 @@ test('идентификаторы ролей и сторон не встреч�
 
 `sourceFiles` и `read` — локальные помощники теста на `node:fs`, обходят `.ts` и `.tsx`.
 
-- [ ] **Step 5: Заполни стили и заглушку.** `tokens.css` — переменные со значениями из таблицы 6.10; `base.css` — фон, цвет, шрифт, сброс кнопок, видимый фокус. Шрифты импортируй только с подмножествами `latin` и `cyrillic` (точные пути — в README пакетов). `App.tsx` пока рисует заголовок «Мафия».
+- [x] **Step 5: Заполни стили и заглушку.** `tokens.css` — переменные со значениями из таблицы 6.10; `base.css` — фон, цвет, шрифт, сброс кнопок, видимый фокус. Шрифты импортируй только с подмножествами `latin` и `cyrillic` (точные пути — в README пакетов). `App.tsx` пока рисует заголовок «Мафия».
 
-- [ ] **Step 6: Проверь границы и сборку**
+- [x] **Step 6: Проверь границы и сборку**
 
 Run: `npm run check`
 Expected: PASS.
@@ -121,7 +121,7 @@ Expected: PASS.
 Run: `npm run build && ls dist && grep -c "googleapis" dist/index.html`
 Expected: в `dist` один файл `index.html`, grep печатает `0`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git init && git add -A && git commit -m "chore: каркас проекта, границы слоёв, сборка в один файл"

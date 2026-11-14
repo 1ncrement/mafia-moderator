@@ -1,0 +1,41 @@
+/* Цвета, шрифты и размеры из раздела 6.10 спецификации. Одна тёмная тема. */
+:root {
+  --bg: #0f1115;
+  --panel: #171a20;
+  --card: #1e222a;
+  --border: #2b303b;
+  --border-strong: #5a6270;
+  --text: #eef0f4;
+  --text-2: #a3abb8;
+  --text-3: #7c8492;
+
+  --day: #f2b33d;
+  --day-ink: #1a1304;
+  --day-tint: #2a2413;
+  --night: #9db0ff;
+  --night-ink: #0e1330;
+  --night-tint: #1b2140;
+
+  --red: #e5484d;
+  --black: #0a0a0a;
+  --alert: #ff8a6b;
+  --alert-tint: #2b1a16;
+
+  --font-ui: 'Golos Text', system-ui, sans-serif;
+  --font-num: 'Oswald', 'Golos Text', sans-serif;
+
+  --r-s: 10px;
+  --r-m: 12px;
+  --r-l: 14px;
+
+  /* Акцент фазы: днём янтарный, ночью синий. Переключается атрибутом data-phase. */
+  --accent: var(--day);
+  --accent-ink: var(--day-ink);
+  --accent-tint: var(--day-tint);
+}
+
+[data-phase='night'] {
+  --accent: var(--night);
+  --accent-ink: var(--night-ink);
+  --accent-tint: var(--night-tint);
+}
