@@ -45,3 +45,11 @@ export function advance(env: TestEnv, ms: number): void {
     vi.advanceTimersByTime(ms)
   })
 }
+
+/** Ноутбук уснул: часы ушли вперёд без единого тика, затем вкладка снова видна. */
+export function sleep(env: TestEnv, ms: number): void {
+  act(() => {
+    env.time += ms
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+}

@@ -1,7 +1,11 @@
-import { useState } from 'react'
-import type { FC } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import type { FC, RefObject } from 'react'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { Button } from '../common/Button'
+import { Dialog } from '../common/Dialog'
+import { useHotkeys } from '../common/useHotkeys'
+import type { HotkeyMap } from '../common/useHotkeys'
+import { toggleTimer } from '../game/dayFlow'
 import type { GameState, Seat } from '../../engine'
 import { Header } from '../game/Header'
 import type { GameModal } from '../game/Header'
@@ -10,15 +14,30 @@ import { stepLabel } from '../game/labels'
 import { MainActionProvider, MainButton, useMainPress } from '../game/MainButton'
 import { PauseCurtain } from '../game/PauseCurtain'
 import { PlayerPanel } from '../game/PlayerPanel'
-import { SelectionProvider } from '../game/selection'
+import { SelectionProvider, useSelection } from '../game/selection'
 import { SpeechPanel, useNominationNotice } from '../game/SpeechPanel'
 import { StepNav } from '../game/StepNav'
 import { Table } from '../game/Table'
 import { TimerPanel } from '../game/TimerPanel'
+import { useTimerSignal } from '../game/useTimerSignal'
 import '../game/game.css'
 
 /** Панель шага. Следующие задачи добавляют панели в карту «шаг → компонент». */
-export type StepPanel = FC<{ game: GameState }>
+export type StepPanel = FC<{ game: GameState; flash?: boolean }>
+
+/** Цифровые клавиши отдаются панели шага (ввод голосов): слушатель клавиш на экране один. */
+const DigitKeysContext = createContext<RefObject<((n: number) => void) | null> | null>(null)
+
+export function useDigitKeys(handler: ((n: number) => void) | null): void {
+  const ref = useContext(DigitKeysContext)
+  useEffect(() => {
+    if (!ref) return
+    ref.current = handler
+    return () => {
+      ref.current = null
+    }
+  })
+}
 
 const SPEECH_STEPS = ['balagan', 'speeches', 'defense', 'tiebreak', 'farewell']
 
@@ -61,7 +80,24 @@ function Game({ game }: { game: GameState }) {
   const main = useMainPress()
   const [panelSeat, setPanelSeat] = useState<Seat | null>(null)
   const [journalCollapsed, setJournalCollapsed] = useState(false)
-  const [, setModal] = useState<GameModal>(null)
+  const [modal, setModal] = useState<GameModal>(null)
+  const { selection } = useSelection()
+  const flash = useTimerSignal()
+  const digits = useRef<((n: number) => void) | null>(null)
+
+  const keys: HotkeyMap = {
+    space: () => session && toggleTimer(store, session, game),
+    enter: main.press,
+    undo: () => store.undo(),
+    hide: () => store.setSettings({ rolesHidden: !store.getState().settings.rolesHidden }),
+    escape: () => {
+      if (panelSeat !== null) setPanelSeat(null)
+      else if (selection && selection.cancel !== false) selection.onCancel()
+    },
+  }
+  for (let n = 0; n <= 9; n++) keys[`digit${n}`] = () => digits.current?.(n)
+  useHotkeys(keys, true)
+
   if (!session) return null
   const Panel = panelFor(game)
   // Ведущий ушёл дальше через полосу шагов, а круг не закончен — предупреждение, не запрет.
@@ -82,13 +118,16 @@ function Game({ game }: { game: GameState }) {
         </div>
         <section className="step-panel" aria-label={t('step.panel')}>
           <StepNav game={game} balaganFromDay={session.config.rules.balaganFromDay} />
-          {session.timer?.kind === 'free' && !Panel && <TimerPanel game={game} />}
-          {Panel ? <Panel game={game} /> : <h3 className="step-title">{stepLabel(lang, store.registry, game)}</h3>}
+          {session.timer?.kind === 'free' && Panel !== SpeechPanel && <TimerPanel game={game} flash={flash} />}
+          <DigitKeysContext.Provider value={digits}>
+            {Panel ? <Panel game={game} flash={flash} /> : <h3 className="step-title">{stepLabel(lang, store.registry, game)}</h3>}
+          </DigitKeysContext.Provider>
           {notSpoken.length > 0 && <p className="step-warning">{t('day.notSpoken', { list: notSpoken.join(', ') })}</p>}
           <MainButton main={main} />
         </section>
         <JournalPanel session={session} collapsed={journalCollapsed} onCollapse={setJournalCollapsed} />
       </main>
+      {modal === 'stop' && <Dialog title={t('menu.stop')} onClose={() => setModal(null)}>{null}</Dialog>}
     </>
   )
 }

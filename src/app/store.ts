@@ -15,7 +15,17 @@ import type { KV, SessionMeta, Settings } from '../platform/storage'
 export type { KV, Lang, SessionMeta, Settings } from '../platform/storage'
 
 export type Screen = 'home' | 'setup' | 'deal' | 'game' | 'summary'
-export type Env = { kv: KV; now: () => number; newId: () => string; randomInt: RandomInt; registry: Registry }
+export type Env = {
+  kv: KV
+  now: () => number
+  newId: () => string
+  randomInt: RandomInt
+  registry: Registry
+  /** Один звуковой сигнал по нулю таймера. */
+  beep: () => void
+  /** Просить браузер не гасить экран, пока идёт игра. */
+  keepAwake: (active: boolean) => void
+}
 export type AppState = {
   screen: Screen
   session: Session | null
@@ -57,6 +67,7 @@ export type AppStore = {
   /** Сырые данные сессии, которую не удалось прочитать, — чтобы ведущий мог их скопировать. */
   rawSession(id: string): string | null
   now(): number
+  beep(): void
   randomInt: RandomInt
   registry: Registry
 }
@@ -112,8 +123,19 @@ export function createAppStore(env: Env): AppStore {
     sessions: [], storageError: false, brokenSession: null,
   }
 
+  /** Экран удерживается, пока открыт игровой экран и игра не на паузе. */
+  let awake = false
+  const syncAwake = () => {
+    const want = state.screen === 'game' && state.session !== null && !state.session.paused
+    if (want !== awake) {
+      awake = want
+      env.keepAwake(want)
+    }
+  }
+
   const set = (patch: Partial<AppState>) => {
     state = { ...state, ...patch }
+    syncAwake()
     for (const fn of listeners) fn()
   }
 
@@ -165,6 +187,7 @@ export function createAppStore(env: Env): AppStore {
   const store: AppStore = {
     registry,
     now: env.now,
+    beep: env.beep,
     randomInt: env.randomInt,
     getState: () => state,
     subscribe(fn) {
@@ -308,6 +331,7 @@ export function createAppStore(env: Env): AppStore {
       state = { ...state, brokenSession: active }
     }
   }
+  syncAwake()
 
   return store
 }

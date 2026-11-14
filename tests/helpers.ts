@@ -110,6 +110,8 @@ export function testEnv(kv = fakeKV()) {
     newId: () => `id${++n}`,
     randomInt: () => 0,
     registry: DEFAULT_REGISTRY,
+    beep: vi.fn(),
+    keepAwake: vi.fn(),
   }
   return env
 }

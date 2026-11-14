@@ -67,7 +67,7 @@ test('оправдания по очереди, затем к голосован
     a.dispatch({ type: 'nominate', by: 5, target: 7 }); a.dispatch({ type: 'nominate', by: 6, target: 3 }) })
   await user.click(within(screen.getByRole('navigation', { name: 'Шаги дня' })).getByRole('button', { name: 'Оправдания' }))
   expect(app.getState().game!.day!.speaking).toBeNull(); expect(screen.getByText(/Не говорили: 6, 7, 8/)).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: /Оправдание №7 · 30 с/ })); advance(env, 500)
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /Оправдание №7 · 30 с/ })); advance(env, 500)
   expect(app.getState().session!.timer).toMatchObject({ kind: 'defense', seat: 7, durationMs: 30_000 })
   await user.click(screen.getByRole('button', { name: /Следующий: №3 · 30 с/ })); advance(env, 500)
   await user.click(screen.getByRole('button', { name: /К голосованию/ })); expect(app.getState().game!.step).toBe('vote')

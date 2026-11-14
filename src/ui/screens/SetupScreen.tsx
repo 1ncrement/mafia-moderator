@@ -8,6 +8,7 @@ import type { Durations, RoleDef } from '../../engine'
 import { Button } from '../common/Button'
 import { SideDot } from '../common/SideDot'
 import { Stepper } from '../common/Stepper'
+import { useHotkeys } from '../common/useHotkeys'
 import './prepare.css'
 
 export const DURATION_KEYS = ['speech', 'balagan', 'defense', 'tiebreak', 'farewell'] as const
@@ -62,6 +63,9 @@ export function SetupScreen() {
     if (last && last.text === text) last.n++
     else deck.push({ text, n: 1 })
   }
+
+  const canDeal = check.errors.length === 0
+  useHotkeys({ enter: () => canDeal && store.dealDraft() }, true)
 
   const extra = check.deck.length - draft.playerCount
   const errorText = check.errors.includes('players_out_of_range') ? t('setup.error.players_out_of_range')
@@ -177,7 +181,7 @@ export function SetupScreen() {
 
           {errorText && <p className="alert-line" role="alert">{errorText}</p>}
           {warnings.map((w) => <p key={w} className="alert-line">{t(`setup.warn.${w as 'no_killer' | 'black_not_less_than_red'}`)}</p>)}
-          <Button variant="primary" size="xl" className="setup-deal" disabled={check.errors.length > 0} onClick={() => store.dealDraft()}>
+          <Button variant="primary" size="xl" className="setup-deal" kbd="Enter" disabled={!canDeal} onClick={() => store.dealDraft()}>
             {t('setup.deal')}
           </Button>
           <Button

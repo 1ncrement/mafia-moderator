@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react'
-import { renderApp } from './helpers'
+import { advance, renderApp } from './helpers'
 
 test('от главной до Дня 1', async () => {
-  const { app, user } = renderApp()
+  const { app, user, env } = renderApp()
   await user.click(screen.getByRole('button', { name: 'Новая игра' }))
   await user.click(screen.getByRole('button', { name: 'Больше игроков' }))
   await user.click(screen.getByRole('button', { name: 'Мафия: больше' }))
@@ -11,6 +11,7 @@ test('от главной до Дня 1', async () => {
   await user.click(screen.getByRole('button', { name: /Раздать роли/ }))
   expect(app.getState().screen).toBe('deal'); expect(app.getState().game!.players.filter((p) => p.side === 'black')).toHaveLength(3)
   expect(screen.getAllByText(/глава/).length).toBeGreaterThan(0)
+  advance(env, 500)   // главная кнопка не реагирует 0,4 с после появления экрана (задача 14)
   await user.click(screen.getByRole('button', { name: /Город просыпается: День 1/ }))
   expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 1 })
 })

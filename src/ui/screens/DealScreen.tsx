@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { cap, compositionText, hasKey, roleLabel, translateKey } from '../../app/i18n'
 import { useApp, useStore, useT } from '../../app/StoreContext'
 import { checkComposition, dealRoles } from '../../engine'
@@ -7,6 +7,8 @@ import { Button, cx } from '../common/Button'
 import { Dialog } from '../common/Dialog'
 import { Eye, EyeOff, Moon } from '../common/icons'
 import { SideDot } from '../common/SideDot'
+import { useHotkeys } from '../common/useHotkeys'
+import { PRESS_GUARD_MS } from '../game/MainButton'
 import './prepare.css'
 
 export function DealScreen() {
@@ -18,6 +20,12 @@ export function DealScreen() {
   const [confirmRedeal, setConfirmRedeal] = useState(false)
   /** Режим обмена: null — выключен, { first: null } — ждём первый номер, { first: n } — ждём второй. */
   const [swap, setSwap] = useState<{ first: Seat | null } | null>(null)
+  // Двойной Enter на «Раздать роли» не должен тут же начать День 1.
+  const openedAt = useRef(store.now())
+  const start = () => {
+    if (store.now() - openedAt.current >= PRESS_GUARD_MS) store.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } })
+  }
+  useHotkeys({ enter: start, escape: () => setSwap(null) }, true)
   if (!session || !game) return null
 
   const hidden = settings.rolesHidden
@@ -130,7 +138,7 @@ export function DealScreen() {
             <Button size="l" variant="outline" onClick={() => store.backToSetup()}>{t('deal.back')}</Button>
           </div>
           <div data-phase="day" className="deal-start">
-            <Button variant="primary" size="xl" onClick={() => store.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } })}>
+            <Button variant="primary" size="xl" kbd="Enter" onClick={start}>
               {t('deal.start')}
             </Button>
           </div>

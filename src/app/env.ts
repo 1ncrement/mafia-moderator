@@ -1,6 +1,8 @@
 import { DEFAULT_REGISTRY } from '../engine'
 import { cryptoRandomInt } from '../platform/rng'
+import { createBeeper } from '../platform/sound'
 import type { KV } from '../platform/storage'
+import { keepAwake } from '../platform/wakeLock'
 import type { Env } from './store'
 
 /** localStorage может быть недоступен целиком (приватное окно, запрет в настройках). */
@@ -28,5 +30,8 @@ function newId(): string {
 }
 
 export function browserEnv(): Env {
-  return { kv: browserKV(), now: () => Date.now(), newId, randomInt: cryptoRandomInt, registry: DEFAULT_REGISTRY }
+  return {
+    kv: browserKV(), now: () => Date.now(), newId, randomInt: cryptoRandomInt, registry: DEFAULT_REGISTRY,
+    beep: createBeeper(), keepAwake,
+  }
 }

@@ -1534,7 +1534,7 @@ export function useHotkeys(map: Partial<Record<'space' | 'enter' | 'undo' | 'hid
 - Клавиши не действуют, когда открыт `dialog`, игра на паузе или фокус в `input`, `textarea`, `select`. События с `repeat: true` игнорируются.
 - Главная кнопка не реагирует на клик и Enter 400 мс после смены своей подписи; время считается по `env.now`. Первое появление кнопки при открытии игрового экрана задержки не даёт.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 const speaking = (a: AppStore) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'openCircle', first: 5 }); a.speak('speech', 5); };
@@ -1576,13 +1576,13 @@ test('клавиши не действуют под открытым окном'
 
 В `testEnv` добавь `beep: vi.fn()`. `sleep` добавь в `tests/ui/helpers.tsx`. Окно остановки в этом тесте может быть пустым `Dialog` — содержимое добавит задача 16.
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/controls.test.tsx`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/controls.test.tsx`
 
-- [ ] **Step 3: Реализуй звук, удержание экрана, клавиши и защиту кнопки.**
+- [x] **Step 3: Реализуй звук, удержание экрана, клавиши и защиту кнопки.**
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npm run check`
+- [x] **Step 4: Run, verify PASS.** Run: `npm run check`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(ui): сигнал таймера, горячие клавиши, защита главной кнопки"

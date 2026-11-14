@@ -34,6 +34,12 @@
   --accent-tint: var(--day-tint);
 }
 
+[data-phase='day'] {
+  --accent: var(--day);
+  --accent-ink: var(--day-ink);
+  --accent-tint: var(--day-tint);
+}
+
 [data-phase='night'] {
   --accent: var(--night);
   --accent-ink: var(--night-ink);

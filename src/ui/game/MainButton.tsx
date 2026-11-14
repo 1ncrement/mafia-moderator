@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useStore } from '../../app/StoreContext'
 import { Button } from '../common/Button'
 
 // Главная кнопка одна на игровой экран. Панель шага сообщает подпись и действие,
@@ -11,11 +12,34 @@ type Registered = { label: string; disabled: boolean; press(): void } | null
 const SetContext = createContext<((action: Registered) => void) | null>(null)
 const ValueContext = createContext<Registered>(null)
 
+/** Сколько главная кнопка не реагирует после смены подписи: двойное нажатие не проскакивает шаг. */
+export const PRESS_GUARD_MS = 400
+
 export function MainActionProvider({ children }: { children: ReactNode }) {
+  const store = useStore()
   const [action, setAction] = useState<Registered>(null)
+  const lastLabel = useRef<string | null>(null)
+  const changedAt = useRef(-Infinity)
+
+  const set = useCallback((next: Registered) => {
+    if (next && next.label !== lastLabel.current) {
+      // Первое появление кнопки при открытии игрового экрана задержки не даёт.
+      if (lastLabel.current !== null) changedAt.current = store.now()
+      lastLabel.current = next.label
+    }
+    setAction(next)
+  }, [store])
+
+  const guarded = useMemo<Registered>(() => action && {
+    ...action,
+    press: () => {
+      if (store.now() - changedAt.current >= PRESS_GUARD_MS) action.press()
+    },
+  }, [action, store])
+
   return (
-    <SetContext.Provider value={setAction}>
-      <ValueContext.Provider value={action}>{children}</ValueContext.Provider>
+    <SetContext.Provider value={set}>
+      <ValueContext.Provider value={guarded}>{children}</ValueContext.Provider>
     </SetContext.Provider>
   )
 }
