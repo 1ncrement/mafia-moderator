@@ -66,3 +66,17 @@ test('правка голосов прошлого дня и запись зад
   await user.click(dialog.getByRole('button', { name: 'Выгнан' }))
   expect(app.getState().game!.players[1]).toMatchObject({ status: 'out', cause: 'voted', outPhase: { kind: 'day', n: 2 } })
 })
+
+// По итогам ревью ветки
+test('запись итога ночи и запись исхода голосования открываются и правятся', async () => {
+  const { app, user } = renderApp((a) => { afterNight(a); a.dispatch({ type: 'nominate', by: 5, target: 3 }); a.dispatch({ type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [3] }) })
+  await user.click(screen.getByRole('button', { name: /Выгнан №3/ }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Никто не выгнан' }))
+  expect(app.getState().game!.players[2]!.status).toBe('alive'); expect(screen.getByRole('button', { name: /Никто не выгнан/ })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /^Ночь 1/ })); await user.click(screen.getByRole('button', { name: /Итог ночи: №7 застрелен/ }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Никто не выбыл' }))
+  expect(app.getState().game!.players[6]!.status).toBe('alive'); expect(screen.getByRole('button', { name: /Итог ночи: никто не выбыл/ })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /Итог ночи: никто не выбыл/ }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Выбрать игрока №9' }))
+  expect(app.getState().game!.players[8]).toMatchObject({ status: 'out', cause: 'shot', outPhase: { kind: 'night', n: 1 } })
+})

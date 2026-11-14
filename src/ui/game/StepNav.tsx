@@ -53,7 +53,7 @@ export function StepNav({ game, balaganFromDay }: { game: GameState; balaganFrom
                 aria-current={s.id === game.step ? 'step' : undefined}
                 onClick={() => s.id !== game.step && store.dispatch({ type: 'enterStep', step: s.id })}
               >
-                <span className="night-step-name">{nightStepLabel(lang, store.registry, night, s.id)}</span>
+                <span className="night-step-name">{nightStepLabel(lang, store.registry, night, s.id, settings.rolesHidden)}</span>
                 <span className="night-step-side">
                   {s.grey ? !settings.rolesHidden && <span className="night-step-last">{t('night.nav.grey')}</span> : (
                     <>

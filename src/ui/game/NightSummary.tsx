@@ -1,6 +1,6 @@
 import { answerText, roleName } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { aliveSeats, playersAt } from '../../engine'
+import { aliveSeats, nightPlayers } from '../../engine'
 import type { GameState, NightState } from '../../engine'
 import { Button } from '../common/Button'
 import { nightStepLabel } from './labels'
@@ -60,7 +60,7 @@ export function NightSummary({ game }: { game: GameState }) {
   const other = (
     <Button size="l" onClick={() => askOnce({
       question: t('night.other.question'),
-      allowed: aliveSeats(playersAt(session, registry, { kind: 'night', n: night.n })),
+      allowed: aliveSeats(nightPlayers(session, registry, night.n)),
       onPick: (chosen) => {
         if (chosen !== null) store.dispatch({ type: 'confirmNight', chosen })
       },

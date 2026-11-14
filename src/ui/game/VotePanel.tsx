@@ -38,7 +38,9 @@ export function VotePanel({ game }: { game: GameState }) {
     if (!ballot || current === null || count > max) return
     if (store.dispatch({ type: 'setVotes', ballot: ballot.n, candidate: current, count }).ok) setEditing(null)
   }
-  useDigitKeys(ballot && current !== null ? put : null)
+  // Набор «10» по клавишам записал бы «1» одному кандидату и «0» следующему: при остатке от 10 цифры молчат.
+  const digits = ballot !== undefined && current !== null && max <= 9
+  useDigitKeys(digits ? put : null)
 
   // На карточках кандидатов: число голосов, «считаем сейчас», «получит остаток».
   const marks: Record<Seat, SeatMark[]> = {}
@@ -131,7 +133,7 @@ export function VotePanel({ game }: { game: GameState }) {
               <button key={count} type="button" className="vote-button num" onClick={() => put(count)}>{count}</button>
             ))}
           </div>
-          <span className="small muted">{t('vote.hint')}</span>
+          <span className="small muted">{t('vote.hint')}{digits && ` ${t('vote.hint.keys')}`}</span>
         </div>
       )}
       {current === null && <span className="muted">{t('vote.counter', { voters: ballot.voters, left: ballot.remaining })}</span>}

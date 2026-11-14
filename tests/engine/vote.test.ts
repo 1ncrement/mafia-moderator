@@ -59,3 +59,20 @@ test('статус меняется посреди голосования: пе�
   s = play(s, { type: 'setStatus', seat: 3, status: 'out', cause: 'shot' })
   expect(b(s).candidates).toEqual([7, 10])
 })
+
+test('повторное подтверждение исхода заменяет прежний исход вместе с его статусами', () => {
+  const s = play(votes(nominated(d2(), 7, 3), 1, [[7, 4], [3, 7]]), { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [3] })
+  const again = play(s, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [3] })
+  expect(b(again)).toMatchObject({ candidates: [7, 3], voters: 11, resolved: { outcome: 'eliminated', seats: [3] } })
+  expect(again.log.filter((e) => e.type === 'status_set')).toHaveLength(1)
+  const nobody = play(s, { type: 'resolveVote', ballot: 1, outcome: 'nobody', seats: [] })
+  expect(st(nobody).players[2]!.status).toBe('alive'); expect(st(nobody).day!.farewell.waiting).toEqual([])
+})
+test('тур 1 пересмотрен после переголосования: исход тура 2 снимается', () => {
+  let s = play(nominated(d2(), 7, 3), { type: 'setStatus', seat: 9, status: 'out', cause: 'shot' })
+  s = play(votes(s, 1, [[7, 5]]), { type: 'resolveVote', ballot: 1, outcome: 'tie', seats: [7, 3] })
+  s = play(votes(s, 2, [[7, 6]]), { type: 'resolveVote', ballot: 2, outcome: 'eliminated', seats: [7] })
+  expect(st(s).players[6]!.status).toBe('out')
+  s = play(s, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [3] })
+  expect(st(s).players[6]!.status).toBe('alive'); expect(st(s).players[2]!.status).toBe('out'); expect(st(s).day!.ballots).toHaveLength(1)
+})

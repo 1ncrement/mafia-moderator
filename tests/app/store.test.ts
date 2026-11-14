@@ -1,5 +1,5 @@
 import { createAppStore } from '../../src/app/store'
-import { seeded, testEnv } from '../helpers'
+import { game, seeded, TABLE_11, testEnv } from '../helpers'
 
 test('новая игра: 10 игроков при первом запуске, раздача создаёт сессию', () => {
   const env = testEnv(); const app = createAppStore(env); app.newGame()
@@ -82,4 +82,38 @@ test('последний состав и язык запоминаются', () 
   const env = testEnv(); const app = seeded(env); app.setSettings({ lang: 'uk' })
   const again = createAppStore(env); expect(again.getState().settings.lang).toBe('uk')
   again.goHome(); again.newGame(); expect(again.getState().draft.playerCount).toBe(11)
+})
+
+// По итогам ревью ветки
+test('отмена передачи слова: таймер встаёт в «готов» для того, кто говорит', () => {
+  const app = seeded(testEnv()); app.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } })
+  app.dispatch({ type: 'openCircle', first: 5 }); app.speak('speech', 5); app.speak('speech', 6); app.undo()
+  expect(app.getState().game!.day!.speaking).toMatchObject({ seat: 5 })
+  expect(app.getState().session!.timer).toMatchObject({ kind: 'speech', seat: 5, status: 'ready', remainingMs: 60_000 })
+})
+test('свободный таймер посреди речи: после закрытия таймер говорящего на месте', () => {
+  const app = seeded(testEnv()); app.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } })
+  app.dispatch({ type: 'openCircle', first: 5 }); app.speak('speech', 5); app.freeTimer(30); app.clearTimer()
+  expect(app.getState().session!.timer).toMatchObject({ kind: 'speech', seat: 5, status: 'ready' })
+})
+test('битое событие в сохранённой игре не роняет запуск и не затирается', () => {
+  const env = testEnv(); const broken = { ...game(TABLE_11), id: 'z', log: [{ id: 'x', seq: 1, tx: 'x', type: 'status_set', seat: 2 }] }
+  env.kv.setItem('mafia:session:z', JSON.stringify(broken)); env.kv.setItem('mafia:active', 'z')
+  const app = createAppStore(env)
+  expect(app.getState()).toMatchObject({ screen: 'home', brokenSession: 'z', session: null })
+  expect(JSON.parse(env.kv.getItem('mafia:session:z')!)).toEqual(broken)
+  app.openSession('z'); expect(app.getState()).toMatchObject({ screen: 'home', brokenSession: 'z' })
+})
+test('неполный последний состав не роняет «Новую игру»', () => {
+  const env = testEnv(); env.kv.setItem('mafia:settings', JSON.stringify({ lang: 'uk', lastConfig: { playerCount: 7 } }))
+  const app = createAppStore(env); app.newGame()
+  expect(app.getState()).toMatchObject({ screen: 'setup', settings: { lang: 'uk', lastConfig: null }, draft: { playerCount: 10 } })
+})
+test('хранилище недоступно: игра не теряется при выходе на главную', () => {
+  const env = testEnv(); const app = seeded(env); env.kv.failWrites = true
+  app.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } }); const id = app.getState().session!.id
+  app.goHome()
+  expect(app.getState()).toMatchObject({ screen: 'home', storageError: true }); expect(app.getState().sessions.map((m) => m.id)).toContain(id)
+  expect(app.getState().sessions.find((m) => m.id === id)).toMatchObject({ status: 'running', phase: { kind: 'day', n: 1 } })
+  app.openSession(id); expect(app.getState()).toMatchObject({ screen: 'game', game: { phase: { kind: 'day', n: 1 } } })
 })

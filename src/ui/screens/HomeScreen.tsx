@@ -28,7 +28,7 @@ export function LangSwitch() {
 }
 
 export function HomeScreen() {
-  const { sessions, settings, brokenSession } = useApp()
+  const { sessions, settings, brokenSession, storageError } = useApp()
   const store = useStore()
   const t = useT()
   const lang = settings.lang
@@ -55,6 +55,7 @@ export function HomeScreen() {
         </div>
         <LangSwitch />
       </header>
+      {storageError && <p className="storage-warning" role="alert">{t('game.storageError')}</p>}
       <main className="home">
         <button type="button" className="home-new" onClick={() => store.newGame()}>
           <Plus size={26} />

@@ -67,3 +67,15 @@ test('переголосование: голосуют без ничейных; 
   renderApp((a) => { tied(a); a.dispatch({ type: 'setVoters', ballot: 2, count: 0 }) })
   expect(screen.getByRole('button', { name: 'Выгнать одного…' })).toBeInTheDocument()
 })
+
+// По итогам ревью ветки
+test('цифры с клавиатуры работают, только когда двузначного числа быть не может', async () => {
+  const { app, user } = renderApp(voting)
+  await user.keyboard('1')                       // осталось 10: «1» может быть началом «10» — клавиша не действует
+  expect(app.getState().game!.day!.ballots[0]!.entries[0]!.count).toBeNull()
+  expect(screen.queryByText(/Можно нажать цифру/)).not.toBeInTheDocument()
+  await user.click(within(screen.getByRole('group', { name: 'Число голосов' })).getByRole('button', { name: '1' }))
+  await user.keyboard('3')                       // осталось 9: цифра записывает
+  expect(app.getState().game!.day!.ballots[0]!.entries.map((e) => e.count).slice(0, 2)).toEqual([1, 3])
+  expect(screen.getByText(/Можно нажать цифру/)).toBeInTheDocument()
+})

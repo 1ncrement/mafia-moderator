@@ -124,7 +124,7 @@ export const ru = {
   'setup.reset': 'Сбросить к стандарту',
   'setup.error.too_many_roles': 'Раздать нельзя: ролей на {n} больше, чем игроков.',
   'setup.error.players_out_of_range': 'Игроков должно быть от 4 до 20.',
-  'setup.warn.no_killer': 'В составе нет мафии: ночью некому стрелять.',
+  'setup.warn.no_killer': 'В составе нет мафии.',
   'setup.warn.black_not_less_than_red': 'Чёрных не меньше, чем красных.',
 
   // ── Распределение ──
@@ -325,7 +325,7 @@ export const ru = {
   'vote.question': 'За №{n} — сколько голосов?',
   'vote.counter': 'голосуют {voters} · осталось {left}',
   'vote.count': 'Число голосов',
-  'vote.hint': 'Кнопок больше остатка нет: превысить число голосующих нельзя. Можно нажать цифру на клавиатуре.',
+  'vote.hint': 'Кнопок больше остатка нет: превысить число голосующих нельзя.',
   'vote.reset': 'Голосовать заново',
   'vote.voters': 'Голосуют не {n}…',
   'vote.voters.label': 'Число голосующих',
@@ -443,4 +443,7 @@ export const ru = {
   'night.wakes.hidden': 'Просыпается {role}',
   'night.hidden': 'Ночные записи скрыты вместе с ролями.',
   'night.confirm.hidden': 'Подтвердить итог · начать День {day}',
+  'vote.hint.keys': 'Можно нажать цифру на клавиатуре.',
+  'edit.vote': 'Кого выгнали на самом деле?',
+  'edit.nightResult': 'Кто выбыл этой ночью на самом деле?',
 }

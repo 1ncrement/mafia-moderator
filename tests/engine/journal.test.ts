@@ -46,3 +46,26 @@ test('журнал с висячими ссылками не роняет выв
   expect(() => st(broken)).not.toThrow(); expect(() => journal(broken, DEFAULT_REGISTRY)).not.toThrow()
   expect(st(broken).counts.alive).toBe(11)
 })
+
+test('исход голосования и итог ночи правятся задним числом вместе со статусами', () => {
+  let s = play(n1(), act('mafia_shot', null, 7), { type: 'confirmNight', chosen: 7 })
+  s = play(s, { type: 'nominate', by: 5, target: 3 }, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [3] },
+    { type: 'startPhase', phase: { kind: 'night', n: 2 } }, { type: 'confirmNight', chosen: null })
+  expect(st(s).phase).toEqual({ kind: 'day', n: 3 })
+  // итог ночи
+  let fixed = play(s, { type: 'setNightResult', night: 1, chosen: null })
+  expect(st(fixed).players[6]!.status).toBe('alive')
+  expect(journal(fixed, DEFAULT_REGISTRY).at(-3)!.entries.at(-1)).toMatchObject({ kind: 'night_result', dies: null, edited: true })
+  fixed = play(fixed, { type: 'setNightResult', night: 1, chosen: 9 })
+  expect(st(fixed).players[8]).toMatchObject({ status: 'out', cause: 'shot', outPhase: { kind: 'night', n: 1 } }); expect(st(fixed).warnings).toEqual([])
+  expect(attempt(s, { type: 'setNightResult', night: 5, chosen: null })).toEqual({ ok: false, reason: 'wrong_phase' })
+  // исход голосования прошлого дня
+  const day2 = { kind: 'day', n: 2 } as const
+  const nobody = play(s, { type: 'resolveVote', ballot: 1, outcome: 'nobody', seats: [], phase: day2 })
+  expect(st(nobody).players[2]!.status).toBe('alive')
+  const other = play(s, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [5], phase: day2 })
+  expect(st(other).players[2]!.status).toBe('alive'); expect(st(other).players[4]).toMatchObject({ status: 'out', cause: 'voted', outPhase: day2 })
+  // удаление записи исхода снимает и её статусы
+  const id = s.log.find((e) => e.type === 'vote_resolved')!.id
+  expect(st(play(s, { type: 'removeEvent', id })).players[2]!.status).toBe('alive')
+})

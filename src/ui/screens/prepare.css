@@ -406,3 +406,10 @@ button.deal-card:hover:not(:disabled),
   display: flex;
   flex-direction: column;
 }
+
+.storage-warning {
+  padding: 8px 24px;
+  background: var(--alert-tint);
+  color: var(--alert);
+  font-weight: 500;
+}

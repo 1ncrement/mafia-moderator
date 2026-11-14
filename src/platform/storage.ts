@@ -30,10 +30,24 @@ const sessionKey = (id: string) => `mafia:session:${id}`
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
+/** Событие журнала, с которым вывод состояния не упадёт: есть id, порядок, тип и фаза. */
+const looksLikeEvent = (e: unknown): boolean =>
+  isRecord(e) && typeof e.id === 'string' && typeof e.seq === 'number' && typeof e.type === 'string'
+  && isRecord(e.phase) && typeof e.phase.kind === 'string'
+
+const DURATION_KEYS = ['speech', 'balagan', 'defense', 'tiebreak', 'farewell']
+
+function looksLikeConfig(c: unknown): c is SessionConfig {
+  return isRecord(c) && Number.isInteger(c.playerCount) && isRecord(c.composition)
+    && isRecord(c.durations) && DURATION_KEYS.every((k) => typeof (c.durations as Record<string, unknown>)[k] === 'number')
+    && isRecord(c.rules) && typeof c.rules.nominationsFromDay === 'number' && typeof c.rules.balaganFromDay === 'number'
+    && typeof c.separateTimerStart === 'boolean'
+}
+
 function looksLikeSession(v: unknown): v is Session {
   return isRecord(v) && v.schemaVersion === 1 && typeof v.id === 'string' && Array.isArray(v.log)
-    && Array.isArray(v.undo) && typeof v.nextSeq === 'number' && isRecord(v.config)
-    && typeof v.config.playerCount === 'number' && isRecord(v.config.durations) && isRecord(v.config.rules)
+    && Array.isArray(v.undo) && typeof v.nextSeq === 'number' && looksLikeConfig(v.config)
+    && v.log.every(looksLikeEvent)
 }
 
 export function createStorage(kv: KV) {
@@ -114,8 +128,7 @@ export function createStorage(kv: KV) {
         lang: data.lang === 'uk' ? 'uk' : 'ru',
         sound: typeof data.sound === 'boolean' ? data.sound : DEFAULT_SETTINGS.sound,
         rolesHidden: typeof data.rolesHidden === 'boolean' ? data.rolesHidden : DEFAULT_SETTINGS.rolesHidden,
-        lastConfig: isRecord(data.lastConfig) && typeof data.lastConfig.playerCount === 'number'
-          ? (data.lastConfig as SessionConfig) : null,
+        lastConfig: looksLikeConfig(data.lastConfig) ? data.lastConfig : null,
       }
     },
 

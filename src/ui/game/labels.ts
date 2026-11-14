@@ -4,21 +4,22 @@ import { SUMMARY_STEP } from '../../engine'
 import type { GameState, JournalEntry, NightState, PlayerView, Registry, Seat } from '../../engine'
 
 /** Название ночного шага: «Мафия», «Доктор №4», «Итог ночи». */
-export function nightStepLabel(lang: Lang, registry: Registry, night: NightState | null, stepId: string): string {
+export function nightStepLabel(lang: Lang, registry: Registry, night: NightState | null, stepId: string, hideSeats = false): string {
   if (stepId === SUMMARY_STEP) return translate(lang, 'step.summary')
   const step = night?.steps.find((s) => s.id === stepId)
   if (!night || !step) return stepId
   const def = registry.nightActions.find((a) => a.id === step.actionId)
   const base = def ? translateKey(lang, def.stepKey) : step.actionId
   const several = night.steps.filter((s) => s.actionId === step.actionId).length > 1
-  return several && step.actor !== null ? `${base} ${translate(lang, 'common.seat', { n: step.actor })}` : base
+  // Номер носителя выдаёт роль: при скрытых ролях его в подписи нет.
+  return several && step.actor !== null && !hideSeats ? `${base} ${translate(lang, 'common.seat', { n: step.actor })}` : base
 }
 
 /** Название текущего шага для шапки и шторки паузы. */
-export function stepLabel(lang: Lang, registry: Registry, game: GameState): string {
+export function stepLabel(lang: Lang, registry: Registry, game: GameState, hideSeats = false): string {
   if (!game.phase || game.step === null) return ''
   if (game.phase.kind === 'day') return translateKey(lang, `step.${game.step}`)
-  if (game.phase.kind === 'night') return nightStepLabel(lang, registry, game.night, game.step)
+  if (game.phase.kind === 'night') return nightStepLabel(lang, registry, game.night, game.step, hideSeats)
   return ''
 }
 

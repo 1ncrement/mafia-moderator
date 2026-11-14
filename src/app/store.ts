@@ -139,25 +139,49 @@ export function createAppStore(env: Env): AppStore {
     for (const fn of listeners) fn()
   }
 
-  /** Таймер речи живёт, пока идёт эта речь: выбыл говорящий, сменилась фаза — таймер снимается. */
-  const timerFor = (session: Session, game: GameState): Session['timer'] => {
+  /**
+   * Таймер, который должен быть у сессии. Свободный остаётся как есть. У идущей речи — её таймер;
+   * если говорящий есть, а таймера для него нет (отмена, закрыт свободный таймер) — таймер этой речи в «готов».
+   * Никто не говорит — idle.
+   */
+  const timerFor = (session: Session, game: GameState, idle: Session['timer']): Session['timer'] => {
     const timer = session.timer
-    if (!timer || timer.kind === 'free') return timer
+    if (timer?.kind === 'free') return timer
     const speaking = game.day?.speaking
-    return speaking && speaking.kind === timer.kind && speaking.seat === timer.seat ? timer : null
+    if (!speaking) return idle
+    if (timer && timer.kind === speaking.kind && timer.seat === speaking.seat) return timer
+    return newTimer(speaking.kind, speaking.seat, session.config.durations[speaking.kind] * 1000)
+  }
+
+  /** Игры, которые не удалось сохранить: живут в памяти вкладки и остаются в списке на главной. */
+  const unsaved = new Map<string, Session>()
+  const listSessions = (): SessionMeta[] => [
+    ...[...unsaved.values()].map((session) => metaOf(session, registry)),
+    ...storage.list().filter((m) => !unsaved.has(m.id)),
+  ].sort((a, b) => b.updatedAt - a.updatedAt)
+
+  /** Вывод состояния не должен ронять запуск даже на журнале, который записала не эта версия. */
+  const tryDerive = (session: Session): GameState | null => {
+    try {
+      return deriveState(session, registry)
+    } catch {
+      return null
+    }
   }
 
   /** Принять новое состояние сессии: вывести стол, сохранить, сообщить подписчикам. */
-  const commit = (session: Session, opts: { keepTimer?: boolean } = {}) => {
+  const commit = (session: Session, timer: 'sync' | 'keep' = 'sync') => {
     const game = deriveState(session, registry)
-    const next = opts.keepTimer ? session : { ...session, timer: timerFor(session, game) }
+    const next = timer === 'keep' ? session : { ...session, timer: timerFor(session, game, null) }
     const saved = storage.save(next, metaOf(next, registry))
+    if (saved) unsaved.delete(next.id)
+    else unsaved.set(next.id, next)
     set({ session: next, game, screen: screenOf(game), storageError: !saved })
   }
 
   const leaveSession = (patch: Partial<AppState>) => {
     storage.setActiveId(null)
-    set({ session: null, game: null, sessions: storage.list(), ...patch })
+    set({ session: null, game: null, sessions: listSessions(), ...patch })
   }
 
   const run = (cmds: Command[]): CommandResult => {
@@ -180,8 +204,8 @@ export function createAppStore(env: Env): AppStore {
     return last
   }
 
-  const withSession = (fn: (session: Session) => Session, keepTimer = true) => {
-    if (state.session) commit(fn(state.session), { keepTimer })
+  const withSession = (fn: (session: Session) => Session) => {
+    if (state.session) commit(fn(state.session), 'keep')
   }
 
   const store: AppStore = {
@@ -205,14 +229,10 @@ export function createAppStore(env: Env): AppStore {
       withSession((session) => {
         const entry = session.undo.at(-1)
         if (!entry) return session
-        return {
-          ...session,
-          log: applyUndo(session.log, entry),
-          undo: session.undo.slice(0, -1),
-          // После отмены таймер шага встаёт в «готов».
-          timer: session.timer ? timerReduce(session.timer, { type: 'reset' }, env.now()) : null,
-          updatedAt: env.now(),
-        }
+        // После отмены таймер шага встаёт в «готов» — и принадлежит тому, кто говорит после отмены.
+        const reset = session.timer ? timerReduce(session.timer, { type: 'reset' }, env.now()) : null
+        const undone = { ...session, log: applyUndo(session.log, entry), undo: session.undo.slice(0, -1), timer: reset, updatedAt: env.now() }
+        return { ...undone, timer: timerFor(undone, deriveState(undone, registry), reset) }
       })
     },
 
@@ -235,7 +255,11 @@ export function createAppStore(env: Env): AppStore {
     },
 
     clearTimer() {
-      withSession((session) => ({ ...session, timer: null }))
+      // Закрыли свободный таймер посреди речи — говорящий получает свой таймер обратно, в «готов».
+      withSession((session) => {
+        const cleared = { ...session, timer: null }
+        return { ...cleared, timer: timerFor(cleared, deriveState(cleared, registry), null) }
+      })
     },
 
     updateConfig(patch) {
@@ -286,22 +310,25 @@ export function createAppStore(env: Env): AppStore {
       if (!session) return
       // Раздача, по которой игру не начали, не нужна в списке игр.
       storage.remove(session.id)
+      unsaved.delete(session.id)
       leaveSession({ screen: 'setup', draft: session.config })
     },
 
     openSession(id) {
-      const loaded = storage.load(id)
+      const memory = unsaved.get(id)
+      const loaded = memory ? { ok: true as const, session: memory } : storage.load(id)
       if (loaded === null) return leaveSession({ screen: 'home' })
-      if (!loaded.ok) return leaveSession({ screen: 'home', brokenSession: id })
+      const game = loaded.ok ? tryDerive(loaded.session) : null
+      if (!loaded.ok || !game) return leaveSession({ screen: 'home', brokenSession: id })
       storage.setActiveId(id)
-      const game = deriveState(loaded.session, registry)
       set({ session: loaded.session, game, screen: screenOf(game), brokenSession: null })
     },
 
     deleteSession(id) {
       storage.remove(id)
+      unsaved.delete(id)
       if (state.session?.id === id) leaveSession({ screen: 'home' })
-      else set({ sessions: storage.list(), brokenSession: state.brokenSession === id ? null : state.brokenSession })
+      else set({ sessions: listSessions(), brokenSession: state.brokenSession === id ? null : state.brokenSession })
     },
 
     goHome() {
@@ -324,12 +351,9 @@ export function createAppStore(env: Env): AppStore {
   const active = storage.activeId()
   if (active !== null) {
     const loaded = storage.load(active)
-    if (loaded?.ok) {
-      const game = deriveState(loaded.session, registry)
-      state = { ...state, session: loaded.session, game, screen: screenOf(game) }
-    } else if (loaded) {
-      state = { ...state, brokenSession: active }
-    }
+    const game = loaded?.ok ? tryDerive(loaded.session) : null
+    if (loaded?.ok && game) state = { ...state, session: loaded.session, game, screen: screenOf(game) }
+    else if (loaded) state = { ...state, brokenSession: active }
   }
   syncAwake()
 

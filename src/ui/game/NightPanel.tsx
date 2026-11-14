@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { answerText, cap, hasKey, roleName, roleText, seatList, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { aliveSeats, playersAt, SUMMARY_STEP } from '../../engine'
+import { aliveSeats, nightPlayers, SUMMARY_STEP } from '../../engine'
 import type { GameState, NightStep, Seat } from '../../engine'
 import { Button } from '../common/Button'
 import { nightStepLabel } from './labels'
@@ -20,7 +20,9 @@ export function NightPanel({ game }: { game: GameState }) {
   const store = useStore()
   const t = useT()
   const lang = useLang()
-  const { ask, clear } = useSelection()
+  const { selection, ask, clear } = useSelection()
+  /** Стол свободен: разовый вопрос (обмен ролями) закрыт — ночной выбор надо вернуть. */
+  const idle = selection === null
   const registry = store.registry
   const night = game.night
   const step: NightStep | undefined = night?.steps.find((s) => s.id === game.step)
@@ -48,7 +50,7 @@ export function NightPanel({ game }: { game: GameState }) {
     }
     ask({
       question,
-      allowed: aliveSeats(playersAt(session, registry, { kind: 'night', n: night.n })),
+      allowed: aliveSeats(nightPlayers(session, registry, night.n)),
       // Роли скрыты — записанный выбор и цель прошлой ночи на столе не показываем.
       picked: hidden ? null : target,
       nobodyPicked: !hidden && recorded && target === null,
@@ -59,7 +61,7 @@ export function NightPanel({ game }: { game: GameState }) {
     })
     // вопрос пересобирается, когда меняется шаг, запись или журнал
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepId, grey, target, recorded, lastTarget, question, log, ask, hidden])
+  }, [stepId, grey, target, recorded, lastTarget, question, log, ask, hidden, idle])
   useEffect(() => clear, [clear, stepId])
 
   useTableMarks(night && step && !hidden ? nightMarks(lang, night, step.actors) : {})
@@ -67,7 +69,7 @@ export function NightPanel({ game }: { game: GameState }) {
   const ids = night ? [...night.steps.map((s) => s.id), SUMMARY_STEP] : []
   const next = ids[ids.indexOf(game.step ?? '') + 1] ?? SUMMARY_STEP
   useMainAction(night ? {
-    label: next === SUMMARY_STEP ? t('step.summary') : t('night.next', { step: nightStepLabel(lang, registry, night, next) }),
+    label: next === SUMMARY_STEP ? t('step.summary') : t('night.next', { step: nightStepLabel(lang, registry, night, next, hidden) }),
     onPress: () => store.dispatch({ type: 'enterStep', step: next }),
   } : null)
 

@@ -1,7 +1,7 @@
 import { dayState, nominationsOf } from './day'
 import { currentPhase, EMPTY_PATCH, eventsOf, lastOf, nextPhase, samePhase } from './log'
-import { nightState, stepIdOf } from './night'
-import { aliveSeats, isSeat, playersAt, playersNow } from './players'
+import { actorMapper, nightState, stepIdOf } from './night'
+import { aliveSeats, isSeat, nightPlayers, playersAt, playersNow } from './players'
 import type {
   Command, CommandResult, EventOf, LogPatch, NewEvent, PhaseRef, Registry, RejectCode, Seat, Session,
 } from './types'
@@ -31,6 +31,21 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
   const idsIn = <T extends 'nominated' | 'votes_set' | 'voters_set' | 'vote_resolved'>(
     p: PhaseRef, type: T, where: (e: EventOf<T>) => boolean,
   ): EventOf<T>[] => eventsOf(log, p).filter((e): e is EventOf<T> => e.type === type && where(e as EventOf<T>))
+
+  /**
+   * События прежнего исхода тура: сам исход и статусы «выгнан», поставленные той же пачкой.
+   * withLater — вместе с исходом и числами следующего тура: пересмотр тура 1 отменяет переголосование.
+   */
+  const resolutionIds = (p: PhaseRef, ballot: 1 | 2, withLater: boolean): string[] => {
+    const inPhase = eventsOf(log, p)
+    const resolved = inPhase.filter((e) => e.type === 'vote_resolved' && (e.ballot === ballot || (withLater && e.ballot > ballot)))
+    const txs = new Set(resolved.map((e) => e.tx))
+    const statuses = inPhase.filter((e) => e.type === 'status_set' && e.source === 'vote' && txs.has(e.tx))
+    const later = withLater
+      ? inPhase.filter((e) => (e.type === 'votes_set' || e.type === 'voters_set') && e.ballot > ballot)
+      : []
+    return [...resolved, ...statuses, ...later].map((e) => e.id)
+  }
 
   switch (cmd.type) {
     case 'deal': {
@@ -74,7 +89,10 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       return ok({ remove: log.filter((e) => e.type === 'game_finished').map((e) => e.id) })
 
     case 'removeEvent': {
-      if (!log.some((e) => e.id === cmd.id)) return no('unknown_event')
+      const event = log.find((e) => e.id === cmd.id)
+      if (!event) return no('unknown_event')
+      // Запись исхода голосования удаляется вместе со статусами, которые она поставила.
+      if (event.type === 'vote_resolved') return ok({ remove: resolutionIds(event.phase, event.ballot, false) })
       return ok({ remove: [cmd.id] })
     }
 
@@ -181,14 +199,16 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       return ok({ remove: idsIn(phase, 'votes_set', (e) => e.ballot === cmd.ballot).map((e) => e.id) })
 
     case 'resolveVote': {
-      if (phase.kind !== 'day') return no('wrong_phase')
+      const p = cmd.phase ?? phase
+      if (p.kind !== 'day') return no('wrong_phase')
       const seats = cmd.outcome === 'nobody' ? [] : [...new Set(cmd.seats)].filter((s) => isSeat(session, s))
       // Исход пишется раньше статусов: число голосующих тура считается на момент перед исходом.
-      const events: NewEvent[] = [{ type: 'vote_resolved', phase, ballot: cmd.ballot, outcome: cmd.outcome, seats }]
+      const events: NewEvent[] = [{ type: 'vote_resolved', phase: p, ballot: cmd.ballot, outcome: cmd.outcome, seats }]
       if (cmd.outcome === 'eliminated') {
-        for (const seat of seats) events.push({ type: 'status_set', phase, seat, status: 'out', cause: 'voted', source: 'vote' })
+        for (const seat of seats) events.push({ type: 'status_set', phase: p, seat, status: 'out', cause: 'voted', source: 'vote' })
       }
-      return ok({ remove: idsIn(phase, 'vote_resolved', (e) => e.ballot === cmd.ballot).map((e) => e.id), add: events })
+      // Повторное подтверждение заменяет прежний исход вместе с его статусами.
+      return ok({ remove: resolutionIds(p, cmd.ballot, true), add: events })
     }
 
     // ── Ночь ──────────────────────────────────────────────────────────────
@@ -199,13 +219,15 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       const step = nightState(session, registry, p.n).steps.find((x) => x.id === stepIdOf(cmd.actionId, cmd.actor))
       // Носителей в игре нет (или шага нет вовсе) — записывать некуда.
       if (!step || step.grey) return no('step_grey')
-      if (cmd.target !== null && !aliveSeats(playersAt(session, registry, p)).includes(cmd.target)) return no('not_alive')
+      if (cmd.target !== null && !aliveSeats(nightPlayers(session, registry, p.n)).includes(cmd.target)) return no('not_alive')
       // Мягкое ограничение: та же цель, что прошлой ночью, — предупреждение, force записывает всё равно.
       const def = registry.nightActions.find((a) => a.id === cmd.actionId)
       const repeats = cmd.target !== null && step.lastNight.recorded && step.lastNight.target === cmd.target
       if (def?.noRepeatTarget && repeats && !cmd.force) return no('repeat_target')
+      // Прежняя запись ищется по роли: после обмена ролями она идёт за ролью на новое место.
+      const actorOf = actorMapper(log)
       const previous = eventsOf(log, p).filter((e): e is EventOf<'night_action'> =>
-        e.type === 'night_action' && e.actionId === cmd.actionId && e.actor === cmd.actor)
+        e.type === 'night_action' && e.actionId === cmd.actionId && actorOf(e) === cmd.actor)
       const last = previous.at(-1)
       if (!isNow(p) && last) {
         // Правка прошлой ночи: запись остаётся на месте и получает метку «испр.».
@@ -223,8 +245,9 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       // Одна пачка: статус выбывшего, отметка итога и начало следующего дня. Отменяется целиком.
       const hinted = nightState(session, registry, phase.n).outcome.dies
       const events: NewEvent[] = []
-      if (cmd.chosen !== null) events.push({ type: 'status_set', phase, seat: cmd.chosen, status: 'out', cause: 'shot', source: 'night' })
+      // Отметка итога пишется раньше статуса: «кто был в игре этой ночью» считается на момент перед ней.
       events.push({ type: 'night_confirmed', phase, hinted, chosen: cmd.chosen })
+      if (cmd.chosen !== null) events.push({ type: 'status_set', phase, seat: cmd.chosen, status: 'out', cause: 'shot', source: 'night' })
       events.push({ type: 'phase_started', phase: nextPhase(phase) })
       return ok({ remove: eventsOf(log, phase).filter((e) => e.type === 'night_confirmed').map((e) => e.id), add: events })
     }
@@ -241,6 +264,19 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       const events: NewEvent[] = expected === null ? []
         : [{ type: 'status_set', phase: p, seat: expected, status: 'out', cause: 'shot', source: 'night' }]
       return ok({ remove: previous, replace: [{ ...confirmed, hinted: expected, chosen: expected }], add: events })
+    }
+
+    case 'setNightResult': {
+      const p: PhaseRef = { kind: 'night', n: cmd.night }
+      const confirmed = lastOf(eventsOf(log, p), 'night_confirmed')
+      if (!confirmed) return no('wrong_phase')
+      if (cmd.chosen !== null && !isSeat(session, cmd.chosen)) return no('not_alive')
+      // Ведущий правит сам итог: прежний статус этой ночи снимается, новый ставится той же ночью.
+      const previous = eventsOf(log, p).filter((e) => e.type === 'status_set' && e.source === 'night').map((e) => e.id)
+      const events: NewEvent[] = cmd.chosen === null ? []
+        : [{ type: 'status_set', phase: p, seat: cmd.chosen, status: 'out', cause: 'shot', source: 'night' }]
+      const hinted = nightState(session, registry, cmd.night).outcome.dies
+      return ok({ remove: previous, replace: [{ ...confirmed, hinted, chosen: cmd.chosen }], add: events })
     }
   }
 }

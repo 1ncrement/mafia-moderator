@@ -69,3 +69,19 @@ test('подсказка о конце игры и меню: язык и вых�
   await user.click(screen.getByRole('button', { name: 'Меню' })); await user.click(screen.getByRole('menuitem', { name: 'На головну' }))
   expect(app.getState().screen).toBe('home')
 })
+
+// По итогам ревью ветки
+test('скрытые роли: окно остановки без счётчика сторон, шаги без номеров носителей', async () => {
+  const { user } = renderApp((a) => { seedGame(a, 'S D G M c c c c D', 1); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }); a.setSettings({ rolesHidden: true }) })
+  expect(screen.queryByText(/Доктор №/)).not.toBeInTheDocument(); expect(screen.getAllByText('Доктор').length).toBeGreaterThanOrEqual(2)
+  await user.click(screen.getByRole('button', { name: 'Меню' })); await user.click(screen.getByRole('menuitem', { name: 'Остановить игру' }))
+  const dialog = within(screen.getByRole('dialog'))
+  expect(dialog.getByRole('radio', { name: /Чёрные/ })).toBeInTheDocument(); expect(dialog.queryByText(/в игре \d$/)).not.toBeInTheDocument()
+})
+test('хранилище недоступно: предупреждение видно и на главной, игра остаётся в списке', async () => {
+  const { app, user, env } = renderApp(day2); env.kv.failWrites = true
+  act(() => { app.dispatch({ type: 'setStatus', seat: 2, status: 'out', cause: 'voted' }) })
+  await user.click(screen.getByRole('button', { name: 'Меню' })); await user.click(screen.getByRole('menuitem', { name: 'На главную' }))
+  expect(screen.getByText(/Сохранение недоступно/)).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Продолжить' })); expect(app.getState().game!.players[1]!.status).toBe('out')
+})

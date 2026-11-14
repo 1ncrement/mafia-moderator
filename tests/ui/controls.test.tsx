@@ -84,3 +84,10 @@ test('после клика мышью по другой кнопке Enter жм
   await user.keyboard('{Tab}{Shift>}{Tab}{/Shift}'); await user.keyboard('{Enter}')
   expect(app.getState().game!.day!.speaking).toMatchObject({ seat: 6 }); expect(app.getState().session!.timer).toMatchObject({ status: 'ready', remainingMs: 60_000 })
 })
+
+test('после «Отменить» пробел запускает таймер того, кто говорит, а не передаёт слово дальше', async () => {
+  const { app, user } = renderApp((a) => { speaking(a); a.speak('speech', 6); a.undo() })
+  expect(screen.getByText('Речь №5')).toBeInTheDocument()
+  await user.keyboard(' ')
+  expect(app.getState().game!.day!.speaking).toMatchObject({ seat: 5 }); expect(app.getState().session!.timer).toMatchObject({ seat: 5, status: 'running' })
+})

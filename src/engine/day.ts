@@ -1,5 +1,5 @@
 import { currentPhase, eventsOf, lastOf, nextPhase, samePhase } from './log'
-import { aliveSeats, isSeat, playersAt, playersNow } from './players'
+import { aliveSeats, isSeat, playersAt, playersBefore, playersNow } from './players'
 import type { DayState, EventOf, Nomination, PhaseRef, Registry, Seat, Session, SpeechKind, SpeechQueue } from './types'
 import { buildBallots } from './vote'
 
@@ -61,11 +61,27 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
   const spoken = unique(speeches.map((e) => e.seat as Seat)).filter((s) => s !== speakingSeat)
   const skipped = unique(events.flatMap((e) => (e.type === 'speaker_skipped' && e.seq > circleSeq && isSeat(session, e.seat) ? [e.seat] : [])))
     .filter((s) => !spoken.includes(s) && s !== speakingSeat)
-  // Ждут слова: сначала места дальше по кругу от последнего говорившего, затем те, чьё место уже прошли.
-  const lastSpeaker = speeches.at(-1)?.seat ?? null
-  const from = lastSpeaker !== null ? lastSpeaker + 1 : (opener ?? 1)
-  const waiting = circleOrder(from, [...alive], session.config.playerCount)
-    .filter((s) => !spoken.includes(s) && !skipped.includes(s) && s !== speakingSeat)
+  // Ждут слова: сначала места дальше по кругу от последнего говорившего в свою очередь,
+  // затем те, чьё место уже прошли (возвращённый в игру встаёт в конец).
+  // Слово вне очереди круг не сдвигает: очередь продолжается с того же места.
+  const everyone = Array.from({ length: session.config.playerCount }, (_, i) => i + 1)
+  const ring = circleOrder(opener ?? 1, everyone, session.config.playerCount)
+  let frontier = -1
+  const spokeEarlier = new Set<Seat>()
+  for (const speech of speeches) {
+    const seat = speech.seat as Seat
+    const at = ring.indexOf(seat)
+    if (at > frontier) {
+      const aliveThen = new Set(aliveSeats(playersBefore(session, registry, speech)))
+      const skippedThen = new Set(events.flatMap((e) => (e.type === 'speaker_skipped' && e.seq > circleSeq && e.seq < speech.seq ? [e.seat] : [])))
+      // Свою очередь говорил тот, перед кем в круге не осталось никого, кто мог говорить.
+      const inTurn = ring.slice(frontier + 1, at).every((s) => spokeEarlier.has(s) || skippedThen.has(s) || !aliveThen.has(s))
+      if (inTurn) frontier = at
+    }
+    spokeEarlier.add(seat)
+  }
+  const waiting = [...ring.slice(frontier + 1), ...ring.slice(0, frontier + 1)]
+    .filter((s) => alive.has(s) && !spoken.includes(s) && !skipped.includes(s) && s !== speakingSeat)
 
   // Выставление и голосование.
   const nominations = nominationsOf(session, phase, alive)

@@ -90,5 +90,6 @@ test('запуск таймера отдельной кнопкой и своб�
   await user.click(screen.getByRole('button', { name: 'Старт' })); expect(app.getState().session!.timer!.status).toBe('running')
   await user.click(screen.getByRole('button', { name: 'Меню' })); await user.click(screen.getByRole('menuitem', { name: 'Свободный таймер 30 с' }))
   expect(screen.getByText('Свободный таймер')).toBeInTheDocument(); expect(app.getState().session!.timer).toMatchObject({ kind: 'free', durationMs: 30_000 })
-  await user.click(screen.getByRole('button', { name: 'Убрать таймер' })); expect(app.getState().session!.timer).toBeNull()
+  // №5 всё ещё говорит: после закрытия свободного таймера ему возвращается таймер речи в «готов».
+  await user.click(screen.getByRole('button', { name: 'Убрать таймер' })); expect(app.getState().session!.timer).toMatchObject({ kind: 'speech', seat: 5, status: 'ready' })
 })

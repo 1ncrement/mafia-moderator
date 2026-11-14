@@ -1,7 +1,7 @@
-import { eventsOf, lastOf } from './log'
-import { aliveSeats, isSeat, playersAt, rolesBySeat } from './players'
+import { allOf, eventsOf, lastOf } from './log'
+import { aliveSeats, isSeat, nightPlayers, rolesBySeat } from './players'
 import type {
-  CheckAnswer, EventOf, NightActionDef, NightOutcome, NightState, NightStep, PhaseRef, Registry, RoleId, Seat, Session,
+  CheckAnswer, EventOf, GameEvent, NightActionDef, NightOutcome, NightState, NightStep, PhaseRef, Registry, RoleId, Seat, Session,
 } from './types'
 
 // Ночь: шаги строятся из справочника, итог считает общая функция по типу эффекта.
@@ -16,18 +16,37 @@ export function stepIdOf(actionId: string, actor: Seat | null): string {
 
 const unique = (seats: Seat[]): Seat[] => [...new Set(seats)]
 
+/**
+ * Обмен ролями действует задним числом, а ночная запись принадлежит роли, не месту:
+ * если после записи роли двух номеров поменяли, запись идёт за ролью на новое место.
+ */
+export function actorMapper(log: readonly GameEvent[]): (event: EventOf<'night_action'>) => Seat | null {
+  const swaps = allOf(log, 'roles_swapped').sort((a, b) => a.seq - b.seq)
+  return (event) => {
+    let actor = event.actor
+    if (actor === null) return null
+    for (const swap of swaps) {
+      if (swap.seq <= event.seq) continue
+      if (actor === swap.a) actor = swap.b
+      else if (actor === swap.b) actor = swap.a
+    }
+    return actor
+  }
+}
+
 function computeNight(session: Session, registry: Registry, n: number): { steps: BareStep[]; outcome: NightOutcome } {
   const phase: PhaseRef = { kind: 'night', n }
   const roles = rolesBySeat(session, registry)
   const dealt = new Set(roles)
-  // Носители действия — те, кто был в игре на начало ночи.
-  const alive = aliveSeats(playersAt(session, registry, phase))
+  // Носители действия — те, кто в игре этой ночью (см. nightPlayers).
+  const alive = aliveSeats(nightPlayers(session, registry, n))
+  const actorOf = actorMapper(session.log)
   const aliveWith = (ids: RoleId[]) => alive.filter((seat) => ids.includes(roles[seat - 1] ?? ''))
   const records = eventsOf(session.log, phase).filter((e): e is EventOf<'night_action'> => e.type === 'night_action')
   const recordOf = (actionId: string, actor: Seat | null) => {
     let found: EventOf<'night_action'> | null = null
     for (const e of records) {
-      if (e.actionId === actionId && e.actor === actor && (e.target === null || isSeat(session, e.target))) found = e
+      if (e.actionId === actionId && actorOf(e) === actor && (e.target === null || isSeat(session, e.target))) found = e
     }
     return found
   }

@@ -2,19 +2,20 @@ import { useState } from 'react'
 import type { FC, ReactNode } from 'react'
 import { entryText, hasKey, phaseLabel, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { aliveSeats, currentPhase, dayState, maxVotesFor, phaseOrder, playersAt } from '../../engine'
+import { aliveSeats, currentPhase, dayState, maxVotesFor, nightPlayers, phaseOrder, playersAt } from '../../engine'
 import type { Command, CommandResult, JournalEntry, PhaseRef, Seat, Session } from '../../engine'
 import type { AppStore } from '../../app/store'
 import { Button } from '../common/Button'
 import { Dialog } from '../common/Dialog'
 import { Stepper } from '../common/Stepper'
 
-/** Какие записи открываются в редакторе. Исход голосования, итог ночи, раздача и конец игры правятся не здесь. */
+/** Какие записи открываются в редакторе. Раздача правится перераздачей и обменом ролей, конец игры — на экране итогов. */
 export const isEditable = (entry: JournalEntry): boolean =>
-  ['night_action', 'night_missing', 'nomination', 'votes', 'status', 'circle', 'swap'].includes(entry.kind)
+  ['night_action', 'night_missing', 'night_result', 'nomination', 'votes', 'vote_result', 'status', 'circle', 'swap'].includes(entry.kind)
 
 /** Кто был в игре: в текущей фазе — сейчас, в прошлой — на её начало. */
 function aliveIn(session: Session, store: AppStore, phase: PhaseRef): Seat[] {
+  if (phase.kind === 'night') return aliveSeats(nightPlayers(session, store.registry, phase.n))
   const now = phaseOrder(currentPhase(session.log)) === phaseOrder(phase)
   const players = now ? (store.getState().game?.players ?? []) : playersAt(session, store.registry, phase)
   return aliveSeats(players)
@@ -22,7 +23,9 @@ function aliveIn(session: Session, store: AppStore, phase: PhaseRef): Seat[] {
 
 /** Сетка номеров: стол на тот момент. Выбывшие тогда — недоступны. */
 export function SeatGrid({ total, allowed, picked, onPick, nobody }: {
-  total: number; allowed: Seat[]; picked?: Seat | null; onPick(seat: Seat | null): void; nobody?: boolean
+  total: number; allowed: Seat[]; picked?: Seat | null; onPick(seat: Seat | null): void
+  /** Плитка «никого»: true — «Никого», строка — своя подпись. */
+  nobody?: boolean | string
 }) {
   const t = useT()
   return (
@@ -35,7 +38,7 @@ export function SeatGrid({ total, allowed, picked, onPick, nobody }: {
           {seat}
         </button>
       ))}
-      {nobody && <button type="button" className="seat-btn seat-btn-wide" aria-pressed={picked === null} onClick={() => onPick(null)}>{t('table.nobody')}</button>}
+      {nobody && <button type="button" className="seat-btn seat-btn-wide" aria-pressed={picked === null} onClick={() => onPick(null)}>{typeof nobody === 'string' ? nobody : t('table.nobody')}</button>}
     </div>
   )
 }
@@ -143,6 +146,34 @@ export const RecordEditor: FC<{ entry: JournalEntry; phase: PhaseRef; onClose():
         <Button size="l" disabled={entry.status === 'alive'} onClick={() => set('alive')}>{t('panel.revive')}</Button>
         {remove}
       </div>
+    )
+  }
+
+  if (entry.kind === 'night_result' && phase.kind === 'night') {
+    body = (
+      <>
+        <p className="dialog-text">{t('edit.nightResult')}</p>
+        <SeatGrid
+          total={total} allowed={aliveIn(session, store, phase)} picked={entry.dies} nobody={t('night.nobody')}
+          onPick={(chosen) => run({ type: 'setNightResult', night: phase.n, chosen })}
+        />
+      </>
+    )
+  }
+
+  if (entry.kind === 'vote_result') {
+    // Выгнанный этим исходом сейчас выбыл, но выбрать его снова можно.
+    const allowed = [...new Set([...aliveIn(session, store, phase), ...entry.seats])]
+    body = (
+      <>
+        <p className="dialog-text">{t('edit.vote')}</p>
+        <SeatGrid
+          total={total} allowed={allowed} picked={entry.outcome === 'eliminated' && entry.seats.length === 1 ? entry.seats[0] : undefined}
+          nobody={t('journal.vote.nobody')}
+          onPick={(seat) => run({ type: 'resolveVote', ballot: entry.ballot, outcome: seat === null ? 'nobody' : 'eliminated', seats: seat === null ? [] : [seat], phase })}
+        />
+        <div className="dialog-actions">{remove}</div>
+      </>
     )
   }
 

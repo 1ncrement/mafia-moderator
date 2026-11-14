@@ -93,3 +93,32 @@ test('шаг знает, что его исполнитель заблокиро
   expect(blocked(play(n1(), act('prostitute_block', 10, 8)), 'mafia_shot')).toBe(false)
   expect(blocked(play(n1(), act('prostitute_block', 10, 3)), 'mafia_shot')).toBe(true)
 })
+
+test('статус меняется посреди ночи: шаги и цели пересчитываются от текущих статусов', () => {
+  let s = play(toDay(game(TABLE_11), 1), { type: 'setStatus', seat: 7, status: 'out', cause: 'voted' }, { type: 'setStatus', seat: 4, status: 'out', cause: 'voted' },
+    { type: 'startPhase', phase: { kind: 'night', n: 1 } })
+  expect(st(s).night!.steps.at(-1)).toMatchObject({ id: 'doctor_heal', grey: true })
+  expect(attempt(s, act('mafia_shot', null, 7))).toEqual({ ok: false, reason: 'not_alive' })
+  s = play(s, { type: 'setStatus', seat: 7, status: 'alive' }, { type: 'setStatus', seat: 4, status: 'alive' })
+  expect(st(s).night!.steps.at(-1)).toMatchObject({ id: 'doctor_heal:4', grey: false }); expect(attempt(s, act('mafia_shot', null, 7)).ok).toBe(true)
+  // Подтверждённая ночь смотрится по статусам на момент подтверждения: застреленный доктор успел вылечить.
+  s = play(s, act('mafia_shot', null, 4), act('doctor_heal', 4, 5), { type: 'confirmNight', chosen: 4 })
+  expect(nightState(s, DEFAULT_REGISTRY, 1).steps.at(-1)).toMatchObject({ id: 'doctor_heal:4', grey: false, recorded: true, target: 5 })
+  expect(st(s).warnings).toEqual([]); expect(st(s).players[3]).toMatchObject({ status: 'out', cause: 'shot' })
+})
+test('обмен ролями не теряет ночные записи роли', () => {
+  let s = play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7), act('sheriff_check', 1, 8), { type: 'confirmNight', chosen: null })
+  s = play(s, { type: 'swapRoles', a: 4, b: 9 }, { type: 'swapRoles', a: 1, b: 2 })
+  const night = nightState(s, DEFAULT_REGISTRY, 1)
+  expect(night.steps.find((x) => x.id === 'doctor_heal:9')).toMatchObject({ recorded: true, target: 7 })
+  expect(night.steps.find((x) => x.id === 'sheriff_check:2')).toMatchObject({ recorded: true, target: 8, answer: { kind: 'side', side: 'black' } })
+  expect(night.outcome).toMatchObject({ dies: null, reason: 'healed' }); expect(st(s).warnings).toEqual([])
+  expect(st(s).permanentMarks).toContainEqual({ seat: 8, actionId: 'sheriff_check' })
+  const n2 = play(s, { type: 'startPhase', phase: { kind: 'night', n: 2 } })
+  expect(st(n2).night!.steps.find((x) => x.id === 'doctor_heal:9')!.lastNight).toMatchObject({ recorded: true, target: 7 })
+  expect(attempt(n2, act('doctor_heal', 9, 7))).toEqual({ ok: false, reason: 'repeat_target' })
+  // Правка прошлой записи после обмена попадает в ту же запись, а не создаёт вторую.
+  const edited = play(n2, { type: 'recordNightAction', actionId: 'doctor_heal', actor: 9, target: 5, phase: { kind: 'night', n: 1 } })
+  expect(edited.log.filter((e) => e.type === 'night_action' && e.actionId === 'doctor_heal')).toHaveLength(1)
+  expect(nightState(edited, DEFAULT_REGISTRY, 1).steps.find((x) => x.id === 'doctor_heal:9')).toMatchObject({ target: 5, edited: true })
+})

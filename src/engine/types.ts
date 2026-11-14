@@ -154,13 +154,16 @@ export type Command =
   | { type: 'setVotes'; ballot: 1 | 2; candidate: Seat; count: number; phase?: PhaseRef }
   | { type: 'setVoters'; ballot: 1 | 2; count: number }
   | { type: 'resetVotes'; ballot: 1 | 2 }
-  | { type: 'resolveVote'; ballot: 1 | 2; outcome: 'eliminated' | 'tie' | 'nobody'; seats: Seat[] }
+  /** Повторное подтверждение заменяет прежний исход тура вместе с его статусами. phase — правка прошлого дня. */
+  | { type: 'resolveVote'; ballot: 1 | 2; outcome: 'eliminated' | 'tie' | 'nobody'; seats: Seat[]; phase?: PhaseRef }
   // ночь
   /** force — записать, несмотря на предупреждение о повторе цели. */
   | { type: 'recordNightAction'; actionId: string; actor: Seat | null; target: Seat | null; phase?: PhaseRef; force?: true }
   | { type: 'confirmNight'; chosen: Seat | null }
   /** Ответ на «итог ночи теперь другой»: apply — исправить статусы, иначе оставить как есть. */
   | { type: 'acknowledgeNight'; night: number; apply: boolean }
+  /** Правка итога уже подтверждённой ночи: кто выбыл на самом деле. */
+  | { type: 'setNightResult'; night: number; chosen: Seat | null }
 
 export type RejectCode =
   | 'redeal_closed' | 'wrong_phase' | 'not_alive' | 'unknown_event' | 'nominations_closed'

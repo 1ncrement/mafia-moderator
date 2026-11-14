@@ -92,3 +92,18 @@ test('скрытие ролей ночью прячет номера ролей,
   expect(screen.getByRole('button', { name: /Подтвердить итог · начать День 2/ })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Никто не выбыл' })).not.toBeInTheDocument()
 })
+
+test('ночной выбор возвращается после отменённого вопроса из панели игрока', async () => {
+  const { user } = renderApp(night1)
+  await user.click(screen.getByRole('button', { name: 'Панель игрока №5' })); await user.click(screen.getByRole('button', { name: 'Поменять роль с…' }))
+  expect(screen.getByText('С кем поменять роль №5?')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Отмена' }))
+  expect(screen.getByText('В кого стреляет мафия?')).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Никого' })).toBeInTheDocument()
+})
+test('ночью возвращённый в игру сразу доступен как цель', async () => {
+  const { app, user } = renderApp((a) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'setStatus', seat: 7, status: 'out', cause: 'voted' }); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }) })
+  expect(screen.queryByRole('button', { name: 'Выбрать игрока №7' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Панель игрока №7' })); await user.click(screen.getByRole('button', { name: 'Вернуть в игру' }))
+  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №7' }))
+  expect(app.getState().game!.night!.steps[0]).toMatchObject({ recorded: true, target: 7 })
+})

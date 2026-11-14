@@ -36,3 +36,9 @@ test('вчерашний начинающий', () => {
   const s = toDay(play(play(game(TABLE_11), { type: 'startPhase', phase: { kind: 'day', n: 1 } }), { type: 'openCircle', first: 3 }), 2)
   expect(st(s).day!.previousOpener).toBe(3)
 })
+
+test('слово вне очереди не сбивает круг', () => {
+  const s = play(d2(), { type: 'openCircle', first: 5 }, speak(5), speak(6), speak(2))
+  expect(st(s).day!.waiting).toEqual([7, 8, 9, 10, 11, 1, 3, 4])
+  expect(st(play(d2(), { type: 'openCircle', first: 5 }, speak(9))).day!.waiting).toEqual([5, 6, 7, 8, 10, 11, 1, 2, 3, 4])
+})

@@ -9,7 +9,7 @@ export function PauseCurtain({ game }: { game: GameState }) {
   const store = useStore()
   const t = useT()
   const lang = useLang()
-  const where = [game.phase ? phaseLabel(lang, game.phase) : '', stepLabel(lang, store.registry, game)].filter(Boolean).join(' · ')
+  const where = [game.phase ? phaseLabel(lang, game.phase) : '', stepLabel(lang, store.registry, game, true)].filter(Boolean).join(' · ')
   return (
     <main className="curtain">
       <span className="curtain-title num">{t('pause.title')}</span>

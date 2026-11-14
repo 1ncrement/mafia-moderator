@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cap, hasKey, phaseLabel, translateKey } from '../../app/i18n'
-import { useLang, useStore, useT } from '../../app/StoreContext'
+import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import type { GameState, SideId } from '../../engine'
 import { Button } from '../common/Button'
 import { Dialog } from '../common/Dialog'
@@ -22,6 +22,7 @@ export function useSideRoles() {
  * уже завершённой игры (change). «Без победителя» — для брошенной партии.
  */
 export function StopDialog({ game, change, onClose }: { game: GameState; change?: boolean; onClose(): void }) {
+  const { settings } = useApp()
   const store = useStore()
   const t = useT()
   const lang = useLang()
@@ -49,7 +50,9 @@ export function StopDialog({ game, change, onClose }: { game: GameState; change?
       </p>
       <div role="radiogroup" aria-label={t('stop.group')} className="stop-options">
         {store.registry.sides.map((side) => option(
-          side.id, cap(translateKey(lang, side.nameKey)), `${sideRoles(side.id)} · ${t('stop.alive', { n: game.counts.bySide[side.id] ?? 0 })}`,
+          side.id, cap(translateKey(lang, side.nameKey)),
+          // Счётчик сторон скрывается вместе с ролями.
+          settings.rolesHidden ? sideRoles(side.id) : `${sideRoles(side.id)} · ${t('stop.alive', { n: game.counts.bySide[side.id] ?? 0 })}`,
         ))}
         {option(null, t('stop.none'), t('stop.none.sub'))}
       </div>

@@ -12,7 +12,7 @@ import { PRESS_GUARD_MS } from '../game/MainButton'
 import './prepare.css'
 
 export function DealScreen() {
-  const { session, game, settings } = useApp()
+  const { session, game, settings, storageError } = useApp()
   const store = useStore()
   const t = useT()
   const lang = settings.lang
@@ -81,6 +81,7 @@ export function DealScreen() {
           {hidden ? t('roles.show') : t('roles.hide')}
         </Button>
       </header>
+      {storageError && <p className="storage-warning" role="alert">{t('game.storageError')}</p>}
       <main className="split">
         <section className="split-main">
           <h2 className="h2">{t('deal.grid')}</h2>

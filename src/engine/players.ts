@@ -1,4 +1,4 @@
-import { lastOf, orderedLog, phaseOrder } from './log'
+import { currentPhase, eventsOf, lastOf, nextPhase, orderedLog, phaseOrder, samePhase } from './log'
 import type { GameEvent, PhaseRef, PlayerView, Registry, RoleId, Seat, Session } from './types'
 
 // Игроки: роли по местам и статусы на любой момент журнала.
@@ -63,4 +63,16 @@ export function playersBefore(session: Session, registry: Registry, event: GameE
 
 export function aliveSeats(views: readonly PlayerView[]): Seat[] {
   return views.filter((p) => p.status === 'alive').map((p) => p.seat)
+}
+
+/**
+ * Кто в игре этой ночью. Идущая ночь — по текущим статусам: ручная правка посреди шага
+ * сразу пересчитывает шаги и цели. Подтверждённая — на момент перед подтверждением:
+ * застреленный этой ночью успевает выполнить своё действие.
+ */
+export function nightPlayers(session: Session, registry: Registry, n: number): PlayerView[] {
+  const phase: PhaseRef = { kind: 'night', n }
+  const confirmed = lastOf(eventsOf(session.log, phase), 'night_confirmed')
+  if (confirmed) return playersBefore(session, registry, confirmed)
+  return samePhase(currentPhase(session.log), phase) ? playersNow(session, registry) : playersAt(session, registry, nextPhase(phase))
 }

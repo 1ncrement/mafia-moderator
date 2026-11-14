@@ -39,7 +39,7 @@ export function Header({ game, onModal }: { game: GameState; onModal(modal: Game
         <div className="game-phase">
           {phase.kind === 'night' ? <Moon size={26} /> : <Sun size={26} />}
           <span className="page-name num">{phaseLabel(lang, phase)}</span>
-          <span className="page-step">{stepLabel(lang, store.registry, game)}</span>
+          <span className="page-step">{stepLabel(lang, store.registry, game, hidden)}</span>
         </div>
         <div className="game-counts">
           <span>{t('game.alive')} <strong>{t('game.aliveOf', { alive: game.counts.alive, total: game.counts.total })}</strong></span>
