@@ -193,7 +193,7 @@ export function checkComposition(playerCount: number, composition: Record<RoleId
 | `sheriff_check` | 30 | check_side | sheriff | each | — |
 | `doctor_heal` | 40 | heal | doctor | each | `noRepeatTarget` |
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 const std = { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1 };
@@ -223,19 +223,19 @@ test('предупреждения состава', () => {
 
 `countBy` добавь в `tests/helpers.ts`: `(xs: string[]) => Record<string, number>`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/engine/setup.test.ts`
 Expected: FAIL, модули не найдены.
 
-- [ ] **Step 3: Реализуй типы, справочник и `setup.ts`.** `no_killer` — в колоде нет ни одного носителя действия с эффектом `kill`. Правило «чёрных не меньше красных» вынеси в `src/engine/roles/rules.ts` как `export function blackNotLess(bySide: Record<SideId, number>): boolean` — литералы сторон живут там.
+- [x] **Step 3: Реализуй типы, справочник и `setup.ts`.** `no_killer` — в колоде нет ни одного носителя действия с эффектом `kill`. Правило «чёрных не меньше красных» вынеси в `src/engine/roles/rules.ts` как `export function blackNotLess(bySide: Record<SideId, number>): boolean` — литералы сторон живут там.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/engine/setup.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(engine): справочник ролей и проверка состава"

@@ -1,0 +1,67 @@
+import { blackNotLess } from './roles/rules'
+import type { Registry, RoleDef, RoleId, SideId } from './types'
+
+export const MIN_PLAYERS = 4
+export const MAX_PLAYERS = 20
+
+export type SetupIssue = 'players_out_of_range' | 'too_many_roles' | 'no_killer' | 'black_not_less_than_red'
+
+/** Роли, количество которых ведущий задаёт сам: не остаток и не часть другой роли. */
+export function configurableRoles(registry: Registry): RoleDef[] {
+  return registry.roles.filter((r) => !r.filler && !r.countsWithin)
+}
+
+/** Роли, которые считаются внутри счётчика данной роли (крёстный отец внутри мафии). */
+export function nestedRoles(registry: Registry, parent: RoleId): RoleDef[] {
+  return registry.roles.filter((r) => r.countsWithin === parent)
+}
+
+/** Состав по умолчанию. Сюда позже лягут схемы «число игроков → состав». */
+export function defaultComposition(registry: Registry): Record<RoleId, number> {
+  return Object.fromEntries(configurableRoles(registry).map((r) => [r.id, r.defaultCount]))
+}
+
+const wholeCount = (n: number | undefined) => (Number.isFinite(n) ? Math.max(0, Math.floor(n as number)) : 0)
+
+export function checkComposition(
+  playerCount: number,
+  composition: Record<RoleId, number>,
+  registry: Registry,
+): { errors: SetupIssue[]; warnings: SetupIssue[]; deck: RoleId[]; civilians: number; bySide: Record<SideId, number> } {
+  const errors: SetupIssue[] = []
+  const warnings: SetupIssue[] = []
+
+  if (!Number.isInteger(playerCount) || playerCount < MIN_PLAYERS || playerCount > MAX_PLAYERS) {
+    errors.push('players_out_of_range')
+  }
+
+  // Колода ровно по составу: вложенные роли забирают свою долю из счётчика родителя.
+  const deck: RoleId[] = []
+  for (const role of configurableRoles(registry)) {
+    let left = wholeCount(composition[role.id])
+    for (const nested of nestedRoles(registry, role.id)) {
+      const take = Math.min(nested.exactCount ?? 0, left)
+      for (let i = 0; i < take; i++) deck.push(nested.id)
+      left -= take
+    }
+    for (let i = 0; i < left; i++) deck.push(role.id)
+  }
+
+  const filler = registry.roles.find((r) => r.filler)
+  const civilians = Math.max(0, playerCount - deck.length)
+  if (deck.length > playerCount) errors.push('too_many_roles')
+  else if (filler) for (let i = 0; i < civilians; i++) deck.push(filler.id)
+
+  const sideOf = new Map(registry.roles.map((r) => [r.id, r.side]))
+  const bySide: Record<SideId, number> = Object.fromEntries(registry.sides.map((s) => [s.id, 0]))
+  for (const card of deck) {
+    const side = sideOf.get(card)
+    if (side !== undefined) bySide[side] = (bySide[side] ?? 0) + 1
+  }
+
+  const killers = new Set(registry.nightActions.filter((a) => a.effect === 'kill').flatMap((a) => a.performers))
+  if (!deck.some((card) => killers.has(card))) warnings.push('no_killer')
+  if (blackNotLess(bySide)) warnings.push('black_not_less_than_red')
+
+  return { errors, warnings, deck, civilians, bySide }
+}
