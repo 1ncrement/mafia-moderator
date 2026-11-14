@@ -1236,7 +1236,7 @@ export function seedGame(app: AppStore, table: string, day: number): void;   // 
 - **Состав**: счётчик игроков 4–20; строка на каждую роль справочника без `filler` и без `countsWithin` с выключателем и счётчиком; под строкой роли, внутри которой считается другая роль, подпись вида «из них крёстный отец: 1»; строка остатка мирных; итог по сторонам; колода; таймеры с правкой; «Сбросить к стандарту»; «Раздать роли» неактивна при ошибке и показывает её текст; предупреждения показаны строкой.
 - **Распределение**: сетка «номер → роль»; блок «Кто есть кто» по ролям; сверка состава; «Перераздать» через окно подтверждения; «Поменять роли двум номерам»; «Назад к составу»; «Город просыпается: День 1»; «Скрыть роли».
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // tests/app/i18n.test.ts
@@ -1292,13 +1292,13 @@ test('язык переключается и запоминается', async ()
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/app/i18n.test.ts tests/ui/prepare.test.tsx`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/app/i18n.test.ts tests/ui/prepare.test.tsx`
 
-- [ ] **Step 3: Реализуй словари, тексты журнала, контекст, три экрана и общие компоненты.** `App` выбирает экран по `AppState.screen`; на экранах `game` и `summary` до задач 12 и 16 рисуй заглушку.
+- [x] **Step 3: Реализуй словари, тексты журнала, контекст, три экрана и общие компоненты.** `App` выбирает экран по `AppState.screen`; на экранах `game` и `summary` до задач 12 и 16 рисуй заглушку.
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npm run check`
+- [x] **Step 4: Run, verify PASS.** Run: `npm run check`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(ui): языки, главная, состав, распределение"

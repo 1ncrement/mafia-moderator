@@ -1,0 +1,238 @@
+/* Кнопки */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+.btn:disabled {
+  opacity: 0.45;
+}
+.btn-l {
+  height: 48px;
+}
+.btn-strong {
+  height: 52px;
+  padding: 0 22px;
+  border-radius: var(--r-m);
+  border-color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+}
+.btn-outline {
+  background: transparent;
+  color: var(--text-2);
+}
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-2);
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn-primary {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+.btn-xl {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 20px;
+  border-radius: var(--r-m);
+  font-size: 21px;
+  white-space: normal;
+  text-align: center;
+}
+.kbd {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 5px;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Точка стороны */
+.dot {
+  flex: none;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.dot-ring {
+  box-shadow: 0 0 0 2px var(--text);
+}
+.dot-hollow {
+  border: 2px solid var(--text-2);
+}
+
+/* Счётчик */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.stepper-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+.stepper-btn:disabled {
+  opacity: 0.4;
+}
+.stepper-value {
+  min-width: 36px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1;
+}
+.stepper-big .stepper-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-m);
+  border-color: var(--text);
+}
+.stepper-big .stepper-value {
+  min-width: 76px;
+  font-size: 64px;
+  color: var(--day);
+}
+.stepper-big {
+  gap: 14px;
+}
+
+/* Переключатель */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  width: 52px;
+  height: 44px;
+}
+.switch-track {
+  display: flex;
+  align-items: center;
+  width: 52px;
+  height: 30px;
+  padding: 3px;
+  border-radius: 15px;
+  background: var(--border);
+}
+.switch-knob {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--text-2);
+  transition: transform 0.12s;
+}
+.switch[aria-checked='true'] .switch-track {
+  background: var(--day);
+}
+.switch[aria-checked='true'] .switch-knob {
+  background: var(--day-ink);
+  transform: translateX(22px);
+}
+
+/* Окно */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 9, 12, 0.72);
+}
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 100%;
+  overflow: auto;
+  padding: 24px;
+  border-radius: var(--r-l);
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  outline: none;
+}
+.dialog-wide {
+  max-width: 720px;
+}
+.dialog-title {
+  font-size: 24px;
+  font-weight: 700;
+}
+.dialog-text {
+  color: var(--text-2);
+  font-size: 16px;
+}
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Заголовки разделов и подписи */
+.h2 {
+  font-family: var(--font-num);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.muted {
+  color: var(--text-2);
+}
+.small {
+  font-size: 13px;
+}
+.panel {
+  padding: 20px;
+  border-radius: var(--r-l);
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+.note-pill {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.alert-line {
+  padding: 10px 14px;
+  border-radius: var(--r-s);
+  background: var(--alert-tint);
+  color: var(--alert);
+  font-weight: 500;
+}

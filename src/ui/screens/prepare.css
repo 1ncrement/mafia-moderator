@@ -1,0 +1,408 @@
+/* Общий каркас экранов подготовки: главная, состав, распределение */
+.page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.page-title {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.page-name {
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.page-sub {
+  font-size: 16px;
+}
+.page-step {
+  font-size: 18px;
+  font-weight: 500;
+}
+.split {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 20px 24px 24px;
+}
+.split-main {
+  flex: 999 1 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.split-side {
+  flex: 1 1 400px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Язык */
+.lang {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.lang-btn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.lang-btn[aria-pressed='true'] {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+/* Главная */
+.home {
+  flex: 1;
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 40px 24px;
+}
+.home-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 84px;
+  padding: 0 24px;
+  border-radius: var(--r-l);
+  background: var(--day);
+  color: var(--day-ink);
+  font-size: 26px;
+  font-weight: 700;
+}
+.home-new:hover {
+  filter: brightness(1.06);
+}
+.home-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.home-current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 18px 20px;
+  border-radius: var(--r-l);
+  border: 2px solid var(--day);
+  background: var(--panel);
+}
+.home-current-text {
+  flex: 1 1 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.home-current-phase {
+  font-size: 20px;
+  font-weight: 700;
+}
+.home-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.home-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  padding: 14px 20px;
+  border-radius: var(--r-l);
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+.home-item-date {
+  flex: 0 0 110px;
+}
+.home-item-winner {
+  flex: 1 1 220px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.home-broken {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: var(--r-l);
+  background: var(--alert-tint);
+  color: var(--alert);
+}
+
+/* Состав */
+.setup-players {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 18px 20px;
+}
+.setup-players-text {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.setup-players-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+.role-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 14px 20px;
+  border-radius: var(--r-l);
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+.role-row .dot {
+  width: 12px;
+  height: 12px;
+}
+.role-row-text {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.role-row-text .note-pill {
+  margin-top: 4px;
+}
+.role-row-name {
+  font-size: 19px;
+  font-weight: 600;
+}
+.role-row-fixed {
+  min-width: 36px;
+  margin-right: 54px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--text-2);
+}
+.setup-total {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.setup-total-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
+}
+.setup-total-players {
+  font-size: 22px;
+  font-weight: 700;
+}
+.setup-total-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--card);
+  font-size: 14px;
+}
+.setup-timers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.setup-timers-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.timers-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.timers-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.timers-item dd {
+  margin: 0;
+  font-weight: 600;
+}
+.timers-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.timers-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.timers-row .stepper-value {
+  min-width: 72px;
+  font-size: 24px;
+}
+.setup-reset {
+  align-self: center;
+}
+
+/* Распределение */
+.deal-title {
+  align-items: center;
+  color: var(--night);
+}
+.deal-title .page-step {
+  color: var(--text);
+}
+.deal-hint {
+  flex: 1 1 280px;
+}
+.deal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.deal-grid[data-columns='5'] {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.deal-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 96px;
+  padding: 12px 16px;
+  border-radius: var(--r-m);
+  border: 2px solid var(--border);
+  background: var(--card);
+}
+.deal-card-strong {
+  border-color: var(--border-strong);
+}
+button.deal-card:hover:not(:disabled),
+.deal-card-picked {
+  border-color: var(--night);
+}
+.deal-card-num {
+  flex: none;
+  min-width: 46px;
+  font-weight: 600;
+  font-size: 46px;
+  line-height: 1;
+}
+.deal-card-role {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.deal-card-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.deal-swap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--r-m);
+  background: var(--night-tint);
+  color: var(--night);
+  font-size: 17px;
+  font-weight: 600;
+}
+.deal-who {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.deal-who-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 16px;
+  font-size: 16px;
+}
+.deal-who-row {
+  display: contents;
+}
+.deal-who-row dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.deal-who-row dd {
+  margin: 0;
+  font-weight: 600;
+}
+.deal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.deal-actions .btn {
+  flex: 1 1 180px;
+}
+.deal-start {
+  display: flex;
+  flex-direction: column;
+}

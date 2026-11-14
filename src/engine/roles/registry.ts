@@ -6,8 +6,8 @@ import type { Registry } from '../types'
  */
 export const DEFAULT_REGISTRY: Registry = {
   sides: [
-    { id: 'red', nameKey: 'side.red', colorVar: '--red' },
     { id: 'black', nameKey: 'side.black', colorVar: '--black', ring: true },
+    { id: 'red', nameKey: 'side.red', colorVar: '--red' },
   ],
   roles: [
     { id: 'civilian', nameKey: 'role.civilian', side: 'red', filler: true, defaultCount: 0, seenBySheriffAs: 'red' },

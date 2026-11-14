@@ -1,0 +1,137 @@
+import type { JournalEntry, JournalGroup, Registry, Seat } from '../../engine'
+import type { Lang } from '../../platform/storage'
+import { cap, compositionText, hasKey, phaseLabel, plural, roleName, seatList, translate, translateKey } from './index'
+
+// Запись журнала → строка. Текст строится при показе, поэтому журнал переключается вместе с языком.
+
+const seat = (lang: Lang, n: Seat) => translate(lang, 'common.seat', { n })
+
+/** Подпись исполнителя ночного действия: «Мафия», «Доктор №4», «Проститутка · выстрел». */
+function performer(
+  lang: Lang, registry: Registry,
+  entry: { actionId: string; actor: Seat | null; numbered?: true; performerRole?: string },
+): string {
+  const def = registry.nightActions.find((a) => a.id === entry.actionId)
+  if (!def) return entry.actionId
+  const inherited = entry.performerRole !== undefined && !def.performers.includes(entry.performerRole)
+  let label = inherited
+    ? `${cap(roleName(lang, registry, entry.performerRole ?? ''))} · ${translateKey(lang, `effect.${def.effect}`)}`
+    : translateKey(lang, def.stepKey)
+  if (entry.numbered && entry.actor !== null) label += ` ${seat(lang, entry.actor)}`
+  return label
+}
+
+export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): string {
+  const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(lang, key, params)
+  switch (entry.kind) {
+    case 'deal':
+      return t('journal.deal', { list: compositionText(lang, registry, entry.counts) })
+
+    case 'night_action': {
+      const def = registry.nightActions.find((a) => a.id === entry.actionId)
+      let text = `${performer(lang, registry, entry)} → ${entry.target === null ? t('journal.nobody') : seat(lang, entry.target)}`
+      const answer = entry.answer
+      if (answer?.kind === 'side') text += ` — ${translateKey(lang, `side.${answer.side}.one`)}`
+      if (answer?.kind === 'blocked') text += ` — ${t('journal.checkBlocked')}`
+      if (answer?.kind === 'found') {
+        const role = roleName(lang, registry, def?.findRole ?? '')
+        text += ` — ${answer.found ? role : t('journal.notRole', { role })}`
+      }
+      return text
+    }
+
+    case 'night_missing':
+      return t('journal.missing', { who: performer(lang, registry, entry) })
+
+    case 'night_result': {
+      if (entry.dies !== null) return t('journal.night.result', { result: t('journal.result.shot', { n: entry.dies }) })
+      const why = entry.reason === 'shot' ? '' : ` (${t(`journal.reason.${entry.reason}`)})`
+      return t('journal.night.result', { result: t('journal.result.none') + why })
+    }
+
+    case 'circle':
+      return t('journal.circle', { n: entry.first })
+
+    case 'nomination':
+      return entry.by === null
+        ? t('journal.nomination.manual', { i: entry.index, target: entry.target })
+        : t('journal.nomination', { i: entry.index, by: entry.by, target: entry.target })
+
+    case 'votes': {
+      const list = entry.entries.map((e) => t('journal.votes.item', { n: e.candidate, count: e.count })).join(', ')
+      return t(entry.ballot === 1 ? 'journal.votes' : 'journal.revotes', { list, voters: entry.voters })
+    }
+
+    case 'vote_result':
+      if (entry.outcome === 'nobody' || entry.seats.length === 0) return t('journal.vote.nobody')
+      if (entry.outcome === 'tie') return t('journal.vote.tie', { seats: seatList(lang, entry.seats) })
+      return t(entry.seats.length > 1 ? 'journal.vote.eliminatedMany' : 'journal.vote.eliminated', { seats: seatList(lang, entry.seats) })
+
+    case 'status':
+      if (entry.status === 'alive') return t('journal.status.alive', { n: entry.seat })
+      return t(entry.cause === 'shot' ? 'journal.status.shot' : entry.cause === 'voted' ? 'journal.status.voted' : 'journal.status.out', { n: entry.seat })
+
+    case 'swap':
+      return t('journal.swap', { a: entry.a, b: entry.b })
+
+    case 'finish':
+      return t('journal.finish', { result: entry.winner === null ? t('journal.finish.nobody') : translateKey(lang, `side.${entry.winner}.win`).toLowerCase() })
+  }
+}
+
+/** Строка-резюме свёрнутой группы: «Ночь 1: выстрел в №7, лечили №7 → никто не выбыл». */
+export function summaryText(lang: Lang, group: JournalGroup, registry: Registry): string {
+  const label = phaseLabel(lang, group.phase)
+  const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(lang, key, params)
+  let body: string
+
+  if (group.phase.kind === 'deal') {
+    body = group.entries.some((e) => e.kind === 'deal') ? t('summary.deal') : ''
+  } else if (group.phase.kind === 'night') {
+    const did: string[] = []
+    for (const e of group.entries) {
+      if (e.kind !== 'night_action' || e.target === null) continue
+      const effect = registry.nightActions.find((a) => a.id === e.actionId)?.effect
+      const key = `effect.${effect}.summary`
+      if (hasKey(key)) did.push(translate(lang, key, { target: seat(lang, e.target) }))
+    }
+    const result = group.entries.findLast((e) => e.kind === 'night_result')
+    const outcome = result?.kind === 'night_result'
+      ? (result.dies === null ? t('journal.result.none') : t('journal.result.shot', { n: result.dies }))
+      : ''
+    body = [did.join(', '), outcome].filter(Boolean).join(' → ')
+  } else {
+    const nominated = group.entries.flatMap((e) => (e.kind === 'nomination' ? [e] : [])).sort((a, b) => a.index - b.index)
+    const result = group.entries.findLast((e) => e.kind === 'vote_result')
+    const circle = group.entries.findLast((e) => e.kind === 'circle')
+    const left = nominated.length > 0 ? t('summary.day.nominated', { list: nominated.map((e) => e.target).join(', ') })
+      : circle?.kind === 'circle' ? t('summary.day.circle', { n: circle.first })
+      : ''
+    let right = ''
+    if (result?.kind === 'vote_result') {
+      if (result.outcome === 'tie') right = t('summary.day.tie', { seats: seatList(lang, result.seats) })
+      else if (result.outcome === 'nobody' || result.seats.length === 0) right = t('summary.day.nobody')
+      else if (result.seats.length > 1) right = t('summary.day.expelledMany', { seats: seatList(lang, result.seats) })
+      else {
+        const only = result.seats[0] as Seat
+        const table = group.entries.findLast((e) => e.kind === 'votes' && e.ballot === result.ballot)
+        const count = table?.kind === 'votes' ? table.entries.find((x) => x.candidate === only)?.count : undefined
+        right = t('summary.day.expelled', { n: only }) + (count === undefined ? '' : ` (${plural(lang, count, 'votes')})`)
+      }
+    }
+    body = [left, right].filter(Boolean).join(' → ')
+  }
+  return body ? `${label}: ${body}` : label
+}
+
+/** Журнал текстом для «Скопировать журнал»: от распределения к текущей фазе. */
+export function journalAsText(lang: Lang, groups: JournalGroup[], registry: Registry): string {
+  const blocks = [...groups].reverse().map((group) => {
+    const lines = group.entries.map((entry) => {
+      const marks = [entry.edited ? translate(lang, 'journal.edited') : '', entry.manual ? translate(lang, 'journal.manual') : ''].filter(Boolean)
+      return `  ${entryText(lang, entry, registry)}${marks.length > 0 ? ` (${marks.join(', ')})` : ''}`
+    })
+    return [phaseLabel(lang, group.phase), ...lines].join('\n')
+  })
+  return blocks.join('\n\n')
+}

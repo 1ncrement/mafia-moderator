@@ -54,6 +54,7 @@ export type AppStore = {
   /** Сырые данные сессии, которую не удалось прочитать, — чтобы ведущий мог их скопировать. */
   rawSession(id: string): string | null
   now(): number
+  randomInt: RandomInt
   registry: Registry
 }
 
@@ -161,6 +162,7 @@ export function createAppStore(env: Env): AppStore {
   const store: AppStore = {
     registry,
     now: env.now,
+    randomInt: env.randomInt,
     getState: () => state,
     subscribe(fn) {
       listeners.add(fn)
