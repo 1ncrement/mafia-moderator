@@ -1,5 +1,5 @@
 import { blackNotLess } from './roles/rules'
-import type { Registry, RoleDef, RoleId, SideId } from './types'
+import type { Durations, Registry, RoleDef, RoleId, Rules, Session, SessionConfig, SideId } from './types'
 
 export const MIN_PLAYERS = 4
 export const MAX_PLAYERS = 20
@@ -64,4 +64,14 @@ export function checkComposition(
   if (blackNotLess(bySide)) warnings.push('black_not_less_than_red')
 
   return { errors, warnings, deck, civilians, bySide }
+}
+
+// ── Умолчания сессии ────────────────────────────────────────────────────────
+
+export const DEFAULT_DURATIONS: Durations = { speech: 60, balagan: 60, defense: 30, tiebreak: 30, farewell: 30 }
+export const DEFAULT_RULES: Rules = { nominationsFromDay: 2, balaganFromDay: 2 }
+
+/** Пустая сессия: настройки есть, журнал пуст. Раздачу добавляет команда deal. */
+export function newSession(id: string, now: number, config: SessionConfig): Session {
+  return { schemaVersion: 1, id, createdAt: now, updatedAt: now, config, log: [], nextSeq: 1, undo: [], timer: null, paused: false }
 }

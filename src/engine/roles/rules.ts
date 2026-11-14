@@ -8,3 +8,9 @@ export function blackNotLess(bySide: Record<SideId, number>): boolean {
   const others = Object.entries(bySide).reduce((sum, [side, n]) => (side === 'black' ? sum : sum + n), 0)
   return black >= others
 }
+
+/** Подсказка о фактическом конце игры: чёрных не осталось или их не меньше остальных. */
+export function endHintFor(bySide: Record<SideId, number>): 'no_black' | 'black_not_less' | null {
+  if ((bySide.black ?? 0) === 0) return 'no_black'
+  return blackNotLess(bySide) ? 'black_not_less' : null
+}

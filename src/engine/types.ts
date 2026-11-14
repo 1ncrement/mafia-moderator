@@ -89,3 +89,85 @@ export type NewEvent = GameEvent extends infer E ? (E extends GameEvent ? Omit<E
 export type LogPatch = { add: NewEvent[]; replace: GameEvent[]; remove: string[] }
 /** Всё, что нужно, чтобы отменить пачку целиком. */
 export type UndoEntry = { added: string[]; replaced: GameEvent[]; removed: GameEvent[] }
+
+// ── Таймер (логика — в timer.ts) ────────────────────────────────────────────
+
+export type TimerKind = SpeechKind | 'free'
+export type TimerState = {
+  kind: TimerKind
+  seat: Seat | null
+  durationMs: number
+  status: 'ready' | 'running' | 'paused'
+  /** Момент окончания по системным часам; источник истины, пока таймер идёт. */
+  endsAt: number | null
+  /** Остаток, пока таймер стоит. Отрицательный — перерасход на паузе. */
+  remainingMs: number
+}
+
+// ── Сессия ──────────────────────────────────────────────────────────────────
+
+/** Длительности в секундах. */
+export type Durations = { speech: number; balagan: number; defense: number; tiebreak: number; farewell: number }
+/** Домашние правила: с какого дня выставляют и с какого дня есть балаган. */
+export type Rules = { nominationsFromDay: number; balaganFromDay: number }
+export type SessionConfig = {
+  playerCount: number
+  composition: Record<RoleId, number>
+  durations: Durations
+  rules: Rules
+  separateTimerStart: boolean
+}
+/** В сессии лежат настройки и журнал. Состояние стола не хранится — его выводит deriveState. */
+export type Session = {
+  schemaVersion: 1
+  id: string
+  createdAt: number
+  updatedAt: number
+  config: SessionConfig
+  log: GameEvent[]
+  nextSeq: number
+  undo: UndoEntry[]
+  timer: TimerState | null
+  paused: boolean
+}
+
+// ── Команды ведущего ────────────────────────────────────────────────────────
+
+export type Command =
+  | { type: 'deal'; assignment: RoleId[] }
+  | { type: 'swapRoles'; a: Seat; b: Seat }
+  | { type: 'startPhase'; phase: PhaseRef }
+  | { type: 'enterStep'; step: StepId }
+  | { type: 'setStatus'; seat: Seat; status: 'alive' | 'out'; cause?: OutCause; phase?: PhaseRef }
+  | { type: 'finishGame'; winner: SideId | null }
+  | { type: 'resumeGame' }
+  | { type: 'removeEvent'; id: string }
+
+export type RejectCode =
+  | 'redeal_closed' | 'wrong_phase' | 'not_alive' | 'unknown_event' | 'nominations_closed'
+  | 'already_nominated' | 'votes_exceed' | 'step_grey' | 'repeat_target'
+export type StateWarning =
+  | { code: 'night_outcome_changed'; night: number; expected: Seat | null }
+  | { code: 'votes_overflow'; ballot: 1 | 2 }
+export type CommandResult = { ok: true; patch: LogPatch } | { ok: false; reason: RejectCode }
+
+// ── Выведенное состояние ────────────────────────────────────────────────────
+
+export type PlayerView = {
+  seat: Seat
+  roleId: RoleId
+  side: SideId
+  status: 'alive' | 'out'
+  cause?: OutCause
+  outPhase?: PhaseRef
+}
+export type EndHint = 'no_black' | 'black_not_less' | null
+export type GameState = {
+  phase: PhaseRef | null
+  step: StepId | null
+  players: PlayerView[]
+  counts: { total: number; alive: number; bySide: Record<SideId, number> }
+  endHint: EndHint
+  finished: { winner: SideId | null } | null
+  warnings: StateWarning[]
+}

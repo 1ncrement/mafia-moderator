@@ -468,7 +468,7 @@ export function toDay(s: Session, n: number): Session;           // до нач�
 - `finishGame` при уже завершённой игре заменяет победителя в событии `game_finished`. `resumeGame` удаляет это событие.
 - `endHint` считает `roles/rules.ts`: чёрных в игре 0 → `no_black`; чёрных не меньше остальных → `black_not_less`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 test('после раздачи: фаза deal, роли и стороны по местам', () => {
@@ -519,19 +519,19 @@ test('playersAt возвращает статусы на начало фазы',
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/engine/core.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: Реализуй `commands.ts`, `derive.ts`, помощники в `tests/helpers.ts`.** До задачи 7 `toDay` проходит ночи одной командой `startPhase`; в задаче 7 замени её на `confirmNight`.
+- [x] **Step 3: Реализуй `commands.ts`, `derive.ts`, помощники в `tests/helpers.ts`.** До задачи 7 `toDay` проходит ночи одной командой `startPhase`; в задаче 7 замени её на `confirmNight`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/engine/core.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(engine): сессия, команды, вывод состояния игроков и фаз"
