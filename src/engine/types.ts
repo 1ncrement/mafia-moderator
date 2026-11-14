@@ -142,6 +142,19 @@ export type Command =
   | { type: 'finishGame'; winner: SideId | null }
   | { type: 'resumeGame' }
   | { type: 'removeEvent'; id: string }
+  // день
+  | { type: 'openCircle'; first: Seat }
+  /** Завершает идущую речь и начинает новую. */
+  | { type: 'startSpeech'; kind: SpeechKind; seat: Seat | null }
+  | { type: 'endSpeech' }
+  | { type: 'skipSpeaker'; seat: Seat }
+  | { type: 'nominate'; by: Seat | null; target: Seat; phase?: PhaseRef }
+  | { type: 'removeNomination'; target: Seat; phase?: PhaseRef }
+  | { type: 'moveNomination'; target: Seat; toIndex: number }
+  | { type: 'setVotes'; ballot: 1 | 2; candidate: Seat; count: number; phase?: PhaseRef }
+  | { type: 'setVoters'; ballot: 1 | 2; count: number }
+  | { type: 'resetVotes'; ballot: 1 | 2 }
+  | { type: 'resolveVote'; ballot: 1 | 2; outcome: 'eliminated' | 'tie' | 'nobody'; seats: Seat[] }
 
 export type RejectCode =
   | 'redeal_closed' | 'wrong_phase' | 'not_alive' | 'unknown_event' | 'nominations_closed'
@@ -170,4 +183,42 @@ export type GameState = {
   endHint: EndHint
   finished: { winner: SideId | null } | null
   warnings: StateWarning[]
+  day: DayState | null
+}
+
+// ── День ────────────────────────────────────────────────────────────────────
+
+/** active: false — кандидат выбыл: остаётся в списке серым, в оправданиях и голосовании не участвует. */
+export type Nomination = { target: Seat; by: Seat | null; order: number; eventId: string; active: boolean }
+export type SpeechQueue = { done: Seat[]; waiting: Seat[] }
+export type VoteHint = { outcome: 'eliminated' | 'tie'; seats: Seat[] } | null
+export type VoteOutcome = 'eliminated' | 'tie' | 'nobody'
+export type Ballot = {
+  n: 1 | 2
+  candidates: Seat[]
+  voters: number
+  votersOverridden: boolean
+  /** auto — число подставлено движком (остаток последнему или ноль, когда голоса кончились). */
+  entries: { candidate: Seat; count: number | null; auto: boolean }[]
+  remaining: number
+  complete: boolean
+  /** Явно введённых голосов больше, чем голосующих. */
+  overflow: boolean
+  hint: VoteHint
+  resolved: { outcome: VoteOutcome; seats: Seat[] } | null
+}
+export type DayState = {
+  n: number
+  nominationsOpen: boolean
+  opener: Seat | null
+  previousOpener: Seat | null
+  spoken: Seat[]
+  skipped: Seat[]
+  waiting: Seat[]
+  speaking: { kind: SpeechKind; seat: Seat | null; eventId: string } | null
+  nominations: Nomination[]
+  ballots: Ballot[]
+  defense: SpeechQueue
+  tiebreak: SpeechQueue
+  farewell: SpeechQueue
 }

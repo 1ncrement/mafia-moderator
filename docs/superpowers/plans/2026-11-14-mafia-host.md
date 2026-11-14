@@ -596,7 +596,7 @@ export type DayState = { n: number; nominationsOpen: boolean; opener: Seat | nul
 - `resolveVote` с `eliminated` ставит каждому из `seats` статус `out` с причиной `voted` и источником `vote` в той же пачке.
 - `overflow` истинно, когда явно введённых голосов больше, чем голосующих; тогда в `GameState.warnings` есть `votes_overflow`.
 
-- [ ] **Step 1: Write the failing test (круг и выставление)**
+- [x] **Step 1: Write the failing test (круг и выставление)**
 
 ```ts
 const d2 = () => toDay(game(TABLE_11), 2);
@@ -635,13 +635,13 @@ test('вчерашний начинающий', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/engine/day.test.ts`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/engine/day.test.ts`
 
-- [ ] **Step 3: Реализуй `day.ts` и команды круга и выставления.**
+- [x] **Step 3: Реализуй `day.ts` и команды круга и выставления.**
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/engine/day.test.ts`
+- [x] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/engine/day.test.ts`
 
-- [ ] **Step 5: Write the failing test (голосование)**
+- [x] **Step 5: Write the failing test (голосование)**
 
 ```ts
 const nominated = (s: Session, ...targets: number[]) => targets.reduce((acc, t, i) => play(acc, { type: 'nominate', by: i + 1, target: t }), s);
@@ -702,13 +702,13 @@ test('статус меняется посреди голосования: пе�
 });
 ```
 
-- [ ] **Step 6: Run, verify FAIL.** Run: `npx vitest run tests/engine/vote.test.ts`
+- [x] **Step 6: Run, verify FAIL.** Run: `npx vitest run tests/engine/vote.test.ts`
 
-- [ ] **Step 7: Реализуй `vote.ts` и команды голосования.**
+- [x] **Step 7: Реализуй `vote.ts` и команды голосования.**
 
-- [ ] **Step 8: Run, verify PASS.** Run: `npx vitest run tests/engine`
+- [x] **Step 8: Run, verify PASS.** Run: `npx vitest run tests/engine`
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add -A && git commit -m "feat(engine): круг речей, выставление и голосование"

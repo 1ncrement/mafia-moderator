@@ -1,6 +1,10 @@
-import { currentPhase, isSeat, lastOf } from './derive'
-import { EMPTY_PATCH, nextPhase, samePhase } from './log'
-import type { Command, CommandResult, LogPatch, NewEvent, PhaseRef, Registry, RejectCode, Session } from './types'
+import { dayState, nominationsOf } from './day'
+import { currentPhase, EMPTY_PATCH, eventsOf, lastOf, nextPhase, samePhase } from './log'
+import { aliveSeats, isSeat, playersAt, playersNow } from './players'
+import type {
+  Command, CommandResult, EventOf, LogPatch, NewEvent, PhaseRef, Registry, RejectCode, Seat, Session,
+} from './types'
+import { maxVotesFor } from './vote'
 
 // Команда ведущего → пачка событий. Ничего не происходит само:
 // статус, фаза и шаг меняются только командой.
@@ -9,9 +13,23 @@ const ok = (patch: Partial<LogPatch>): CommandResult => ({ ok: true, patch: { ..
 const no = (reason: RejectCode): CommandResult => ({ ok: false, reason })
 const add = (...events: NewEvent[]): CommandResult => ok({ add: events })
 
-export function execute(session: Session, cmd: Command, _registry: Registry): CommandResult {
+export function execute(session: Session, cmd: Command, registry: Registry): CommandResult {
   const log = session.log
   const phase: PhaseRef = currentPhase(log)
+  const isNow = (p: PhaseRef) => samePhase(p, phase)
+  /** Кто в игре для записи в фазу p: в текущую — по статусам сейчас, в прошлую — на её начало. */
+  const aliveFor = (p: PhaseRef): Set<Seat> =>
+    new Set(aliveSeats(isNow(p) ? playersNow(session, registry) : playersAt(session, registry, p)))
+  /** Событие конца идущей речи, если она есть. */
+  const endOpenSpeech = (): NewEvent[] => {
+    const events = eventsOf(log, phase)
+    const ended = new Set(events.flatMap((e) => (e.type === 'speech_ended' ? [e.startId] : [])))
+    const last = lastOf(events, 'speech_started')
+    return last && !ended.has(last.id) ? [{ type: 'speech_ended', phase, startId: last.id }] : []
+  }
+  const idsIn = <T extends 'nominated' | 'votes_set' | 'voters_set' | 'vote_resolved'>(
+    p: PhaseRef, type: T, where: (e: EventOf<T>) => boolean,
+  ): EventOf<T>[] => eventsOf(log, p).filter((e): e is EventOf<T> => e.type === type && where(e as EventOf<T>))
 
   switch (cmd.type) {
     case 'deal': {
@@ -57,6 +75,119 @@ export function execute(session: Session, cmd: Command, _registry: Registry): Co
     case 'removeEvent': {
       if (!log.some((e) => e.id === cmd.id)) return no('unknown_event')
       return ok({ remove: [cmd.id] })
+    }
+
+    // ── День: круг речей ──────────────────────────────────────────────────
+
+    case 'openCircle': {
+      if (phase.kind !== 'day') return no('wrong_phase')
+      if (!aliveFor(phase).has(cmd.first)) return no('not_alive')
+      return add(...endOpenSpeech(), { type: 'circle_opened', phase, first: cmd.first })
+    }
+
+    case 'startSpeech': {
+      if (phase.kind !== 'day') return no('wrong_phase')
+      if (cmd.seat !== null) {
+        if (!isSeat(session, cmd.seat)) return no('not_alive')
+        // Прощание говорит уже выгнанный, остальные речи — только игроки в игре.
+        if (cmd.kind !== 'farewell' && !aliveFor(phase).has(cmd.seat)) return no('not_alive')
+      }
+      return add(...endOpenSpeech(), { type: 'speech_started', phase, kind: cmd.kind, seat: cmd.seat })
+    }
+
+    case 'endSpeech':
+      return ok({ add: phase.kind === 'day' ? endOpenSpeech() : [] })
+
+    case 'skipSpeaker': {
+      if (phase.kind !== 'day') return no('wrong_phase')
+      if (!isSeat(session, cmd.seat)) return no('not_alive')
+      return add({ type: 'speaker_skipped', phase, seat: cmd.seat })
+    }
+
+    // ── День: выставление ─────────────────────────────────────────────────
+
+    case 'nominate': {
+      const p = cmd.phase ?? phase
+      if (p.kind !== 'day') return no('wrong_phase')
+      if (p.n < session.config.rules.nominationsFromDay) return no('nominations_closed')
+      const alive = aliveFor(p)
+      if (!alive.has(cmd.target)) return no('not_alive')
+      const listed = nominationsOf(session, p, alive)
+      if (listed.some((x) => x.target === cmd.target)) return no('already_nominated')
+      // Не больше одного выставления за речь: новое выставление автора заменяет прежнее.
+      const previous = cmd.by === null ? [] : idsIn(p, 'nominated', (e) => e.by === cmd.by).map((e) => e.id)
+      const kept = listed.filter((x) => !previous.includes(x.eventId))
+      const order = kept.reduce((max, x) => Math.max(max, x.order), 0) + 1
+      return ok({ remove: previous, add: [{ type: 'nominated', phase: p, by: cmd.by, target: cmd.target, order }] })
+    }
+
+    case 'removeNomination': {
+      const p = cmd.phase ?? phase
+      return ok({ remove: idsIn(p, 'nominated', (e) => e.target === cmd.target).map((e) => e.id) })
+    }
+
+    case 'moveNomination': {
+      if (phase.kind !== 'day') return no('wrong_phase')
+      const listed = nominationsOf(session, phase, aliveFor(phase))
+      const from = listed.findIndex((x) => x.target === cmd.target)
+      const moved = listed[from]
+      if (!moved) return ok({})
+      const rest = listed.filter((x) => x !== moved)
+      const to = Math.max(0, Math.min(rest.length, Math.floor(cmd.toIndex)))
+      if (to === from) return ok({})
+      // Меняем порядок только у переносимой записи: встаёт между соседями.
+      const before = rest[to - 1], after = rest[to]
+      const order = before && after ? (before.order + after.order) / 2
+        : before ? before.order + 1
+        : after ? after.order - 1
+        : moved.order
+      const event = log.find((e) => e.id === moved.eventId)
+      return event?.type === 'nominated' ? ok({ replace: [{ ...event, order }] }) : ok({})
+    }
+
+    // ── День: голосование ─────────────────────────────────────────────────
+
+    case 'setVotes': {
+      const p = cmd.phase ?? phase
+      if (p.kind !== 'day') return no('wrong_phase')
+      const ballot = dayState(session, registry, p.n).ballots.find((b) => b.n === cmd.ballot)
+      if (!ballot) return no('wrong_phase')
+      if (!ballot.candidates.includes(cmd.candidate)) return no('not_alive')
+      // Единственный жёсткий запрет в игре: голосов не больше, чем голосующих.
+      if (!Number.isInteger(cmd.count) || cmd.count < 0 || cmd.count > maxVotesFor(ballot, cmd.candidate)) return no('votes_exceed')
+      const previous = idsIn(p, 'votes_set', (e) => e.ballot === cmd.ballot && e.candidate === cmd.candidate)
+      const last = previous.at(-1)
+      if (!isNow(p) && last) {
+        // Правка прошлого дня: запись остаётся на месте и получает метку «испр.».
+        return ok({ replace: [{ ...last, count: cmd.count }], remove: previous.slice(0, -1).map((e) => e.id) })
+      }
+      return ok({
+        remove: previous.map((e) => e.id),
+        add: [{ type: 'votes_set', phase: p, ballot: cmd.ballot, candidate: cmd.candidate, count: cmd.count }],
+      })
+    }
+
+    case 'setVoters': {
+      if (phase.kind !== 'day') return no('wrong_phase')
+      const count = Number.isFinite(cmd.count) ? Math.max(0, Math.floor(cmd.count)) : 0
+      return ok({
+        remove: idsIn(phase, 'voters_set', (e) => e.ballot === cmd.ballot).map((e) => e.id),
+        add: [{ type: 'voters_set', phase, ballot: cmd.ballot, count }],
+      })
+    }
+
+    case 'resetVotes':
+      return ok({ remove: idsIn(phase, 'votes_set', (e) => e.ballot === cmd.ballot).map((e) => e.id) })
+
+    case 'resolveVote': {
+      if (phase.kind !== 'day') return no('wrong_phase')
+      const seats = cmd.outcome === 'nobody' ? [] : [...new Set(cmd.seats)].filter((s) => isSeat(session, s))
+      // Исход пишется раньше статусов: число голосующих тура считается на момент перед исходом.
+      const events: NewEvent[] = [{ type: 'vote_resolved', phase, ballot: cmd.ballot, outcome: cmd.outcome, seats }]
+      if (cmd.outcome === 'eliminated') {
+        for (const seat of seats) events.push({ type: 'status_set', phase, seat, status: 'out', cause: 'voted', source: 'vote' })
+      }
+      return ok({ remove: idsIn(phase, 'vote_resolved', (e) => e.ballot === cmd.ballot).map((e) => e.id), add: events })
     }
   }
 }

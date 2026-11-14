@@ -1,4 +1,4 @@
-import type { GameEvent, LogPatch, PhaseRef, UndoEntry } from './types'
+import type { EventOf, GameEvent, LogPatch, PhaseRef, UndoEntry } from './types'
 
 export const EMPTY_PATCH: LogPatch = { add: [], replace: [], remove: [] }
 
@@ -76,4 +76,41 @@ export function applyUndo(log: GameEvent[], entry: UndoEntry): GameEvent[] {
     }
   }
   return out.sort(bySeq)
+}
+
+// ── Чтение журнала ──────────────────────────────────────────────────────────
+
+/** События в порядке для вывода: по фазе, внутри фазы по seq. */
+export function orderedLog(log: readonly GameEvent[]): GameEvent[] {
+  return [...log].sort((a, b) => phaseOrder(a.phase) - phaseOrder(b.phase) || a.seq - b.seq)
+}
+
+/** События одной фазы по возрастанию seq. */
+export function eventsOf(log: readonly GameEvent[], phase: PhaseRef): GameEvent[] {
+  return log.filter((e) => samePhase(e.phase, phase)).sort(bySeq)
+}
+
+/** Последнее по seq событие данного типа. */
+export function lastOf<T extends GameEvent['type']>(
+  log: readonly GameEvent[],
+  type: T,
+  where?: (e: EventOf<T>) => boolean,
+): EventOf<T> | null {
+  let found: EventOf<T> | null = null
+  for (const e of log) {
+    if (e.type !== type) continue
+    const typed = e as EventOf<T>
+    if (where && !where(typed)) continue
+    if (!found || typed.seq > found.seq) found = typed
+  }
+  return found
+}
+
+export function allOf<T extends GameEvent['type']>(log: readonly GameEvent[], type: T): EventOf<T>[] {
+  return log.filter((e) => e.type === type) as EventOf<T>[]
+}
+
+/** Текущая фаза — фаза последнего phase_started; до него — распределение. */
+export function currentPhase(log: readonly GameEvent[]): PhaseRef {
+  return lastOf(log, 'phase_started')?.phase ?? { kind: 'deal' }
 }
