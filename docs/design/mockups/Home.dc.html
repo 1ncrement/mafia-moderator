@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Главная: новая игра и список игр</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1115}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid #F2B33D;outline-offset:2px}
+a{color:#F2B33D}a:hover{color:#FFD27A}
+</style>
+</helmet>
+<div style="min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; background: #0F1115; color: #EEF0F4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 15px; line-height: 1.4">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 18px 24px; border-bottom: 1px solid #2B303B; background: #171A20">
+<div style="display: flex; align-items: baseline; gap: 14px">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 30px; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase">Мафия</span>
+<span style="font-size: 16px; color: #A3ABB8">пульт ведущего</span>
+</div>
+<div role="group" aria-label="Язык интерфейса" style="display: inline-flex; padding: 3px; border-radius: 10px; border: 1px solid #2B303B; background: #0F1115">
+<button type="button" aria-pressed="true" style="height: 38px; padding: 0 14px; border: 0; border-radius: 8px; background: #EEF0F4; font-size: 14px; font-weight: 600; color: #0F1115; cursor: pointer">Русский</button>
+<button type="button" aria-pressed="false" style="height: 38px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; font-size: 14px; font-weight: 500; color: #A3ABB8; cursor: pointer">Українська</button>
+</div>
+</header>
+
+<main style="flex: 1; box-sizing: border-box; width: 100%; max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; padding: 40px 24px">
+
+<button type="button" style="display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 84px; padding: 0 24px; border: 0; border-radius: 14px; background: #F2B33D; font-size: 26px; font-weight: 700; color: #1A1304; cursor: pointer">
+<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+Новая игра
+</button>
+
+<section aria-label="Незавершённая игра" style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Незавершённая игра</h2>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 18px 20px; border-radius: 14px; border: 2px solid #F2B33D; background: #171A20">
+<div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 20px; font-weight: 700">День 2 · круг речей</span>
+<span style="font-size: 15px; color: #A3ABB8">11 игроков · в игре 10 · начата сегодня</span>
+</div>
+<button type="button" style="height: 52px; padding: 0 22px; border-radius: 12px; border: 1px solid #EEF0F4; background: #1E222A; font-size: 17px; font-weight: 600; cursor: pointer">Продолжить</button>
+<button type="button" style="height: 52px; padding: 0 16px; border: 0; border-radius: 12px; background: transparent; font-size: 15px; color: #A3ABB8; cursor: pointer">Удалить</button>
+</div>
+</section>
+
+<section aria-label="Завершённые игры" style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Завершённые игры</h2>
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px">
+<li style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 14px 20px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<span style="flex: 0 0 110px; font-size: 15px; color: #A3ABB8">8 ноября</span>
+<span style="flex: 1 1 220px; display: inline-flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 50%; background: #E5484D"></span>Победа красных</span>
+<span style="font-size: 15px; color: #A3ABB8">11 игроков · 4 дня</span>
+<button type="button" style="height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">Открыть</button>
+<button type="button" style="height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; font-size: 15px; color: #A3ABB8; cursor: pointer">Удалить</button>
+</li>
+<li style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 14px 20px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<span style="flex: 0 0 110px; font-size: 15px; color: #A3ABB8">1 ноября</span>
+<span style="flex: 1 1 220px; display: inline-flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: #0A0A0A; box-shadow: 0 0 0 2px #EEF0F4"></span>Победа чёрных</span>
+<span style="font-size: 15px; color: #A3ABB8">9 игроков · 3 дня</span>
+<button type="button" style="height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">Открыть</button>
+<button type="button" style="height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; font-size: 15px; color: #A3ABB8; cursor: pointer">Удалить</button>
+</li>
+<li style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 14px 20px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<span style="flex: 0 0 110px; font-size: 15px; color: #A3ABB8">25 октября</span>
+<span style="flex: 1 1 220px; display: inline-flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid #A3ABB8; box-sizing: border-box"></span>Без победителя</span>
+<span style="font-size: 15px; color: #A3ABB8">14 игроков · прервана в День 2</span>
+<button type="button" style="height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">Открыть</button>
+<button type="button" style="height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; font-size: 15px; color: #A3ABB8; cursor: pointer">Удалить</button>
+</li>
+</ul>
+<span style="font-size: 13px; color: #A3ABB8">Игры хранятся в этом браузере на этом ноутбуке.</span>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

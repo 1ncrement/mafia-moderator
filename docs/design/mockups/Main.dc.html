@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Игровой экран: День 2, круг речей</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1115}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid #F2B33D;outline-offset:2px}
+a{color:#F2B33D}a:hover{color:#FFD27A}
+</style>
+</helmet>
+<div style="min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; background: #0F1115; color: #EEF0F4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 15px; line-height: 1.4">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 14px 24px; border-bottom: 1px solid #2B303B; background: #171A20">
+<div style="display: flex; align-items: center; gap: 12px">
+<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F2B33D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 30px; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; color: #F2B33D">День 2</span>
+<span style="font-size: 18px; font-weight: 500; color: #EEF0F4">Круг речей</span>
+</div>
+<div style="flex: 1 1 320px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; font-size: 15px; color: #A3ABB8">
+<span>в игре <strong style="font-weight: 600; color: #EEF0F4">{{aliveText}}</strong></span>
+<sc-if value="{{showRoles}}" hint-placeholder-val="{{ true }}">
+<span style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 22px">
+<span style="display: inline-flex; align-items: center; gap: 8px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: #0A0A0A; box-shadow: 0 0 0 2px #EEF0F4"></span>чёрных <strong style="font-weight: 600; color: #EEF0F4">{{blackCount}}</strong></span>
+<span style="display: inline-flex; align-items: center; gap: 8px"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 50%; background: #E5484D"></span>красных <strong style="font-weight: 600; color: #EEF0F4">{{redCount}}</strong></span>
+</span>
+</sc-if>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path></svg>
+Отменить
+</button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+Скрыть роли
+</button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v14"></path><path d="M15 5v14"></path></svg>
+Пауза игры
+</button>
+<button type="button" aria-label="Звук включён" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10H4z"></path><path d="M17 9a4 4 0 0 1 0 6"></path></svg>
+</button>
+<button type="button" aria-label="Меню" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>
+</button>
+</div>
+</header>
+
+<main style="flex: 1; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px; padding: 20px 24px 24px">
+
+<section aria-label="Игровой стол" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Стол</h2>
+<span style="font-size: 13px; color: #A3ABB8">Клик по карточке — действия с игроком</span>
+</div>
+
+<sc-if value="{{isGrid}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: {{gridCols}}; gap: 12px">
+<sc-for list="{{players}}" as="p" hint-placeholder-count="11">
+<button type="button" aria-label="{{p.aria}}" style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 136px; box-sizing: border-box; padding: 12px 14px; border-radius: 12px; border: 2px solid {{p.border}}; background: {{p.bg}}; text-align: left; cursor: pointer">
+<span style="display: flex; flex-wrap: wrap; width: 100%; align-items: flex-start; justify-content: space-between; gap: 4px 8px">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 46px; line-height: 1; color: {{p.numColor}}; text-decoration: {{p.numDecor}}">{{p.num}}</span>
+<sc-if value="{{p.hasBadge}}" hint-placeholder-val="{{ false }}">
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; border: 1px solid #EEF0F4; font-size: 12px; font-weight: 600; color: #EEF0F4">выставлен · {{p.badge}}</span>
+</sc-if>
+</span>
+<sc-if value="{{p.showRole}}" hint-placeholder-val="{{ true }}">
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; color: {{p.roleColor}}">
+<span aria-hidden="true" style="flex: none; width: 10px; height: 10px; border-radius: 50%; background: {{p.dotBg}}; box-shadow: {{p.dotRing}}"></span>
+<span>{{p.role}}</span>
+</span>
+</sc-if>
+<sc-if value="{{p.hideRole}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 15px; color: #7C8492">роль скрыта</span>
+</sc-if>
+<sc-if value="{{p.hasStatus}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13px; color: #A3ABB8">{{p.status}}</span>
+</sc-if>
+<sc-if value="{{p.hasMark}}" hint-placeholder-val="{{ false }}">
+<span style="margin-top: auto; font-size: 13px; font-weight: 600; color: {{p.markColor}}">{{p.mark}}</span>
+</sc-if>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isOval}}" hint-placeholder-val="{{ false }}">
+<div style="position: relative; width: 100%; height: 680px">
+<div aria-hidden="true" style="position: absolute; left: 15%; top: 16%; width: 70%; height: 68%; box-sizing: border-box; border-radius: 50%; border: 1px solid #2B303B; background: #14171C"></div>
+<div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+<span style="font-size: 13px; color: #A3ABB8">говорит</span>
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 56px; line-height: 1; color: #F2B33D">№6</span>
+</div>
+<span style="position: absolute; left: 50%; top: 79%; transform: translate(-50%, -50%); font-size: 13px; color: #A3ABB8">место ведущего</span>
+<sc-for list="{{players}}" as="p" hint-placeholder-count="11">
+<button type="button" aria-label="{{p.aria}}" style="position: absolute; left: {{p.left}}; top: {{p.top}}; transform: translate(-50%, -50%); width: {{p.ow}}; height: {{p.oh}}; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 6px; border-radius: 10px; border: 2px solid {{p.border}}; background: {{p.bg}}; cursor: pointer">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: {{p.onum}}; line-height: 1; color: {{p.numColor}}; text-decoration: {{p.numDecor}}">{{p.num}}</span>
+<sc-if value="{{p.showRole}}" hint-placeholder-val="{{ true }}">
+<span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; line-height: 1.2; color: {{p.roleColor}}">
+<span aria-hidden="true" style="flex: none; width: 8px; height: 8px; border-radius: 50%; background: {{p.dotBg}}; box-shadow: {{p.dotRing}}"></span>
+<span>{{p.roleShort}}</span>
+</span>
+</sc-if>
+<sc-if value="{{p.hasLine}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 12px; font-weight: 600; line-height: 1.2; color: {{p.lineColor}}">{{p.line}}</span>
+</sc-if>
+</button>
+</sc-for>
+</div>
+</sc-if>
+</section>
+
+<section aria-label="Текущий шаг" style="flex: 1 1 380px; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; padding: 20px; border: 1px solid #2B303B; border-radius: 14px; background: #171A20">
+
+<nav aria-label="Шаги дня" style="display: flex; flex-wrap: wrap; gap: 6px">
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 14px; color: #A3ABB8; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>
+Балаган
+</button>
+<button type="button" aria-current="step" style="display: inline-flex; align-items: center; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #F2B33D; background: #F2B33D; font-size: 14px; font-weight: 600; color: #1A1304; cursor: pointer">Круг речей</button>
+<button type="button" style="display: inline-flex; align-items: center; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; font-size: 14px; color: #A3ABB8; cursor: pointer">Оправдания</button>
+<button type="button" style="display: inline-flex; align-items: center; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; font-size: 14px; color: #A3ABB8; cursor: pointer">Голосование</button>
+</nav>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+<span style="font-size: 20px; font-weight: 600">Речь №6</span>
+<span style="font-size: 14px; color: #A3ABB8">идёт · из 1:00</span>
+</div>
+<div style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 136px; line-height: 1; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; color: #F2B33D">0:42</div>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #2B303B; overflow: hidden">
+<div style="width: 70%; height: 100%; background: #F2B33D"></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="flex: 1 1 120px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 16px; font-weight: 600; cursor: pointer">
+Пауза
+<span style="padding: 1px 6px; border-radius: 5px; border: 1px solid #5A6270; font-size: 12px; font-weight: 500; color: #A3ABB8">Пробел</span>
+</button>
+<button type="button" style="display: inline-flex; align-items: center; justify-content: center; height: 48px; padding: 0 16px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 16px; font-weight: 500; cursor: pointer">+10 с</button>
+<button type="button" style="display: inline-flex; align-items: center; justify-content: center; height: 48px; padding: 0 16px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 16px; font-weight: 500; cursor: pointer">Заново</button>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<button type="button" style="display: inline-flex; align-items: center; justify-content: center; height: 48px; padding: 0 16px; border-radius: 10px; border: 1px solid #EEF0F4; background: transparent; font-size: 16px; font-weight: 600; cursor: pointer">№6 выставляет…</button>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #A3ABB8">Выставлены, по порядку</span>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px">
+<li style="display: flex; align-items: center; gap: 10px; padding: 0 0 0 12px; border-radius: 10px; background: #1E222A">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 18px; color: #A3ABB8">1</span>
+<span style="font-size: 17px; font-weight: 600">№7</span>
+<span style="flex: 1; font-size: 14px; color: #A3ABB8">от №5</span>
+<button type="button" aria-label="Снять №7 с голосования" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #A3ABB8; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg>
+</button>
+</li>
+<li style="display: flex; align-items: center; gap: 10px; padding: 0 0 0 12px; border-radius: 10px; background: #1E222A">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 18px; color: #A3ABB8">2</span>
+<span style="font-size: 17px; font-weight: 600">№3</span>
+<span style="flex: 1; font-size: 14px; color: #A3ABB8">от №6</span>
+<button type="button" aria-label="Снять №3 с голосования" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #A3ABB8; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg>
+</button>
+</li>
+</ol>
+</div>
+</div>
+
+<dl style="margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 14px">
+<dt style="color: #A3ABB8">Говорили</dt>
+<dd style="margin: 0">5</dd>
+<dt style="color: #A3ABB8">Ждут слова</dt>
+<dd style="margin: 0">{{waitingText}}</dd>
+<dt style="color: #A3ABB8">Вчера начинал</dt>
+<dd style="margin: 0">№3</dd>
+</dl>
+
+<button type="button" style="display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 68px; padding: 0 20px; border: 0; border-radius: 12px; background: #F2B33D; font-size: 21px; font-weight: 700; color: #1A1304; cursor: pointer">
+Следующий: №7 · 60 с
+<span style="padding: 1px 7px; border-radius: 5px; border: 1px solid #1A1304; font-size: 12px; font-weight: 600; color: #1A1304">Enter</span>
+</button>
+</section>
+
+<aside aria-label="Журнал" style="flex: 1 1 300px; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid #2B303B; border-radius: 14px; background: #171A20">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Журнал</h2>
+<button type="button" style="height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; font-size: 14px; color: #A3ABB8; cursor: pointer">Свернуть</button>
+</div>
+
+<sc-if value="{{showRoles}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 12px; background: #1E222A">
+<button type="button" aria-expanded="true" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font-size: 16px; font-weight: 600; text-align: left; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+День 2
+<span style="margin-left: auto; font-size: 13px; font-weight: 500; color: #F2B33D">идёт</span>
+</button>
+<button type="button" style="display: flex; align-items: center; min-height: 44px; padding: 0 10px 0 34px; border: 0; border-radius: 8px; background: transparent; font-size: 14px; text-align: left; cursor: pointer">Круг начал №5</button>
+<button type="button" style="display: flex; align-items: center; min-height: 44px; padding: 0 10px 0 34px; border: 0; border-radius: 8px; background: transparent; font-size: 14px; text-align: left; cursor: pointer">1. №5 выставил №7</button>
+<button type="button" style="display: flex; align-items: center; min-height: 44px; padding: 0 10px 0 34px; border: 0; border-radius: 8px; background: transparent; font-size: 14px; text-align: left; cursor: pointer">2. №6 выставил №3</button>
+</div>
+
+<button type="button" aria-expanded="false" style="display: flex; align-items: flex-start; gap: 8px; padding: 12px 14px; border: 1px solid #2B303B; border-radius: 12px; background: transparent; text-align: left; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9DB0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M9 6l6 6-6 6"></path></svg>
+<span style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px; font-weight: 600; color: #9DB0FF">Ночь 1</span>
+<span style="font-size: 14px; color: #A3ABB8">Выстрел в №9, блок №2, проверка №8 — чёрный, лечили №1 → №9 застрелен</span>
+</span>
+</button>
+
+<button type="button" aria-expanded="false" style="display: flex; align-items: flex-start; gap: 8px; padding: 12px 14px; border: 1px solid #2B303B; border-radius: 12px; background: transparent; text-align: left; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M9 6l6 6-6 6"></path></svg>
+<span style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px; font-weight: 600">День 1</span>
+<span style="font-size: 14px; color: #A3ABB8">Круг начал №3, без выставлений</span>
+</span>
+</button>
+
+<button type="button" aria-expanded="false" style="display: flex; align-items: flex-start; gap: 8px; padding: 12px 14px; border: 1px solid #2B303B; border-radius: 12px; background: transparent; text-align: left; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9DB0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M9 6l6 6-6 6"></path></svg>
+<span style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px; font-weight: 600; color: #9DB0FF">Распределение</span>
+<span style="font-size: 14px; color: #A3ABB8">Роли розданы</span>
+</span>
+</button>
+</div>
+</sc-if>
+
+<sc-if value="{{hideRoles}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; padding: 20px 14px; border: 1px dashed #2B303B; border-radius: 12px; font-size: 14px; color: #A3ABB8">Журнал скрыт вместе с ролями.</p>
+</sc-if>
+</aside>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"players":{"editor":"int","default":11,"min":8,"max":20,"step":1,"section":"Стол"},"tableLayout":{"editor":"enum","default":"Сетка","options":["Сетка","Овал"],"section":"Стол"},"rolesHidden":{"editor":"boolean","default":false,"section":"Стол"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const raw = parseInt(this.props.players ?? 11, 10);
+const n = Math.max(8, Math.min(20, isNaN(raw) ? 11 : raw));
+const hidden = (this.props.rolesHidden ?? false) === true;
+const isOval = (this.props.tableLayout ?? 'Сетка') === 'Овал';
+const ROLES = {
+1: { full: 'шериф', short: 'шериф', side: 'red' },
+3: { full: 'мафия · глава', short: 'глава', side: 'black' },
+4: { full: 'доктор', short: 'доктор', side: 'red' },
+8: { full: 'мафия', short: 'мафия', side: 'black' },
+10: { full: 'проститутка', short: 'простит.', side: 'black' }
+};
+const CIVIL = { full: 'мирный житель', short: 'мирный', side: 'red' };
+const outSeat = n >= 9 ? 9 : 0;
+const speaking = 6;
+const opener = 5;
+const nominated = { 7: '1', 3: '2' };
+const small = n > 16;
+const mid = n > 12 && n <= 16;
+const ow = (small ? 80 : mid ? 96 : 120) + 'px';
+const oh = (small ? 66 : mid ? 76 : 92) + 'px';
+const onum = (small ? 24 : mid ? 28 : 34) + 'px';
+const players = [];
+let blacks = 0;
+let reds = 0;
+for (let seat = 1; seat <= n; seat++) {
+const r = ROLES[seat] || CIVIL;
+const out = seat === outSeat;
+const isSpeaking = seat === speaking;
+const badge = nominated[seat] || '';
+if (!out) {
+if (r.side === 'black') { blacks++; } else { reds++; }
+}
+let mark = '';
+let markColor = '#A3ABB8';
+if (isSpeaking) {
+mark = 'говорит сейчас';
+markColor = '#F2B33D';
+} else if (seat === opener) {
+mark = 'говорил · начинал день';
+} else if (seat === 8 && !hidden) {
+mark = 'проверен шерифом';
+markColor = '#9DB0FF';
+}
+let line = '';
+let lineColor = '#A3ABB8';
+if (out) {
+line = 'застрелен';
+} else if (isSpeaking) {
+line = 'говорит';
+lineColor = '#F2B33D';
+} else if (badge) {
+line = 'выставлен · ' + badge;
+lineColor = '#EEF0F4';
+}
+const theta = Math.PI / 2 + (seat - 0.5) * (2 * Math.PI / n);
+players.push({
+num: String(seat),
+aria: 'Игрок №' + seat,
+role: r.full,
+roleShort: n > 12 ? r.short : r.full,
+showRole: !hidden,
+hideRole: hidden,
+roleColor: out ? '#A3ABB8' : '#EEF0F4',
+dotBg: r.side === 'black' ? '#0A0A0A' : '#E5484D',
+dotRing: r.side === 'black' ? '0 0 0 2px #EEF0F4' : 'none',
+border: isSpeaking ? '#F2B33D' : '#2B303B',
+bg: isSpeaking ? '#2A2413' : (out ? '#171A20' : '#1E222A'),
+numColor: isSpeaking ? '#F2B33D' : (out ? '#7C8492' : '#EEF0F4'),
+numDecor: out ? 'line-through' : 'none',
+hasBadge: badge !== '',
+badge: badge,
+hasStatus: out,
+status: out ? 'застрелен · Ночь 1' : '',
+hasMark: mark !== '',
+mark: mark,
+markColor: markColor,
+hasLine: line !== '',
+line: line,
+lineColor: lineColor,
+left: (50 + 41 * Math.cos(theta)).toFixed(2) + '%',
+top: (50 + 39 * Math.sin(theta)).toFixed(2) + '%',
+ow: ow,
+oh: oh,
+onum: onum
+});
+}
+const waiting = [];
+for (let k = 1; k < n; k++) {
+const seat = ((speaking - 1 + k) % n) + 1;
+if (seat === opener) { break; }
+if (seat !== outSeat) { waiting.push(String(seat)); }
+}
+return {
+players: players,
+isGrid: !isOval,
+isOval: isOval,
+gridCols: 'repeat(' + (n > 12 ? 5 : 4) + ', minmax(0, 1fr))',
+showRoles: !hidden,
+hideRoles: hidden,
+aliveText: (blacks + reds) + ' из ' + n,
+blackCount: String(blacks),
+redCount: String(reds),
+waitingText: waiting.join(' · ')
+};
+}
+}
+</script>
+</body>
+</html>

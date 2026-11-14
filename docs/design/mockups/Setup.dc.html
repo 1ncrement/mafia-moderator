@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Новая игра: состав игроков и ролей</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1115}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid #F2B33D;outline-offset:2px}
+a{color:#F2B33D}a:hover{color:#FFD27A}
+</style>
+</helmet>
+<div style="min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; background: #0F1115; color: #EEF0F4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 15px; line-height: 1.4">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 18px 24px; border-bottom: 1px solid #2B303B; background: #171A20">
+<div style="display: flex; align-items: baseline; gap: 14px">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 30px; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase">Новая игра</span>
+<span style="font-size: 18px; font-weight: 500">Состав</span>
+</div>
+<button type="button" style="height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">На главную</button>
+</header>
+
+<main style="flex: 1; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px; padding: 20px 24px 24px">
+
+<section aria-label="Игроки и роли" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 18px 20px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 20px; font-weight: 700">Игроков за столом</span>
+<span style="font-size: 14px; color: #A3ABB8">от 4 до 20, у каждого свой номер</span>
+</div>
+<div style="display: flex; align-items: center; gap: 14px">
+<button type="button" aria-label="Меньше игроков" style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 12px; border: 1px solid #EEF0F4; background: #1E222A; cursor: pointer"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"></path></svg></button>
+<span style="min-width: 76px; text-align: center; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 64px; line-height: 1; color: #F2B33D">11</span>
+<button type="button" aria-label="Больше игроков" style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 12px; border: 1px solid #EEF0F4; background: #1E222A; cursor: pointer"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 6px 0 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Роли в игре</h2>
+<sc-for list="{{roles}}" as="r" hint-placeholder-count="5">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px 20px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<sc-if value="{{r.editable}}" hint-placeholder-val="{{ true }}">
+<button type="button" role="switch" aria-checked="true" aria-label="{{r.switchAria}}" style="display: inline-flex; align-items: center; width: 52px; height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer">
+<span style="display: flex; align-items: center; justify-content: flex-end; width: 52px; height: 30px; box-sizing: border-box; padding: 3px; border-radius: 15px; background: #F2B33D"><span style="width: 24px; height: 24px; border-radius: 50%; background: #1A1304"></span></span>
+</button>
+</sc-if>
+<span aria-hidden="true" style="flex: none; width: 12px; height: 12px; border-radius: 50%; background: {{r.dotBg}}; box-shadow: {{r.dotRing}}"></span>
+<div style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 19px; font-weight: 600">{{r.name}}</span>
+<span style="font-size: 14px; color: #A3ABB8">{{r.sub}}</span>
+<sc-if value="{{r.hasNote}}" hint-placeholder-val="{{ false }}">
+<span style="margin-top: 4px; align-self: flex-start; padding: 3px 10px; border-radius: 999px; border: 1px solid #EEF0F4; font-size: 13px; font-weight: 600">{{r.note}}</span>
+</sc-if>
+</div>
+<sc-if value="{{r.editable}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 10px">
+<button type="button" aria-label="{{r.lessAria}}" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"></path></svg></button>
+<span style="min-width: 36px; text-align: center; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 34px; line-height: 1">{{r.count}}</span>
+<button type="button" aria-label="{{r.moreAria}}" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+</div>
+</sc-if>
+<sc-if value="{{r.fixed}}" hint-placeholder-val="{{ false }}">
+<span style="min-width: 36px; padding-right: 54px; text-align: center; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 34px; line-height: 1; color: #A3ABB8">{{r.count}}</span>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Итог состава" style="flex: 1 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 20px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px">
+<span style="font-size: 22px; font-weight: 700">11 игроков</span>
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 16px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: #0A0A0A; box-shadow: 0 0 0 2px #EEF0F4"></span>чёрных 3</span>
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 16px"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 50%; background: #E5484D"></span>красных 8</span>
+</div>
+<span style="font-size: 13px; color: #A3ABB8">Колода, которая будет перемешана</span>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="padding: 5px 10px; border-radius: 8px; background: #1E222A; font-size: 14px">мафия · глава</span>
+<span style="padding: 5px 10px; border-radius: 8px; background: #1E222A; font-size: 14px">мафия</span>
+<span style="padding: 5px 10px; border-radius: 8px; background: #1E222A; font-size: 14px">проститутка</span>
+<span style="padding: 5px 10px; border-radius: 8px; background: #1E222A; font-size: 14px">шериф</span>
+<span style="padding: 5px 10px; border-radius: 8px; background: #1E222A; font-size: 14px">доктор</span>
+<span style="padding: 5px 10px; border-radius: 8px; background: #1E222A; font-size: 14px">мирный житель × 6</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Таймеры</h2>
+<button type="button" style="height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; font-size: 14px; color: #A3ABB8; cursor: pointer">Изменить</button>
+</div>
+<dl style="margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; font-size: 15px">
+<dt style="color: #A3ABB8">Речь игрока</dt><dd style="margin: 0; font-weight: 600">60 с</dd>
+<dt style="color: #A3ABB8">Балаган</dt><dd style="margin: 0; font-weight: 600">60 с</dd>
+<dt style="color: #A3ABB8">Оправдание</dt><dd style="margin: 0; font-weight: 600">30 с</dd>
+<dt style="color: #A3ABB8">Речь при ничьей</dt><dd style="margin: 0; font-weight: 600">30 с</dd>
+<dt style="color: #A3ABB8">Прощание</dt><dd style="margin: 0; font-weight: 600">30 с</dd>
+</dl>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<button type="button" style="display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 72px; padding: 0 20px; border: 0; border-radius: 12px; background: #F2B33D; font-size: 22px; font-weight: 700; color: #1A1304; cursor: pointer">
+Раздать роли
+<span style="padding: 1px 7px; border-radius: 5px; border: 1px solid #1A1304; font-size: 12px; font-weight: 600; color: #1A1304">Enter</span>
+</button>
+<button type="button" style="align-self: center; height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; font-size: 14px; color: #A3ABB8; cursor: pointer">Сбросить к стандарту</button>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const BLACK = ['#0A0A0A', '0 0 0 2px #EEF0F4'];
+const RED = ['#E5484D', 'none'];
+const src = [
+['Мафия', 'чёрные · ночью стреляют', '2', BLACK, 'из них крёстный отец: 1 — глава, ищет шерифа', true],
+['Проститутка', 'чёрные · ночью блокирует игрока', '1', BLACK, '', true],
+['Шериф', 'красные · ночью проверяет игрока', '1', RED, '', true],
+['Доктор', 'красные · ночью лечит игрока', '1', RED, '', true],
+['Мирные жители', 'красные · все остальные, считаются сами', '6', RED, '', false]
+];
+const roles = src.map((s) => ({
+name: s[0],
+sub: s[1],
+count: s[2],
+dotBg: s[3][0],
+dotRing: s[3][1],
+hasNote: s[4] !== '',
+note: s[4],
+editable: s[5],
+fixed: !s[5],
+switchAria: s[0] + ' участвует в игре',
+lessAria: s[0] + ': меньше',
+moreAria: s[0] + ': больше'
+}));
+return { roles: roles };
+}
+}
+</script>
+</body>
+</html>

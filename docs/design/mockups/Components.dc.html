@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Компоненты: карточка игрока, таймер, кнопки</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1115}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid #F2B33D;outline-offset:2px}
+a{color:#F2B33D}a:hover{color:#FFD27A}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px; padding: 32px; background: #0F1115; color: #EEF0F4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 15px; line-height: 1.4">
+
+<section aria-label="Карточка игрока" style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Карточка игрока</h2>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px 14px">
+<sc-for list="{{cards}}" as="p" hint-placeholder-count="10">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; height: 136px; box-sizing: border-box; padding: 12px 14px; border-radius: 12px; border: 2px solid {{p.border}}; background: {{p.bg}}">
+<span style="display: flex; flex-wrap: wrap; width: 100%; align-items: flex-start; justify-content: space-between; gap: 4px 8px">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 46px; line-height: 1; color: {{p.numColor}}; text-decoration: {{p.numDecor}}">{{p.num}}</span>
+<sc-if value="{{p.hasBadge}}" hint-placeholder-val="{{ false }}">
+<span style="display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; border: 1px solid #EEF0F4; font-size: 12px; font-weight: 600">{{p.badge}}</span>
+</sc-if>
+</span>
+<sc-if value="{{p.showRole}}" hint-placeholder-val="{{ true }}">
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; color: {{p.roleColor}}">
+<span aria-hidden="true" style="flex: none; width: 10px; height: 10px; border-radius: 50%; background: {{p.dotBg}}; box-shadow: {{p.dotRing}}"></span>
+<span>{{p.role}}</span>
+</span>
+</sc-if>
+<sc-if value="{{p.hideRole}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 15px; color: #7C8492">роль скрыта</span>
+</sc-if>
+<sc-if value="{{p.hasStatus}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13px; color: #A3ABB8">{{p.status}}</span>
+</sc-if>
+<sc-if value="{{p.hasMark}}" hint-placeholder-val="{{ false }}">
+<span style="margin-top: auto; font-size: 13px; font-weight: 600; color: {{p.markColor}}">{{p.mark}}</span>
+</sc-if>
+</div>
+<span style="font-size: 13px; color: #A3ABB8">{{p.caption}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: flex; gap: 28px">
+
+<section aria-label="Таймер" style="flex: 3; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Таймер</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<span style="font-size: 14px; color: #A3ABB8">Готов</span>
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 84px; line-height: 1; font-variant-numeric: tabular-nums; color: #EEF0F4">1:00</span>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #EEF0F4"></div>
+<span style="font-size: 13px; color: #A3ABB8">кнопка «Старт»</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<span style="font-size: 14px; color: #A3ABB8">Идёт</span>
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 84px; line-height: 1; font-variant-numeric: tabular-nums; color: #F2B33D">0:42</span>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #2B303B; overflow: hidden"><div style="width: 70%; height: 100%; background: #F2B33D"></div></div>
+<span style="font-size: 13px; color: #A3ABB8">кнопка «Пауза»</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<span style="font-size: 14px; color: #A3ABB8">Осталось 10 секунд</span>
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 84px; line-height: 1; font-variant-numeric: tabular-nums; color: #FF8A6B">0:08</span>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #2B303B; overflow: hidden"><div style="width: 13%; height: 100%; background: #FF8A6B"></div></div>
+<span style="font-size: 13px; color: #A3ABB8">цифры меняют цвет</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; border: 2px solid #FF8A6B; background: #2B1A16">
+<span style="font-size: 14px; color: #FFB9A6">Время вышло</span>
+<span style="display: flex; align-items: baseline; gap: 10px"><span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 84px; line-height: 1; font-variant-numeric: tabular-nums; color: #FF8A6B">0:00</span><span style="font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 26px; color: #FFB9A6">+0:07</span></span>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #FF8A6B"></div>
+<span style="font-size: 13px; color: #FFB9A6">сигнал один раз, слово не передаётся</span>
+</div>
+</div>
+</section>
+
+<section aria-label="Кнопки" style="flex: 2; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Кнопки</h2>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<button type="button" style="display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 60px; padding: 0 20px; border: 0; border-radius: 12px; background: #F2B33D; font-size: 19px; font-weight: 700; color: #1A1304; cursor: pointer">Главная, день<span style="padding: 1px 7px; border-radius: 5px; border: 1px solid #1A1304; font-size: 12px; font-weight: 600">Enter</span></button>
+<button type="button" style="display: flex; align-items: center; justify-content: center; min-height: 60px; padding: 0 20px; border: 0; border-radius: 12px; background: #9DB0FF; font-size: 19px; font-weight: 700; color: #0E1330; cursor: pointer">Главная, ночь</button>
+<button type="button" style="display: flex; align-items: center; justify-content: center; min-height: 60px; padding: 0 20px; border-radius: 12px; border: 2px solid #EEF0F4; background: #1E222A; font-size: 19px; font-weight: 700; cursor: pointer">Решение ведущего</button>
+<div style="display: flex; gap: 10px">
+<button type="button" style="flex: 1; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">Вторичная</button>
+<button type="button" style="flex: 1; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; font-size: 15px; font-weight: 500; color: #A3ABB8; cursor: pointer">Тихая</button>
+</div>
+</div>
+</section>
+
+</div>
+
+<section aria-label="Обозначения сторон" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; padding: 16px 20px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20; font-size: 15px">
+<span style="display: inline-flex; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 50%; background: #E5484D"></span>красные: мирный житель, шериф, доктор</span>
+<span style="display: inline-flex; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: #0A0A0A; box-shadow: 0 0 0 2px #EEF0F4"></span>чёрные: мафия, глава мафии, проститутка</span>
+<span style="display: inline-flex; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 22px; height: 4px; border-radius: 2px; background: #F2B33D"></span>янтарный: день и тот, кто говорит</span>
+<span style="display: inline-flex; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 22px; height: 4px; border-radius: 2px; background: #9DB0FF"></span>синий: ночь и ночные метки</span>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const base = { border: '#2B303B', bg: '#1E222A', numColor: '#EEF0F4', numDecor: 'none', roleColor: '#EEF0F4', side: 'red', role: 'мирный житель', hidden: false, badge: '', status: '', mark: '', markColor: '#A3ABB8' };
+const src = [
+{ num: '2', caption: 'В игре' },
+{ num: '6', caption: 'Говорит сейчас', border: '#F2B33D', bg: '#2A2413', numColor: '#F2B33D', mark: 'говорит сейчас', markColor: '#F2B33D' },
+{ num: '5', caption: 'Говорил, начинал день', mark: 'говорил · начинал день' },
+{ num: '7', caption: 'Выставлен на голосование', badge: 'выставлен · 1' },
+{ num: '3', caption: 'Крёстный отец', role: 'мафия · глава', side: 'black' },
+{ num: '9', caption: 'Застрелен', bg: '#171A20', numColor: '#7C8492', numDecor: 'line-through', roleColor: '#A3ABB8', status: 'застрелен · Ночь 1' },
+{ num: '4', caption: 'Выгнан', bg: '#171A20', numColor: '#7C8492', numDecor: 'line-through', roleColor: '#A3ABB8', role: 'доктор', status: 'выгнан · День 2' },
+{ num: '8', caption: 'Роли скрыты', hidden: true },
+{ num: '1', caption: 'Выбран на ночном шаге', border: '#9DB0FF', bg: '#1B2140', numColor: '#9DB0FF', role: 'шериф', mark: 'выбран', markColor: '#9DB0FF' },
+{ num: '5', caption: 'Цель этой роли прошлой ночью', mark: 'прошлая ночь · не шериф' }
+];
+const cards = src.map((s) => {
+const c = Object.assign({}, base, s);
+return {
+num: c.num,
+caption: c.caption,
+border: c.border,
+bg: c.bg,
+numColor: c.numColor,
+numDecor: c.numDecor,
+roleColor: c.roleColor,
+role: c.role,
+dotBg: c.side === 'black' ? '#0A0A0A' : '#E5484D',
+dotRing: c.side === 'black' ? '0 0 0 2px #EEF0F4' : 'none',
+showRole: !c.hidden,
+hideRole: c.hidden,
+hasBadge: c.badge !== '',
+badge: c.badge,
+hasStatus: c.status !== '',
+status: c.status,
+hasMark: c.mark !== '',
+mark: c.mark,
+markColor: c.markColor
+};
+});
+return { cards: cards };
+}
+}
+</script>
+</body>
+</html>

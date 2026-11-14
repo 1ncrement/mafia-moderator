@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Распределение ролей по номерам</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1115}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid #F2B33D;outline-offset:2px}
+a{color:#F2B33D}a:hover{color:#FFD27A}
+</style>
+</helmet>
+<div style="min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; background: #0F1115; color: #EEF0F4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 15px; line-height: 1.4">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 14px 24px; border-bottom: 1px solid #2B303B; background: #171A20">
+<div style="display: flex; align-items: center; gap: 12px">
+<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9DB0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path></svg>
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 30px; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; color: #9DB0FF">Распределение</span>
+<span style="font-size: 18px; font-weight: 500">Раздай роли по списку</span>
+</div>
+<span style="flex: 1 1 280px; font-size: 15px; color: #A3ABB8">На экране видны все роли. Игрокам приложение ничего не показывает.</span>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+Скрыть роли
+</button>
+</header>
+
+<main style="flex: 1; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px; padding: 20px 24px 24px">
+
+<section aria-label="Роли по номерам" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Номер → роль</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{players}}" as="p" hint-placeholder-count="11">
+<div style="display: flex; align-items: center; gap: 14px; min-height: 96px; box-sizing: border-box; padding: 12px 16px; border-radius: 12px; border: 2px solid {{p.border}}; background: #1E222A">
+<span style="flex: none; min-width: 46px; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 46px; line-height: 1">{{p.num}}</span>
+<span style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 600"><span aria-hidden="true" style="flex: none; width: 10px; height: 10px; border-radius: 50%; background: {{p.dotBg}}; box-shadow: {{p.dotRing}}"></span>{{p.role}}</span>
+<sc-if value="{{p.hasNote}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13px; color: #A3ABB8">{{p.note}}</span>
+</sc-if>
+</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Сверка и действия" style="flex: 1 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 14px; border: 1px solid #2B303B; background: #171A20">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Кто есть кто</h2>
+<dl style="margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 16px; font-size: 16px">
+<dt style="display: inline-flex; align-items: center; gap: 8px; color: #A3ABB8"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: #0A0A0A; box-shadow: 0 0 0 2px #EEF0F4"></span>Мафия</dt>
+<dd style="margin: 0; font-weight: 600">№3 — глава, №8</dd>
+<dt style="display: inline-flex; align-items: center; gap: 8px; color: #A3ABB8"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: #0A0A0A; box-shadow: 0 0 0 2px #EEF0F4"></span>Проститутка</dt>
+<dd style="margin: 0; font-weight: 600">№10</dd>
+<dt style="display: inline-flex; align-items: center; gap: 8px; color: #A3ABB8"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 50%; background: #E5484D"></span>Шериф</dt>
+<dd style="margin: 0; font-weight: 600">№1</dd>
+<dt style="display: inline-flex; align-items: center; gap: 8px; color: #A3ABB8"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 50%; background: #E5484D"></span>Доктор</dt>
+<dd style="margin: 0; font-weight: 600">№4</dd>
+<dt style="display: inline-flex; align-items: center; gap: 8px; color: #A3ABB8"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 50%; background: #E5484D"></span>Мирные</dt>
+<dd style="margin: 0; font-weight: 600">№2, 5, 6, 7, 9, 11</dd>
+</dl>
+<span style="font-size: 13px; color: #A3ABB8">Роздано ровно по составу: мафия 2 (из них крёстный отец 1), проститутка 1, шериф 1, доктор 1, мирных 6.</span>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="flex: 1 1 180px; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">Перераздать</button>
+<button type="button" style="flex: 1 1 180px; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">Поменять роли двум номерам</button>
+<button type="button" style="flex: 1 1 180px; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; font-size: 15px; font-weight: 500; color: #A3ABB8; cursor: pointer">Назад к составу</button>
+</div>
+
+<button type="button" style="display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 72px; padding: 0 20px; border: 0; border-radius: 12px; background: #F2B33D; font-size: 21px; font-weight: 700; color: #1A1304; cursor: pointer">
+Город просыпается: День 1
+<span style="padding: 1px 7px; border-radius: 5px; border: 1px solid #1A1304; font-size: 12px; font-weight: 600; color: #1A1304">Enter</span>
+</button>
+<span style="font-size: 13px; color: #A3ABB8">После начала Дня 1 перераздать нельзя. Поменять роли двум номерам можно в любой момент игры.</span>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const ROLES = { 1: ['шериф', 'red', ''], 3: ['мафия', 'black', 'глава мафии · крёстный отец'], 4: ['доктор', 'red', ''], 8: ['мафия', 'black', ''], 10: ['проститутка', 'black', ''] };
+const players = [];
+for (let seat = 1; seat <= 11; seat++) {
+const r = ROLES[seat] || ['мирный житель', 'red', ''];
+players.push({
+num: String(seat),
+role: r[0],
+dotBg: r[1] === 'black' ? '#0A0A0A' : '#E5484D',
+dotRing: r[1] === 'black' ? '0 0 0 2px #EEF0F4' : 'none',
+border: r[1] === 'black' ? '#5A6270' : '#2B303B',
+hasNote: r[2] !== '',
+note: r[2]
+});
+}
+return { players: players };
+}
+}
+</script>
+</body>
+</html>

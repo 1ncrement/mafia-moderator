@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Итоги игры</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1115}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid #F2B33D;outline-offset:2px}
+a{color:#F2B33D}a:hover{color:#FFD27A}
+</style>
+</helmet>
+<div style="min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; background: #0F1115; color: #EEF0F4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 15px; line-height: 1.4">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 18px 24px; border-bottom: 1px solid #2B303B; background: #171A20">
+<div style="flex: 1 1 420px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 34px; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase">Победа чёрных</span>
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 16px; color: #A3ABB8"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 50%; background: #0A0A0A; box-shadow: 0 0 0 2px #EEF0F4"></span>мафия и проститутка</span>
+<span style="font-size: 15px; color: #A3ABB8">Игра остановлена в День 3 · 11 игроков</span>
+</div>
+<button type="button" style="height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">На главную</button>
+</header>
+
+<main style="flex: 1; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px; padding: 20px 24px 24px">
+
+<section aria-label="Игроки и роли" style="flex: 999 1 520px; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid #2B303B; border-radius: 14px; background: #171A20">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Игроки</h2>
+<div style="overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 16px">
+<thead>
+<tr>
+<th scope="col" style="width: 72px; padding: 8px 12px; border-bottom: 1px solid #2B303B; text-align: left; font-size: 13px; font-weight: 500; color: #A3ABB8">Номер</th>
+<th scope="col" style="padding: 8px 12px; border-bottom: 1px solid #2B303B; text-align: left; font-size: 13px; font-weight: 500; color: #A3ABB8">Роль</th>
+<th scope="col" style="padding: 8px 12px; border-bottom: 1px solid #2B303B; text-align: left; font-size: 13px; font-weight: 500; color: #A3ABB8">Чем закончил</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="11">
+<tr>
+<td style="padding: 9px 12px; border-bottom: 1px solid #2B303B; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 24px; line-height: 1; color: {{r.numColor}}">{{r.num}}</td>
+<td style="padding: 9px 12px; border-bottom: 1px solid #2B303B"><span style="display: inline-flex; align-items: center; gap: 10px"><span aria-hidden="true" style="flex: none; width: 10px; height: 10px; border-radius: 50%; background: {{r.dotBg}}; box-shadow: {{r.dotRing}}"></span>{{r.role}}</span></td>
+<td style="padding: 9px 12px; border-bottom: 1px solid #2B303B; color: {{r.fateColor}}">{{r.fate}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<section aria-label="Что дальше" style="box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 20px; border: 1px solid #2B303B; border-radius: 14px; background: #171A20">
+<button type="button" style="display: flex; align-items: center; justify-content: center; min-height: 68px; padding: 0 20px; border: 0; border-radius: 12px; background: #F2B33D; font-size: 20px; font-weight: 700; color: #1A1304; cursor: pointer">Новая игра с тем же составом</button>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="flex: 1 1 170px; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">Новая игра</button>
+<button type="button" style="flex: 1 1 170px; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; font-weight: 500; cursor: pointer">Скопировать журнал</button>
+<button type="button" style="flex: 1 1 170px; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; font-size: 15px; font-weight: 500; color: #A3ABB8; cursor: pointer">Возобновить игру</button>
+<button type="button" style="flex: 1 1 170px; height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; font-size: 15px; font-weight: 500; color: #A3ABB8; cursor: pointer">Изменить победителя</button>
+</div>
+</section>
+
+<section aria-label="Журнал партии" style="box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 20px; border: 1px solid #2B303B; border-radius: 14px; background: #171A20">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Журнал</h2>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px">
+<li style="display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid #2B303B"><span style="font-size: 16px; font-weight: 600">День 3</span><span style="font-size: 14px; color: #A3ABB8">Игра остановлена ведущим: победа чёрных</span></li>
+<li style="display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid #2B303B"><span style="font-size: 16px; font-weight: 600; color: #9DB0FF">Ночь 2</span><span style="font-size: 14px; color: #A3ABB8">Выстрел в №6, глава нашёл шерифа — №1, блок №1, проверка шерифа не состоялась → №6 застрелен</span></li>
+<li style="display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid #2B303B"><span style="font-size: 16px; font-weight: 600">День 2</span><span style="font-size: 14px; color: #A3ABB8">Выставлены 7, 3, 10, 11, 4 → ничья №10 и №4 → снова ничья → выгнан №4</span></li>
+<li style="display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid #2B303B"><span style="font-size: 16px; font-weight: 600; color: #9DB0FF">Ночь 1</span><span style="font-size: 14px; color: #A3ABB8">Выстрел в №9, глава искал шерифа: №5 — нет, блок №2, проверка №8 — чёрный, лечили №1 → №9 застрелен</span></li>
+<li style="display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid #2B303B"><span style="font-size: 16px; font-weight: 600">День 1</span><span style="font-size: 14px; color: #A3ABB8">Круг начал №3, без выставлений</span></li>
+<li style="display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid #2B303B"><span style="font-size: 16px; font-weight: 600">Распределение</span><span style="font-size: 14px; color: #A3ABB8">Мафия 2 (из них крёстный отец 1), проститутка 1, шериф 1, доктор 1, мирных 6</span></li>
+</ol>
+</section>
+</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const ROLES = { 1: ['шериф', 'red'], 3: ['мафия · глава', 'black'], 4: ['доктор', 'red'], 8: ['мафия', 'black'], 10: ['проститутка', 'black'] };
+const OUT = { 9: 'застрелен · Ночь 1', 4: 'выгнан · День 2', 6: 'застрелен · Ночь 2' };
+const rows = [];
+for (let seat = 1; seat <= 11; seat++) {
+const r = ROLES[seat] || ['мирный житель', 'red'];
+const out = OUT[seat] || '';
+rows.push({
+num: String(seat),
+numColor: out ? '#7C8492' : '#EEF0F4',
+role: r[0],
+dotBg: r[1] === 'black' ? '#0A0A0A' : '#E5484D',
+dotRing: r[1] === 'black' ? '0 0 0 2px #EEF0F4' : 'none',
+fate: out || 'в игре до конца',
+fateColor: out ? '#A3ABB8' : '#EEF0F4'
+});
+}
+return { rows: rows };
+}
+}
+</script>
+</body>
+</html>
