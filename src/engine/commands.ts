@@ -1,5 +1,6 @@
 import { dayState, nominationsOf } from './day'
 import { currentPhase, EMPTY_PATCH, eventsOf, lastOf, nextPhase, samePhase } from './log'
+import { nightState, stepIdOf } from './night'
 import { aliveSeats, isSeat, playersAt, playersNow } from './players'
 import type {
   Command, CommandResult, EventOf, LogPatch, NewEvent, PhaseRef, Registry, RejectCode, Seat, Session,
@@ -189,5 +190,46 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       }
       return ok({ remove: idsIn(phase, 'vote_resolved', (e) => e.ballot === cmd.ballot).map((e) => e.id), add: events })
     }
+
+    // ── Ночь ──────────────────────────────────────────────────────────────
+
+    case 'recordNightAction': {
+      const p = cmd.phase ?? phase
+      if (p.kind !== 'night') return no('wrong_phase')
+      const step = nightState(session, registry, p.n).steps.find((x) => x.id === stepIdOf(cmd.actionId, cmd.actor))
+      // Носителей в игре нет (или шага нет вовсе) — записывать некуда.
+      if (!step || step.grey) return no('step_grey')
+      if (cmd.target !== null && !aliveSeats(playersAt(session, registry, p)).includes(cmd.target)) return no('not_alive')
+      // Мягкое ограничение: та же цель, что прошлой ночью, — предупреждение, force записывает всё равно.
+      const def = registry.nightActions.find((a) => a.id === cmd.actionId)
+      const repeats = cmd.target !== null && step.lastNight.recorded && step.lastNight.target === cmd.target
+      if (def?.noRepeatTarget && repeats && !cmd.force) return no('repeat_target')
+      const previous = eventsOf(log, p).filter((e): e is EventOf<'night_action'> =>
+        e.type === 'night_action' && e.actionId === cmd.actionId && e.actor === cmd.actor)
+      const last = previous.at(-1)
+      if (!isNow(p) && last) {
+        // Правка прошлой ночи: запись остаётся на месте и получает метку «испр.».
+        return ok({ replace: [{ ...last, target: cmd.target }], remove: previous.slice(0, -1).map((e) => e.id) })
+      }
+      return ok({
+        remove: previous.map((e) => e.id),
+        add: [{ type: 'night_action', phase: p, actionId: cmd.actionId, actor: cmd.actor, target: cmd.target }],
+      })
+    }
+
+    case 'confirmNight': {
+      if (phase.kind !== 'night') return no('wrong_phase')
+      if (cmd.chosen !== null && !isSeat(session, cmd.chosen)) return no('not_alive')
+      // Одна пачка: статус выбывшего, отметка итога и начало следующего дня. Отменяется целиком.
+      const hinted = nightState(session, registry, phase.n).outcome.dies
+      const events: NewEvent[] = []
+      if (cmd.chosen !== null) events.push({ type: 'status_set', phase, seat: cmd.chosen, status: 'out', cause: 'shot', source: 'night' })
+      events.push({ type: 'night_confirmed', phase, hinted, chosen: cmd.chosen })
+      events.push({ type: 'phase_started', phase: nextPhase(phase) })
+      return ok({ remove: eventsOf(log, phase).filter((e) => e.type === 'night_confirmed').map((e) => e.id), add: events })
+    }
+
+    case 'acknowledgeNight':
+      return ok({})
   }
 }

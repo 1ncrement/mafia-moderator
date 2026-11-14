@@ -155,6 +155,12 @@ export type Command =
   | { type: 'setVoters'; ballot: 1 | 2; count: number }
   | { type: 'resetVotes'; ballot: 1 | 2 }
   | { type: 'resolveVote'; ballot: 1 | 2; outcome: 'eliminated' | 'tie' | 'nobody'; seats: Seat[] }
+  // ночь
+  /** force — записать, несмотря на предупреждение о повторе цели. */
+  | { type: 'recordNightAction'; actionId: string; actor: Seat | null; target: Seat | null; phase?: PhaseRef; force?: true }
+  | { type: 'confirmNight'; chosen: Seat | null }
+  /** Ответ на «итог ночи теперь другой»: apply — исправить статусы, иначе оставить как есть. */
+  | { type: 'acknowledgeNight'; night: number; apply: boolean }
 
 export type RejectCode =
   | 'redeal_closed' | 'wrong_phase' | 'not_alive' | 'unknown_event' | 'nominations_closed'
@@ -184,6 +190,9 @@ export type GameState = {
   finished: { winner: SideId | null } | null
   warnings: StateWarning[]
   day: DayState | null
+  night: NightState | null
+  /** Кого проверяли действия check_side и find_role за всю игру. */
+  permanentMarks: { seat: Seat; actionId: string }[]
 }
 
 // ── День ────────────────────────────────────────────────────────────────────
@@ -221,4 +230,44 @@ export type DayState = {
   defense: SpeechQueue
   tiebreak: SpeechQueue
   farewell: SpeechQueue
+}
+
+// ── Ночь ────────────────────────────────────────────────────────────────────
+
+export type CheckAnswer = { kind: 'side'; side: SideId } | { kind: 'found'; found: boolean } | { kind: 'blocked' }
+export type NightStep = {
+  /** actionId для командного и серого шага, иначе `${actionId}:${actor}`. */
+  id: string
+  actionId: string
+  effect: EffectId
+  actor: Seat | null
+  actors: Seat[]
+  /** Роль, которая выполняет шаг этой ночью. */
+  performerRole: RoleId
+  /** Действие перешло к другой роли (выстрел — к проститутке). */
+  inherited: boolean
+  /** Носителей в игре нет: шаг остаётся «для вида», записать в него нельзя. */
+  grey: boolean
+  recorded: boolean
+  target: Seat | null
+  answer?: CheckAnswer
+  /** Событие записи — для правки в журнале. */
+  eventId: string | null
+  edited: boolean
+  lastNight: { recorded: boolean; target: Seat | null; answer?: CheckAnswer }
+}
+export type NightOutcome = {
+  shotAt: Seat | null
+  dies: Seat | null
+  reason: 'shot' | 'healed' | 'no_shot' | 'shooter_blocked'
+  blocked: Seat[]
+  healed: Seat[]
+}
+export type NightState = {
+  n: number
+  steps: NightStep[]
+  outcome: NightOutcome
+  /** У каждого несерого шага есть запись. */
+  complete: boolean
+  confirmed: { hinted: Seat | null; chosen: Seat | null } | null
 }

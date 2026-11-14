@@ -1,3 +1,8 @@
+import {
+  applyPatch, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES, deriveState, execute, newSession, nextPhase,
+} from '../src/engine'
+import type { Command, CommandResult, GameState, Registry, RoleId, Session, SessionConfig } from '../src/engine'
+
 export const countBy = (xs: string[]): Record<string, number> =>
   xs.reduce<Record<string, number>>((acc, x) => ({ ...acc, [x]: (acc[x] ?? 0) + 1 }), {})
 
@@ -14,10 +19,6 @@ export function seededInt(seed: number): (maxExclusive: number) => number {
 }
 
 // ── Помощники для партий ────────────────────────────────────────────────────
-import {
-  applyPatch, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES, deriveState, execute, newSession, nextPhase,
-} from '../src/engine'
-import type { Command, CommandResult, GameState, Registry, RoleId, Session, SessionConfig } from '../src/engine'
 
 /** Стол с макетов: №1 шериф, №3 крёстный отец, №4 доктор, №8 мафия, №10 проститутка. */
 export const TABLE_11 = 'S c G D c c c M c P c'
@@ -60,12 +61,21 @@ export const play = (s: Session, ...cmds: Command[]): Session => playWith(DEFAUL
 export const attempt = (s: Session, cmd: Command): CommandResult => execute(s, cmd, DEFAULT_REGISTRY)
 export const st = (s: Session): GameState => deriveState(s, DEFAULT_REGISTRY)
 
-/** До начала Дня n: дни без действий, ночи без записей. */
+/** До начала Дня n: дни без действий, ночи без записей с итогом «никто не выбыл». */
 export function toDay(s: Session, n: number): Session {
   let cur = s
   for (;;) {
     const phase = st(cur).phase ?? { kind: 'deal' as const }
     if (phase.kind === 'day' && phase.n >= n) return cur
-    cur = play(cur, { type: 'startPhase', phase: nextPhase(phase) })
+    cur = phase.kind === 'night'
+      ? play(cur, { type: 'confirmNight', chosen: null })
+      : play(cur, { type: 'startPhase', phase: nextPhase(phase) })
   }
 }
+
+/** Запись ночного действия. */
+export const act = (actionId: string, actor: number | null, target: number | null): Command =>
+  ({ type: 'recordNightAction', actionId, actor, target })
+/** Начало Ночи 1. */
+export const n1 = (table = TABLE_11): Session =>
+  play(toDay(game(table), 1), { type: 'startPhase', phase: { kind: 'night', n: 1 } })

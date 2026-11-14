@@ -765,7 +765,7 @@ export function nightState(session: Session, registry: Registry, n: number): Nig
 - `complete` — у каждого несерого шага есть запись.
 - `confirmNight` в одной пачке пишет `status_set` для `chosen` (причина `shot`, источник `night`, фаза — эта ночь), `night_confirmed` с `hinted: outcome.dies` и `phase_started` следующего дня.
 
-- [ ] **Step 1: Write the failing test (шаги и итог)**
+- [x] **Step 1: Write the failing test (шаги и итог)**
 
 ```ts
 const act = (actionId: string, actor: number | null, target: number | null): Command => ({ type: 'recordNightAction', actionId, actor, target });
@@ -817,13 +817,13 @@ test('ответы шерифу и крёстному отцу', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/engine/night.test.ts`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/engine/night.test.ts`
 
-- [ ] **Step 3: Реализуй `night.ts` и `recordNightAction`.**
+- [x] **Step 3: Реализуй `night.ts` и `recordNightAction`.**
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/engine/night.test.ts`
+- [x] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/engine/night.test.ts`
 
-- [ ] **Step 5: Write the failing test (повтор цели, подтверждение, расширяемость)**
+- [x] **Step 5: Write the failing test (повтор цели, подтверждение, расширяемость)**
 
 ```ts
 test('доктор: повтор цели — предупреждение, через ночь можно', () => {
@@ -864,13 +864,13 @@ test('вымышленная роль с существующим эффекто
 });
 ```
 
-- [ ] **Step 6: Run, verify FAIL.** Run: `npx vitest run tests/engine/night.test.ts`
+- [x] **Step 6: Run, verify FAIL.** Run: `npx vitest run tests/engine/night.test.ts`
 
-- [ ] **Step 7: Реализуй `confirmNight`, повтор цели, `permanentMarks`; добавь `gameWith`, `playWith` и переведи `toDay` на `confirmNight(null)`.**
+- [x] **Step 7: Реализуй `confirmNight`, повтор цели, `permanentMarks`; добавь `gameWith`, `playWith` и переведи `toDay` на `confirmNight(null)`.**
 
-- [ ] **Step 8: Run, verify PASS.** Run: `npx vitest run tests/engine`
+- [x] **Step 8: Run, verify PASS.** Run: `npx vitest run tests/engine`
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add -A && git commit -m "feat(engine): ночь, итог ночи, крёстный отец и наследование выстрела"
