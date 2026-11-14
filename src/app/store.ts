@@ -41,6 +41,9 @@ export type AppStore = {
   speak(kind: SpeechKind, seat: Seat | null): CommandResult
   timer(action: TimerAction): void
   freeTimer(seconds: number): void
+  clearTimer(): void
+  /** Правка настроек идущей игры (длительности, запуск таймера отдельной кнопкой). */
+  updateConfig(patch: Partial<SessionConfig>): void
   setPaused(paused: boolean): void
   setSettings(patch: Partial<Settings>): void
   newGame(): void
@@ -206,6 +209,14 @@ export function createAppStore(env: Env): AppStore {
 
     freeTimer(seconds) {
       withSession((session) => ({ ...session, timer: timerReduce(newTimer('free', null, seconds * 1000), { type: 'start' }, env.now()) }))
+    },
+
+    clearTimer() {
+      withSession((session) => ({ ...session, timer: null }))
+    },
+
+    updateConfig(patch) {
+      withSession((session) => ({ ...session, config: { ...session.config, ...patch } }))
     },
 
     setPaused(paused) {

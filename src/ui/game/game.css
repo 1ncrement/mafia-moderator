@@ -605,3 +605,231 @@ button.journal-entry:hover {
 .curtain .btn {
   min-width: 320px;
 }
+
+/* Таймер */
+.timer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: -8px;
+  padding: 8px;
+  border-radius: var(--r-m);
+  border: 2px solid transparent;
+}
+.timer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+}
+.timer-label {
+  font-size: 20px;
+  font-weight: 600;
+}
+.timer-state {
+  flex: 1;
+  text-align: right;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.timer-head .icon-btn {
+  align-self: center;
+  margin: -8px 0;
+}
+.timer-digits {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 136px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--day);
+}
+.timer-over {
+  font-weight: 500;
+  font-size: 30px;
+  letter-spacing: 0;
+}
+.timer-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.timer-bar > div {
+  height: 100%;
+  background: var(--day);
+}
+.timer-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.timer-buttons .btn {
+  font-size: 16px;
+}
+.timer-toggle {
+  flex: 1 1 120px;
+  font-weight: 600;
+}
+.timer-toggle .kbd {
+  border-color: var(--border-strong);
+  font-weight: 500;
+  color: var(--text-2);
+}
+.timer-last .timer-digits,
+.timer-expired .timer-digits {
+  color: var(--alert);
+}
+.timer-last .timer-bar > div,
+.timer-expired .timer-bar > div {
+  background: var(--alert);
+}
+.timer-expired {
+  border-color: var(--alert);
+  background: var(--alert-tint);
+}
+.timer-expired .timer-state,
+.timer-over {
+  color: #ffb9a6;
+}
+.timer-flash {
+  animation: timer-flash 0.5s steps(2, jump-none) 6;
+}
+@keyframes timer-flash {
+  from {
+    background: var(--alert);
+  }
+  to {
+    background: var(--alert-tint);
+  }
+}
+@media (max-width: 1340px) {
+  .timer-digits {
+    font-size: 120px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timer-flash {
+    animation: none;
+  }
+}
+
+/* Речи, очереди, выставленные */
+.speech {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.speech-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+.speech-nominate {
+  height: 48px;
+  font-size: 16px;
+}
+.speech-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.speech-secondary .btn {
+  flex: 1 1 150px;
+}
+.nominations {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nominations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nomination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px;
+  border-radius: var(--r-s);
+  background: var(--card);
+}
+.nomination-index {
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--text-2);
+}
+.nomination-seat {
+  font-size: 17px;
+  font-weight: 600;
+}
+.nomination-by {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.nomination .icon-btn {
+  width: 36px;
+}
+.nomination .icon-btn:disabled {
+  opacity: 0.3;
+}
+.nomination-out .nomination-seat {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+.nominations-add {
+  align-self: flex-start;
+}
+.facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 14px;
+  font-size: 14px;
+}
+.facts dt {
+  color: var(--text-2);
+}
+.facts dd {
+  margin: 0;
+}
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.queue-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.queue-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 52px;
+  padding: 0 8px;
+  border-radius: var(--r-s);
+  border: 2px solid var(--border);
+  background: var(--card);
+  font-weight: 600;
+  font-size: 26px;
+}
+.queue-item[data-state='now'] {
+  border-color: var(--day);
+  background: var(--day-tint);
+  color: var(--day);
+}
+.queue-item[data-state='done'] {
+  color: var(--text-3);
+}
+.step-warning {
+  font-size: 14px;
+  color: var(--alert);
+}

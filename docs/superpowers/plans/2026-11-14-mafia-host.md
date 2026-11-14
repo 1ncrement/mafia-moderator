@@ -1437,7 +1437,7 @@ git add -A && git commit -m "feat(ui): игровой каркас — шапк�
 - **Панель игрока, днём**: «Дать слово сейчас» (`speak('speech', seat)`), «Пропустить в круге» (`skipSpeaker`); со Дня 2 — «Выставить» от имени говорящего и «Снять с голосования».
 - **Свободный таймер** из меню: `freeTimer(30)` или `freeTimer(60)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 test('День 1: круг с №5 по одной кнопке, без выставления', async () => {
@@ -1491,13 +1491,13 @@ test('один кандидат: оправдание, без голосован
 
 `advance(env, ms)` в `tests/ui/helpers.tsx` сдвигает часы `env.now` и прокручивает таймеры Vitest внутри `act`. Между двумя нажатиями главной кнопки тесты сдвигают часы на 500 мс: с задачи 14 кнопка не реагирует 400 мс после смены подписи.
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/day.test.tsx`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/day.test.tsx`
 
-- [ ] **Step 3: Реализуй таймер и дневные панели.**
+- [x] **Step 3: Реализуй таймер и дневные панели.**
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npm run check`
+- [x] **Step 4: Run, verify PASS.** Run: `npm run check`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(ui): день — таймер, круг речей, выставление, оправдания, прощание"
