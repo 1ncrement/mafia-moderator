@@ -15,7 +15,8 @@ import { useTableMarks } from './tableMarks'
  * ответ шерифу и главе мафии. Ничего не запрещает: повтор цели — предупреждение с «Записать всё равно».
  */
 export function NightPanel({ game }: { game: GameState }) {
-  const { session } = useApp()
+  const { session, settings } = useApp()
+  const hidden = settings.rolesHidden
   const store = useStore()
   const t = useT()
   const lang = useLang()
@@ -48,19 +49,20 @@ export function NightPanel({ game }: { game: GameState }) {
     ask({
       question,
       allowed: aliveSeats(playersAt(session, registry, { kind: 'night', n: night.n })),
-      picked: target,
-      nobodyPicked: recorded && target === null,
-      marks: lastTarget !== null ? { [lastTarget]: t('night.mark.last') } : {},
+      // Роли скрыты — записанный выбор и цель прошлой ночи на столе не показываем.
+      picked: hidden ? null : target,
+      nobodyPicked: !hidden && recorded && target === null,
+      marks: !hidden && lastTarget !== null ? { [lastTarget]: t('night.mark.last') } : {},
       onPick: (seat) => record(seat),
       onCancel: () => {},
       cancel: false,
     })
     // вопрос пересобирается, когда меняется шаг, запись или журнал
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepId, grey, target, recorded, lastTarget, question, log, ask])
+  }, [stepId, grey, target, recorded, lastTarget, question, log, ask, hidden])
   useEffect(() => clear, [clear, stepId])
 
-  useTableMarks(night && step ? nightMarks(lang, night, step.actors) : {})
+  useTableMarks(night && step && !hidden ? nightMarks(lang, night, step.actors) : {})
 
   const ids = night ? [...night.steps.map((s) => s.id), SUMMARY_STEP] : []
   const next = ids[ids.indexOf(game.step ?? '') + 1] ?? SUMMARY_STEP
@@ -76,9 +78,24 @@ export function NightPanel({ game }: { game: GameState }) {
   const pending = repeat && repeat.step === step.id ? repeat.target : null
   const seat = (n: Seat) => t('common.seat', { n })
 
+  const pendingBox = pending !== null && (
+            <div className="night-repeat" role="alert">
+              <span>{hasKey(`action.${step.actionId}.repeat`) ? translateKey(lang, `action.${step.actionId}.repeat`) : t('night.repeat')}</span>
+              <Button variant="strong" onClick={() => {
+                store.dispatch({ type: 'recordNightAction', actionId: step.actionId, actor: step.actor, target: pending, force: true })
+                setRepeat(null)
+              }}>{t('night.force')}</Button>
+            </div>
+            )
+
   return (
     <div className="night">
-      {step.grey ? (
+      {hidden ? (
+        <div className="night-lines">
+          <span>{t('night.wakes.hidden', { role })}</span>
+          <span>{t('night.hidden')}</span>
+        </div>
+      ) : step.grey ? (
         <div className="night-grey">
           <span className="night-grey-title">{cap(role)}: {t('night.nav.grey')}</span>
           <span className="muted">{t('night.grey.text')}</span>
@@ -95,19 +112,11 @@ export function NightPanel({ game }: { game: GameState }) {
             )}
           </div>
           {step.blocked && hasKey(blockedKey) && <p className="night-blocked">{translateKey(lang, blockedKey)}</p>}
-          {pending !== null && (
-            <div className="night-repeat" role="alert">
-              <span>{hasKey(`action.${step.actionId}.repeat`) ? translateKey(lang, `action.${step.actionId}.repeat`) : t('night.repeat')}</span>
-              <Button variant="strong" onClick={() => {
-                store.dispatch({ type: 'recordNightAction', actionId: step.actionId, actor: step.actor, target: pending, force: true })
-                setRepeat(null)
-              }}>{t('night.force')}</Button>
-            </div>
-          )}
+          {pending !== null && pendingBox}
           {answer && answer.kind !== 'blocked' && step.target !== null && (
             <div className="answer">
               <span className="answer-cap">{t('night.answer', { step: nightStepLabel(lang, registry, night, step.id) })}</span>
-              <span className="answer-big num">
+              <span className={answer.kind === 'found' && !answer.found ? 'answer-big answer-mid num' : 'answer-big num'}>
                 {seat(step.target)} — {answer.kind === 'side'
                   ? translateKey(lang, `side.${answer.side}.one`)
                   : answer.found ? roleName(lang, registry, def.findRole ?? '') : t('journal.notRole', { role: roleName(lang, registry, def.findRole ?? '') })}
@@ -121,6 +130,7 @@ export function NightPanel({ game }: { game: GameState }) {
           )}
         </>
       )}
+      {hidden && pending !== null && pendingBox}
     </div>
   )
 }

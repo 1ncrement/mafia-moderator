@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import type { AppStore } from '../../src/app/store'
 import { TABLE_11 } from '../helpers'
 import { advance, renderApp, seedGame } from './helpers'
@@ -77,4 +77,18 @@ test('выстрел перешёл к проститутке: вопрос на
   renderApp((a) => { seedGame(a, TABLE_11, 1); for (const seat of [3, 8]) a.dispatch({ type: 'setStatus', seat, status: 'out', cause: 'voted' })
     a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }) })
   expect(screen.getByText('В кого стреляет проститутка?')).toBeInTheDocument(); expect(screen.getByText(/Просыпается проститутка — №10/)).toBeInTheDocument()
+})
+
+test('скрытие ролей ночью прячет номера ролей, записанный выбор, ночные метки и итог', () => {
+  const { app } = renderApp((a) => { night1(a); a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 6 }); a.setSettings({ rolesHidden: true }) })
+  expect(screen.getByText('Просыпается мафия')).toBeInTheDocument()
+  expect(screen.queryByText(/№3|№8|№6/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/цель мафии|выбран|ходит сейчас/)).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Выбрать игрока №6' })).not.toHaveClass('card-picked')
+  act(() => { app.dispatch({ type: 'setStatus', seat: 1, status: 'out', cause: 'voted', phase: { kind: 'day', n: 1 } }) })
+  expect(screen.queryByText(/разбудить для вида/)).not.toBeInTheDocument()
+  act(() => { app.dispatch({ type: 'enterStep', step: 'summary' }) })
+  expect(screen.queryByText(/застрелен/)).not.toBeInTheDocument(); expect(screen.getByText(/скрыты вместе с ролями/)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Подтвердить итог · начать День 2/ })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Никто не выбыл' })).not.toBeInTheDocument()
 })

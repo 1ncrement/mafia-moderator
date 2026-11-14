@@ -5,6 +5,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   base: './',
   plugins: [react(), viteSingleFile()],
+  // Один самодостаточный файл: подгрузчик модулей не нужен, сетевых запросов в сборке нет.
+  build: { modulePreload: { polyfill: false } },
   test: {
     environment: 'jsdom',
     globals: true,

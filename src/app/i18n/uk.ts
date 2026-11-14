@@ -441,4 +441,7 @@ export const uk: Dict = {
   'warn.night.none': 'Підсумок Ночі {night} тепер інший: ніхто не має вибути. Виправити статуси?',
   'warn.fix': 'Виправити',
   'warn.keep': 'Залишити',
+  'night.wakes.hidden': 'Прокидається {role}',
+  'night.hidden': 'Нічні записи приховано разом із ролями.',
+  'night.confirm.hidden': 'Підтвердити підсумок · почати День {day}',
 }

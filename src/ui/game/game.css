@@ -1322,3 +1322,41 @@ button.journal-entry:hover {
 .summary-out .summary-num {
   color: var(--text-3);
 }
+
+/* Правки по итогам сверки с макетами и проверки на 1024 px */
+.card-role {
+  min-width: 0;
+  max-width: 100%;
+}
+.card-role > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1180px) {
+  .table-grid[data-columns='5'] .card {
+    padding: 10px 8px;
+  }
+  .table-grid[data-columns='5'] .card-role {
+    gap: 6px;
+    font-size: 13px;
+  }
+}
+/* Главная кнопка всегда на виду, даже когда панель шага выше окна. */
+.main-button {
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+  box-shadow: 0 0 0 8px var(--panel), 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+.speech-secondary .btn {
+  flex-basis: 130px;
+  height: auto;
+  min-height: 48px;
+  padding: 6px 12px;
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+}
+.answer-mid {
+  font-size: 44px;
+}

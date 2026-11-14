@@ -34,7 +34,8 @@ function useHintText(night: NightState | null): { big: string; detail: string } 
 
 /** Итог ночи: сводка по строке на шаг, крупная подсказка, подтверждение одной кнопкой. */
 export function NightSummary({ game }: { game: GameState }) {
-  const { session } = useApp()
+  const { session, settings } = useApp()
+  const hidden = settings.rolesHidden
   const store = useStore()
   const t = useT()
   const lang = useLang()
@@ -44,9 +45,10 @@ export function NightSummary({ game }: { game: GameState }) {
   const dies = night?.outcome.dies ?? null
   const day = (night?.n ?? 0) + 1
 
-  useTableMarks(night ? nightMarks(lang, night) : {})
+  useTableMarks(night && !hidden ? nightMarks(lang, night) : {})
   useMainAction(night ? {
-    label: dies === null ? t('night.confirm.none', { day }) : t('night.confirm.shot', { n: dies, day }),
+    // Роли скрыты — подпись не называет, кто выбывает.
+    label: hidden ? t('night.confirm.hidden', { day }) : dies === null ? t('night.confirm.none', { day }) : t('night.confirm.shot', { n: dies, day }),
     onPress: () => store.dispatch({ type: 'confirmNight', chosen: dies }),
   } : null)
 
@@ -54,6 +56,24 @@ export function NightSummary({ game }: { game: GameState }) {
   const registry = store.registry
   const missing = night.steps.filter((s) => !s.grey && !s.recorded)
   const seat = (n: number) => t('common.seat', { n })
+
+  const other = (
+    <Button size="l" onClick={() => askOnce({
+      question: t('night.other.question'),
+      allowed: aliveSeats(playersAt(session, registry, { kind: 'night', n: night.n })),
+      onPick: (chosen) => {
+        if (chosen !== null) store.dispatch({ type: 'confirmNight', chosen })
+      },
+    })}>{t('night.other')}</Button>
+  )
+  if (hidden) {
+    return (
+      <div className="night">
+        <p className="journal-hidden">{t('night.hidden')}</p>
+        <div className="speech-secondary">{other}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="night">
@@ -87,13 +107,7 @@ export function NightSummary({ game }: { game: GameState }) {
 
       <div className="speech-secondary">
         {dies !== null && <Button size="l" onClick={() => store.dispatch({ type: 'confirmNight', chosen: null })}>{t('night.nobody')}</Button>}
-        <Button size="l" onClick={() => askOnce({
-          question: t('night.other.question'),
-          allowed: aliveSeats(playersAt(session, registry, { kind: 'night', n: night.n })),
-          onPick: (chosen) => {
-            if (chosen !== null) store.dispatch({ type: 'confirmNight', chosen })
-          },
-        })}>{t('night.other')}</Button>
+        {other}
       </div>
     </div>
   )

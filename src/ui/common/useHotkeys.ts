@@ -19,14 +19,24 @@ function keyName(e: KeyboardEvent): HotkeyName | null {
 const inField = (el: Element | null) =>
   el instanceof HTMLElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable)
 
+// Как ведущий попал на кнопку: клавишей Tab или мышью. На :focus-visible полагаться нельзя —
+// браузер включает его у кнопки в фокусе, как только нажата любая клавиша.
+let tabbed = false
+if (typeof document !== 'undefined') {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') tabbed = true
+  }, true)
+  document.addEventListener('pointerdown', () => {
+    tabbed = false
+  }, true)
+  document.addEventListener('mousedown', () => {
+    tabbed = false
+  }, true)
+}
+
 /** Кнопка, на которую ведущий пришёл клавишей Tab: Enter и пробел остаются за ней. */
 function keyboardFocused(el: Element | null): boolean {
-  if (!(el instanceof HTMLElement) || !el.matches('button, a[href], [role="menuitem"], [role="switch"], [role="radio"]')) return false
-  try {
-    return el.matches(':focus-visible')
-  } catch {
-    return false
-  }
+  return tabbed && el instanceof HTMLElement && el.matches('button, a[href], [role="menuitem"], [role="switch"], [role="radio"]')
 }
 
 /**

@@ -49,13 +49,13 @@ export function StepNav({ game, balaganFromDay }: { game: GameState; balaganFrom
           {night.steps.map((s) => (
             <li key={s.id}>
               <button
-                type="button" className="night-step" data-step={s.id} data-grey={s.grey ? '' : undefined}
+                type="button" className="night-step" data-step={s.id} data-grey={s.grey && !settings.rolesHidden ? '' : undefined}
                 aria-current={s.id === game.step ? 'step' : undefined}
                 onClick={() => s.id !== game.step && store.dispatch({ type: 'enterStep', step: s.id })}
               >
                 <span className="night-step-name">{nightStepLabel(lang, store.registry, night, s.id)}</span>
                 <span className="night-step-side">
-                  {s.grey ? <span className="night-step-last">{t('night.nav.grey')}</span> : (
+                  {s.grey ? !settings.rolesHidden && <span className="night-step-last">{t('night.nav.grey')}</span> : (
                     <>
                       {s.recorded && !settings.rolesHidden && <span className="night-step-pick">→ {seat(s.target)}</span>}
                       {s.lastNight.recorded && !settings.rolesHidden && <span className="night-step-last">{t('night.nav.last', { target: seat(s.lastNight.target) })}</span>}

@@ -69,3 +69,18 @@ test('Enter на экранах подготовки: раздать роли, �
   expect(app.getState().screen).toBe('deal'); expect(app.getState().game!.phase).toEqual({ kind: 'deal' })
   advance(env, 500); await user.keyboard('{Enter}'); expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 1 })
 })
+
+test('после клика мышью по другой кнопке Enter жмёт главную; после Tab — кнопку в фокусе', async () => {
+  const { app, user, env } = renderApp(speaking)
+  await user.click(screen.getByRole('button', { name: '+10 с' }))
+  // Браузер считает кнопку «в фокусе с клавиатуры», как только нажата любая клавиша: на :focus-visible полагаться нельзя.
+  const focusVisible = vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selector: string) {
+    return selector === ':focus-visible' ? true : Element.prototype.closest.call(this, selector) === this
+  })
+  advance(env, 500); await user.keyboard('{Enter}')
+  focusVisible.mockRestore()
+  expect(app.getState().game!.day!.speaking).toMatchObject({ seat: 6 })
+  screen.getByRole('button', { name: 'Заново' }).focus(); advance(env, 20_000)
+  await user.keyboard('{Tab}{Shift>}{Tab}{/Shift}'); await user.keyboard('{Enter}')
+  expect(app.getState().game!.day!.speaking).toMatchObject({ seat: 6 }); expect(app.getState().session!.timer).toMatchObject({ status: 'ready', remainingMs: 60_000 })
+})

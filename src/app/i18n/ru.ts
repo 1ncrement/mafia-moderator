@@ -440,4 +440,7 @@ export const ru = {
   'warn.night.none': 'Итог Ночи {night} теперь другой: никто не должен выбыть. Исправить статусы?',
   'warn.fix': 'Исправить',
   'warn.keep': 'Оставить',
+  'night.wakes.hidden': 'Просыпается {role}',
+  'night.hidden': 'Ночные записи скрыты вместе с ролями.',
+  'night.confirm.hidden': 'Подтвердить итог · начать День {day}',
 }

@@ -9,7 +9,7 @@ export function nightMarks(lang: Lang, night: NightState, acting: Seat[] = []): 
   const add = (seat: Seat, text: string, tone: SeatMark['tone'] = 'night') => {
     marks[seat] = [...(marks[seat] ?? []), { text, tone }]
   }
-  for (const seat of acting) add(seat, translate(lang, 'night.mark.acting'), 'plain')
+  for (const seat of acting) add(seat, translate(lang, 'night.mark.acting'))
   const mark = (effect: string) => (hasKey(`effect.${effect}.mark`) ? translateKey(lang, `effect.${effect}.mark`) : effect)
   if (night.outcome.shotAt !== null) add(night.outcome.shotAt, mark('kill'))
   for (const seat of night.outcome.blocked) add(seat, mark('block'))
