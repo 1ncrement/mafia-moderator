@@ -261,7 +261,7 @@ export function dealRoles(deck: readonly RoleId[], randomInt: RandomInt): RoleId
 export const cryptoRandomInt: RandomInt;   // crypto.getRandomValues, значения вне кратного диапазона отбрасываются
 ```
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 const deck = checkComposition(11, { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1 }, DEFAULT_REGISTRY).deck;
@@ -289,19 +289,19 @@ test('cryptoRandomInt остаётся в диапазоне', () => {
 
 `seededInt(seed): RandomInt` добавь в `tests/helpers.ts` (mulberry32).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/engine/deal.test.ts tests/platform/rng.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: Реализуй `shuffle`, `dealRoles`, `cryptoRandomInt`.** Сортировка со случайным компаратором и независимый жребий на игрока запрещены.
+- [x] **Step 3: Реализуй `shuffle`, `dealRoles`, `cryptoRandomInt`.** Сортировка со случайным компаратором и независимый жребий на игрока запрещены.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/engine/deal.test.ts tests/platform/rng.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(engine): честная раздача ролей"
