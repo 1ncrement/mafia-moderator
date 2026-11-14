@@ -359,7 +359,7 @@ export function applyUndo(log: GameEvent[], entry: UndoEntry): GameEvent[];
 
 Журнал всегда отсортирован по `seq`. Все события одной пачки получают общий `tx`. Событие из `replace` сохраняет `id` и `seq` оригинала и получает `edited: true`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 const day1: PhaseRef = { kind: 'day', n: 1 };
@@ -386,19 +386,19 @@ test('отмена возвращает журнал в точности, вкл
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/engine/log.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: Реализуй `log.ts` и типы событий.**
+- [x] **Step 3: Реализуй `log.ts` и типы событий.**
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/engine/log.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(engine): журнал событий, пачки и отмена"
