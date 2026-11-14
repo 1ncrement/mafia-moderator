@@ -143,7 +143,7 @@ export function SetupScreen() {
               {registry.sides.map((side) => (
                 <span key={side.id} className="setup-total-side">
                   <SideDot registry={registry} side={side.id} />
-                  {translateKey(lang, `${side.nameKey}.count`, { n: check.bySide[side.id] ?? 0 })}
+                  {translateKey(lang, `${side.nameKey}.gen`)} {check.bySide[side.id] ?? 0}
                 </span>
               ))}
             </div>

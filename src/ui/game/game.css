@@ -1,0 +1,607 @@
+/* Игровой экран: шапка, стол слева, панель шага в центре, журнал справа */
+.game {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Шапка */
+.game-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.game-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
+  padding: 14px 24px;
+}
+.game-phase {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--accent);
+}
+.game-phase .page-step {
+  color: var(--text);
+}
+.game-counts {
+  flex: 1 1 320px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 22px;
+  color: var(--text-2);
+}
+.game-counts strong {
+  font-weight: 600;
+  color: var(--text);
+}
+.game-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.game-hint {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--alert-tint);
+  color: var(--alert);
+  font-size: 14px;
+  font-weight: 600;
+}
+.game-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.game-storage {
+  padding: 8px 24px;
+  background: var(--alert-tint);
+  color: var(--alert);
+  font-weight: 500;
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-s);
+  color: var(--text-2);
+}
+.icon-btn:hover {
+  color: var(--text);
+}
+.icon-btn-framed {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+}
+.icon-btn-framed[aria-pressed='false'] {
+  color: var(--text-3);
+}
+.menu {
+  position: relative;
+}
+.menu-list {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+  padding: 6px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+.menu-item {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 15px;
+}
+.menu-item:hover {
+  background: var(--card);
+}
+.menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+/* Три колонки */
+.game-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px 300px;
+  align-items: start;
+  gap: 20px;
+  padding: 20px 24px 24px;
+}
+.game-main-wide {
+  grid-template-columns: minmax(0, 1fr) 380px 64px;
+}
+@media (max-width: 1340px) {
+  .game-main {
+    grid-template-columns: minmax(0, 1fr) 360px 260px;
+    gap: 16px;
+    padding: 16px;
+  }
+  .game-main-wide {
+    grid-template-columns: minmax(0, 1fr) 360px 64px;
+  }
+}
+@media (max-width: 1180px) {
+  .game-main,
+  .game-main-wide {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+  .journal {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Стол */
+.table-wrap {
+  position: relative;
+  min-width: 0;
+}
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.table-picking {
+  margin: -16px;
+  padding: 14px;
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+}
+.table-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+  min-height: 44px;
+}
+.table-question {
+  flex: 1 1 100%;
+  font-size: 22px;
+  font-weight: 600;
+}
+.table-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.table-grid[data-columns='5'] {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* Карточка игрока */
+.card-slot {
+  position: relative;
+  display: flex;
+}
+.card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  min-height: 136px;
+  padding: 12px 14px;
+  border-radius: var(--r-m);
+  border: 2px solid var(--border);
+  background: var(--card);
+  text-align: left;
+}
+.card:hover {
+  border-color: var(--border-strong);
+}
+.card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px 8px;
+  width: 100%;
+}
+.card-num {
+  font-weight: 600;
+  font-size: 46px;
+  line-height: 1;
+}
+.card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.card-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.card-hidden {
+  font-size: 15px;
+  color: var(--text-3);
+}
+.card-status {
+  font-size: 13px;
+  color: var(--text-2);
+}
+.card-marks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+}
+.card-mark {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.card-mark-day {
+  color: var(--day);
+}
+.card-mark-night {
+  color: var(--night);
+}
+.card-out {
+  background: var(--panel);
+}
+.card-out .card-num {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+.card-out .card-role {
+  color: var(--text-2);
+}
+.card-speaking,
+.card-speaking:hover {
+  border-color: var(--day);
+  background: var(--day-tint);
+}
+.card-speaking .card-num {
+  color: var(--day);
+}
+.card-selectable:hover {
+  border-color: var(--accent);
+}
+.card-picked,
+.card-picked:hover {
+  border-color: var(--night);
+  background: var(--night-tint);
+}
+.card-picked .card-num {
+  color: var(--night);
+}
+.card-locked {
+  cursor: default;
+  opacity: 0.7;
+}
+.card-locked:hover {
+  border-color: var(--border);
+}
+.card-more {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-s);
+  color: var(--text-2);
+}
+.card-more:hover {
+  background: var(--border);
+  color: var(--text);
+}
+.card-slot:has(.card-more) .card-badge {
+  margin-right: 40px;
+}
+.card-nobody {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 136px;
+  padding: 12px 14px;
+  border-radius: var(--r-m);
+  border: 2px dashed var(--border-strong);
+  font-size: 18px;
+  font-weight: 600;
+}
+.card-nobody:hover {
+  border-color: var(--accent);
+}
+.table-grid[data-columns='5'] .card,
+.table-grid[data-columns='5'] .card-nobody {
+  min-height: 124px;
+  padding: 10px 12px;
+}
+.table-grid[data-columns='5'] .card-num {
+  font-size: 40px;
+}
+.table-grid[data-columns='5'] .card-role {
+  font-size: 14px;
+}
+
+/* Панель игрока */
+.player-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(100%, 420px);
+  max-height: 100%;
+  overflow: auto;
+  padding: 16px;
+  border-radius: var(--r-l);
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+.player-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.player-panel-num {
+  font-weight: 600;
+  font-size: 40px;
+  line-height: 1;
+}
+.player-panel-who {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.player-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.player-panel-actions .btn {
+  flex: 1 1 150px;
+}
+.player-panel-records {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.player-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+.player-panel-list li {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+}
+
+/* Панель шага */
+.step-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-l);
+  background: var(--panel);
+}
+.step-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text-2);
+}
+.step:hover {
+  border-color: var(--border-strong);
+}
+.step[data-done] {
+  background: var(--card);
+}
+.step[data-done]::before {
+  content: '✓';
+}
+.step[aria-current='step'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.steps-night {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+.main-button {
+  min-height: 68px;
+}
+
+/* Журнал */
+.journal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-l);
+  background: var(--panel);
+}
+.journal-collapsed {
+  padding: 8px;
+  align-items: center;
+}
+.journal-toggle {
+  writing-mode: vertical-rl;
+  padding: 12px 6px;
+  border-radius: var(--r-s);
+}
+.journal-toggle:hover {
+  background: var(--card);
+}
+.journal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.journal-hidden {
+  padding: 20px 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-m);
+  font-size: 14px;
+  color: var(--text-2);
+}
+.journal-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.journal-group {
+  border: 1px solid var(--border);
+  border-radius: var(--r-m);
+}
+.journal-group-open {
+  padding: 4px;
+  border-color: transparent;
+  background: var(--card);
+}
+.journal-group-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--r-s);
+  text-align: left;
+}
+.journal-group-open .journal-group-head {
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+}
+.journal-group-head > svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--text-2);
+}
+.journal-group-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.journal-group-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+.journal-group-night .journal-group-title {
+  color: var(--night);
+}
+.journal-group-summary {
+  font-size: 14px;
+  color: var(--text-2);
+}
+.journal-group-now {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.journal-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.journal-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px 6px 34px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: left;
+}
+button.journal-entry:hover {
+  background: var(--border);
+}
+.journal-entry-missing,
+.journal-entry-empty {
+  color: var(--text-3);
+}
+.journal-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* Шторка паузы */
+.curtain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+}
+.curtain-title {
+  font-weight: 600;
+  font-size: 64px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.curtain-where {
+  font-size: 22px;
+  color: var(--text-2);
+}
+.curtain .btn {
+  min-width: 320px;
+}

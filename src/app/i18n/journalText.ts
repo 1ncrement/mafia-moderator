@@ -1,4 +1,4 @@
-import type { JournalEntry, JournalGroup, Registry, Seat } from '../../engine'
+import type { CheckAnswer, JournalEntry, JournalGroup, Registry, Seat } from '../../engine'
 import type { Lang } from '../../platform/storage'
 import { cap, compositionText, hasKey, phaseLabel, plural, roleName, seatList, translate, translateKey } from './index'
 
@@ -21,24 +21,24 @@ function performer(
   return label
 }
 
+/** Ответ на проверку: « — чёрный», « — не шериф», « — заблокирован, проверка не состоялась». */
+export function answerText(lang: Lang, registry: Registry, entry: { actionId: string; answer?: CheckAnswer }): string {
+  const answer = entry.answer
+  if (!answer) return ''
+  if (answer.kind === 'side') return ` — ${translateKey(lang, `side.${answer.side}.one`)}`
+  if (answer.kind === 'blocked') return ` — ${translate(lang, 'journal.checkBlocked')}`
+  const role = roleName(lang, registry, registry.nightActions.find((a) => a.id === entry.actionId)?.findRole ?? '')
+  return ` — ${answer.found ? role : translate(lang, 'journal.notRole', { role })}`
+}
+
 export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): string {
   const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(lang, key, params)
   switch (entry.kind) {
     case 'deal':
       return t('journal.deal', { list: compositionText(lang, registry, entry.counts) })
 
-    case 'night_action': {
-      const def = registry.nightActions.find((a) => a.id === entry.actionId)
-      let text = `${performer(lang, registry, entry)} → ${entry.target === null ? t('journal.nobody') : seat(lang, entry.target)}`
-      const answer = entry.answer
-      if (answer?.kind === 'side') text += ` — ${translateKey(lang, `side.${answer.side}.one`)}`
-      if (answer?.kind === 'blocked') text += ` — ${t('journal.checkBlocked')}`
-      if (answer?.kind === 'found') {
-        const role = roleName(lang, registry, def?.findRole ?? '')
-        text += ` — ${answer.found ? role : t('journal.notRole', { role })}`
-      }
-      return text
-    }
+    case 'night_action':
+      return `${performer(lang, registry, entry)} → ${entry.target === null ? t('journal.nobody') : seat(lang, entry.target)}${answerText(lang, registry, entry)}`
 
     case 'night_missing':
       return t('journal.missing', { who: performer(lang, registry, entry) })
@@ -81,7 +81,12 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
 
 /** Строка-резюме свёрнутой группы: «Ночь 1: выстрел в №7, лечили №7 → никто не выбыл». */
 export function summaryText(lang: Lang, group: JournalGroup, registry: Registry): string {
-  const label = phaseLabel(lang, group.phase)
+  const body = summaryBody(lang, group, registry)
+  return body ? `${phaseLabel(lang, group.phase)}: ${body}` : phaseLabel(lang, group.phase)
+}
+
+/** Резюме без названия фазы: «выстрел в №7, лечили №7 → никто не выбыл». Пустая строка — сказать нечего. */
+export function summaryBody(lang: Lang, group: JournalGroup, registry: Registry): string {
   const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(lang, key, params)
   let body: string
 
@@ -93,7 +98,7 @@ export function summaryText(lang: Lang, group: JournalGroup, registry: Registry)
       if (e.kind !== 'night_action' || e.target === null) continue
       const effect = registry.nightActions.find((a) => a.id === e.actionId)?.effect
       const key = `effect.${effect}.summary`
-      if (hasKey(key)) did.push(translate(lang, key, { target: seat(lang, e.target) }))
+      if (hasKey(key)) did.push(translate(lang, key, { target: seat(lang, e.target) }) + answerText(lang, registry, e))
     }
     const result = group.entries.findLast((e) => e.kind === 'night_result')
     const outcome = result?.kind === 'night_result'
@@ -121,7 +126,7 @@ export function summaryText(lang: Lang, group: JournalGroup, registry: Registry)
     }
     body = [left, right].filter(Boolean).join(' → ')
   }
-  return body ? `${label}: ${body}` : label
+  return body
 }
 
 /** Журнал текстом для «Скопировать журнал»: от распределения к текущей фазе. */

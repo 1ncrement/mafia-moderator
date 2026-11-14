@@ -80,7 +80,9 @@ export function roleName(lang: Lang, registry: Registry, roleId: RoleId): string
  */
 export function compositionText(lang: Lang, registry: Registry, counts: Record<RoleId, number>): string {
   const parts: string[] = []
-  for (const role of registry.roles) {
+  // Остаток (мирные) называется последним.
+  const roles = [...registry.roles].sort((a, b) => Number(a.filler ?? false) - Number(b.filler ?? false))
+  for (const role of roles) {
     if (role.countsWithin) continue
     const nested = registry.roles.filter((r) => r.countsWithin === role.id && (counts[r.id] ?? 0) > 0)
     const total = (counts[role.id] ?? 0) + nested.reduce((sum, r) => sum + (counts[r.id] ?? 0), 0)
@@ -96,4 +98,4 @@ export function compositionText(lang: Lang, registry: Registry, counts: Record<R
   return parts.join(', ')
 }
 
-export { entryText, journalAsText, summaryText } from './journalText'
+export { answerText, entryText, journalAsText, summaryBody, summaryText } from './journalText'

@@ -1340,7 +1340,7 @@ export type StepPanel = React.FC;       // панель шага; задачи 1
 - **Журнал**: группы по фазам, текущая раскрыта, прошлые свёрнуты в `summaryText`; у исправленных записей метка «испр.», у ручных — «вручную». Клик по записи — задача 16.
 - **Пауза игры**: `setPaused(true)` ставит таймер на паузу и закрывает экран шторкой с названием фазы и шага без ролей и журнала; «Продолжить игру» снимает шторку, таймер остаётся на паузе.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 const day2 = (app: AppStore) => seedGame(app, TABLE_11, 2);
@@ -1384,13 +1384,13 @@ test('предупреждение о недоступном хранилище'
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/frame.test.tsx`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/ui/frame.test.tsx`
 
-- [ ] **Step 3: Реализуй каркас.** Панель шага пока показывает только `StepNav` и название шага.
+- [x] **Step 3: Реализуй каркас.** Панель шага пока показывает только `StepNav` и название шага.
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npm run check`
+- [x] **Step 4: Run, verify PASS.** Run: `npm run check`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(ui): игровой каркас — шапка, стол, панель игрока, журнал, пауза"
