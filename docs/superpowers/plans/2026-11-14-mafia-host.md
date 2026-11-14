@@ -1021,7 +1021,7 @@ export function crossedZero(state: TimerState, prevNow: number, now: number): bo
 
 Источник истины — `endsAt` по системным часам. `add` из истёкшего состояния ставит `endsAt = now + ms`. `reset` возвращает `ready` с полной длительностью.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 const t0 = 1_000_000;
@@ -1054,13 +1054,13 @@ test('сигнал только в момент пересечения нуля'
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/engine/timer.test.ts`
+- [x] **Step 2: Run, verify FAIL.** Run: `npx vitest run tests/engine/timer.test.ts`
 
-- [ ] **Step 3: Реализуй `timer.ts`.**
+- [x] **Step 3: Реализуй `timer.ts`.**
 
-- [ ] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/engine/timer.test.ts`
+- [x] **Step 4: Run, verify PASS.** Run: `npx vitest run tests/engine/timer.test.ts`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(engine): таймер по моменту окончания"
