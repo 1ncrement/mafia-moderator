@@ -18,9 +18,12 @@ export function nightMarks(lang: Lang, registry: Registry, night: NightState, ac
   for (const seat of night.outcome.blocked) add(seat, mark('block'))
   for (const seat of night.outcome.healed) add(seat, mark('heal'))
   // Запись своей роли в итог ночи не входит: метка только называет, чей это выбор.
+  // У роли с несколькими носителями в метке есть номер носителя, как в названии шага: «выбор: журналист №6».
   for (const step of night.steps) {
     if (step.effect !== 'note' || step.target === null) continue
-    add(step.target, translate(lang, 'night.mark.note', { role: roleName(lang, registry, step.performerRole) }))
+    const several = step.actor !== null && night.steps.filter((x) => x.actionId === step.actionId).length > 1
+    const role = roleName(lang, registry, step.performerRole)
+    add(step.target, translate(lang, 'night.mark.note', { role: several ? `${role} ${translate(lang, 'common.seat', { n: step.actor as Seat })}` : role }))
   }
   return marks
 }

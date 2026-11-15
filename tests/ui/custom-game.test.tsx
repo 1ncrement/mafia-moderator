@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import type { AppStore } from '../../src/app/store'
-import { CUSTOM_TABLE, JOURNALIST, MANIAC } from '../helpers'
+import { countBy, CUSTOM_TABLE, JOURNALIST, MANIAC } from '../helpers'
 import { renderApp, seedCustomGame } from './helpers'
 
 const seed = (day: number) => (a: AppStore) => seedCustomGame(a, [JOURNALIST, MANIAC], CUSTOM_TABLE, day)
@@ -95,4 +95,29 @@ test('игра открывается и называет роль, которо
   expect(screen.getAllByText('журналист').length).toBeGreaterThan(0); expect(screen.getAllByText('маньяк').length).toBeGreaterThan(0)
   expect(screen.getByText('чёрных')).toBeInTheDocument()
   expect(app.getState().game!.counts.bySide).toEqual({ black: 4, red: 7 })
+})
+
+// ── По итогам независимого ревью ────────────────────────────────────────────
+
+test('два носителя выбрали одного игрока: метки различаются номером носителя', () => {
+  const table = CUSTOM_TABLE.map((r, i) => (i === 6 ? 'custom_j' : r))
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    renderApp((a) => { seedCustomGame(a, [JOURNALIST, MANIAC], table, 1); a.dispatch({ type: 'startPhase', phase: N1 })
+      a.dispatch({ type: 'recordNightAction', actionId: 'act_custom_j', actor: 6, target: 9 })
+      a.dispatch({ type: 'recordNightAction', actionId: 'act_custom_j', actor: 7, target: 9 }); a.dispatch({ type: 'enterStep', step: 'act_custom_j:7' }) })
+    expect(screen.getByText('выбор: журналист №6')).toBeInTheDocument(); expect(screen.getByText('выбор: журналист №7')).toBeInTheDocument()
+    expect(errors).not.toHaveBeenCalled()                          // React не жалуется на одинаковые ключи меток
+  } finally {
+    errors.mockRestore()
+  }
+})
+test('перераздача сохраняет свои роли в колоде', async () => {
+  const { app, user } = renderApp((a) => { seedCustomGame(a, [JOURNALIST, MANIAC], CUSTOM_TABLE, 0) })
+  const dealt = app.getState().session!.log.find((e) => e.type === 'roles_dealt')!.id
+  await user.click(screen.getByRole('button', { name: 'Перераздать' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Перераздать роли' }))
+  expect(app.getState().session!.log.find((e) => e.type === 'roles_dealt')!.id).not.toBe(dealt)
+  expect(countBy(app.getState().game!.players.map((p) => p.roleId))).toEqual(countBy(CUSTOM_TABLE))
+  expect(app.getState().session!.config.customRoles).toEqual([JOURNALIST, MANIAC])
 })

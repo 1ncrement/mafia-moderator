@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { cap, hasKey, plural, roleText, roleTitle, stepName, translateKey } from '../../app/i18n'
 import { useApp, useStore, useT } from '../../app/StoreContext'
 import {
@@ -11,6 +11,7 @@ import { Pencil, Plus, Trash } from '../common/icons'
 import { SideDot } from '../common/SideDot'
 import { Stepper } from '../common/Stepper'
 import { useHotkeys } from '../common/useHotkeys'
+import { PRESS_GUARD_MS } from '../game/MainButton'
 import { CustomRoleForm } from './CustomRoleForm'
 import './prepare.css'
 
@@ -52,6 +53,12 @@ export function SetupScreen() {
   const [editTimers, setEditTimers] = useState(false)
   /** Какая форма своей роли открыта: новой роли, правки роли или никакая. Одновременно — одна. */
   const [roleForm, setRoleForm] = useState<'new' | { edit: RoleId } | null>(null)
+  /** Когда закрылась форма роли: Enter сразу после этого карты не раздаёт — защита от двойного нажатия. */
+  const formClosedAt = useRef(Number.NEGATIVE_INFINITY)
+  const closeForm = () => {
+    formClosedAt.current = store.now()
+    setRoleForm(null)
+  }
 
   const check = checkComposition(draft.playerCount, draft.composition, registry)
   const filler = registry.roles.find((r) => r.filler)
@@ -84,8 +91,10 @@ export function SetupScreen() {
   }))
 
   const canDeal = check.errors.length === 0
-  // Пока открыта форма роли, Enter принадлежит ей: карты он не раздаёт.
-  useHotkeys({ enter: () => canDeal && store.dealDraft() }, roleForm === null)
+  // Пока открыта форма роли, Enter принадлежит ей: карты он не раздаёт. Esc закрывает форму, где бы ни был фокус.
+  useHotkeys(roleForm === null
+    ? { enter: () => canDeal && store.now() - formClosedAt.current >= PRESS_GUARD_MS && store.dealDraft() }
+    : { escape: closeForm }, true)
 
   const extra = check.deck.length - draft.playerCount
   const errorText = check.errors.includes('players_out_of_range') ? t('setup.error.players_out_of_range')
@@ -129,10 +138,10 @@ export function SetupScreen() {
                   initial={{ name: own.name, side: own.side, night: own.night }}
                   onSubmit={(input) => {
                     const issue = store.updateCustomRole(role.id, input)
-                    if (issue === null) setRoleForm(null)
+                    if (issue === null) closeForm()
                     return issue
                   }}
-                  onCancel={() => setRoleForm(null)}
+                  onCancel={closeForm}
                 />
               )
             }
@@ -159,10 +168,10 @@ export function SetupScreen() {
                 </div>
                 {role.custom && (
                   <div className="role-row-tools">
-                    <button type="button" className="icon-btn" aria-label={t('setup.custom.editAria', { role: name })} onClick={() => setRoleForm({ edit: role.id })}>
+                    <button type="button" className="role-tool" aria-label={t('setup.custom.editAria', { role: name })} onClick={() => setRoleForm({ edit: role.id })}>
                       <Pencil />
                     </button>
-                    <button type="button" className="icon-btn" aria-label={t('setup.custom.deleteAria', { role: name })} onClick={() => store.removeCustomRole(role.id)}>
+                    <button type="button" className="role-tool" aria-label={t('setup.custom.deleteAria', { role: name })} onClick={() => store.removeCustomRole(role.id)}>
                       <Trash />
                     </button>
                   </div>
@@ -191,10 +200,10 @@ export function SetupScreen() {
               title={t('setup.custom.new')} submitLabel={t('setup.custom.submit')}
               onSubmit={(input) => {
                 const issue = store.addCustomRole(input)
-                if (issue === null) setRoleForm(null)
+                if (issue === null) closeForm()
                 return issue
               }}
-              onCancel={() => setRoleForm(null)}
+              onCancel={closeForm}
             />
           ) : settings.customRoles.length >= MAX_CUSTOM_ROLES ? (
             <p className="role-limit muted">{t('setup.custom.limit')}</p>

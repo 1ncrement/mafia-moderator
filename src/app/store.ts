@@ -375,7 +375,11 @@ export function createAppStore(env: Env): AppStore {
       if (!dealt.ok) return
       // Сама раздача в стек отмены не входит: отменять её некуда.
       const applied = applyPatch(empty.log, dealt.patch, empty.nextSeq, env.newId)
-      const settings = { ...state.settings, lastConfig: draft }
+      // Последний состав помнит и роли перечня, которых в нём нет: у них явный 0. Без ключа остаётся
+      // только роль, появившаяся после этой раздачи, — её «Новая игра» и включает как новую.
+      const known = { ...draft.composition }
+      for (const role of state.settings.customRoles) known[role.id] ??= 0
+      const settings = { ...state.settings, lastConfig: { ...draft, composition: known } }
       storage.saveSettings(settings)
       storage.setActiveId(empty.id)
       set({ settings })

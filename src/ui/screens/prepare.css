@@ -246,7 +246,8 @@
   align-items: center;
   gap: 6px;
 }
-.icon-btn {
+/* Кнопки «изменить» и «удалить». Свой класс: .icon-btn занят игровым экраном, а стили в сборке общие. */
+.role-tool {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -256,7 +257,7 @@
   border: 1px solid var(--border);
   color: var(--text-2);
 }
-.icon-btn:hover {
+.role-tool:hover {
   border-color: var(--border-strong);
   color: var(--text);
 }

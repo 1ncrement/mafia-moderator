@@ -1,4 +1,5 @@
 import { createAppStore } from '../../src/app/store'
+import { DEFAULT_REGISTRY } from '../../src/engine'
 import { seeded, testEnv } from '../helpers'
 
 const input = { name: '  Журналист ', side: 'red', night: true }
@@ -53,8 +54,15 @@ test('игра хранит копию участвующих ролей и от
   expect(again.getState().settings.customRoles.map((r) => r.id)).toContain(j!.id)
 })
 test('сессия без customRoles и мусор в настройках не мешают запуску', () => {
-  const env = testEnv(); const app = seeded(env)                      // игра без своих ролей, как до обновления
-  expect(app.getState().session!.config.customRoles ?? []).toEqual([])
+  const env = testEnv(); const app = seeded(env); const id = app.getState().session!.id
+  // Игра, сохранённая до обновления: поля customRoles в её настройках нет вовсе.
+  const raw = JSON.parse(env.kv.getItem(`mafia:session:${id}`)!) as { config: Record<string, unknown> }
+  delete raw.config.customRoles
+  env.kv.setItem(`mafia:session:${id}`, JSON.stringify(raw))
+  const old = createAppStore(testEnv(env.kv))
+  expect(old.getState().session!.config).not.toHaveProperty('customRoles')
+  expect(old.getState()).toMatchObject({ screen: 'deal', brokenSession: null }); expect(old.registry).toBe(DEFAULT_REGISTRY)
+  expect(old.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } }).ok).toBe(true)
   env.kv.setItem('mafia:settings', JSON.stringify({ lang: 'ru', customRoles: 'мусор' }))
   expect(createAppStore(testEnv(env.kv)).getState().settings.customRoles).toEqual([])
   env.kv.setItem('mafia:settings', JSON.stringify({ lang: 'ru', customRoles: [{ id: 5 }, { id: 'c1', name: 'ок', side: 'red', night: false }] }))
@@ -150,4 +158,31 @@ test('роль, выключенная в розданном составе, в 
   app.editDraft({ composition: { ...app.getState().draft.composition, [id]: 0 } }); app.dealDraft()
   app.goHome(); app.newGame()
   expect(app.getState().draft.composition[id]).toBe(0)
+})
+
+// ── По итогам независимого ревью ────────────────────────────────────────────
+
+test('состав, розданный без роли, остаётся стартовым: следующая «Новая игра» роль сама не включает', () => {
+  const app = createAppStore(testEnv())
+  app.newGame(); app.editDraft({ playerCount: 11 }); app.dealDraft()      // игра А без своих ролей
+  const oldId = app.getState().session!.id; app.goHome()
+  app.newGame(); app.addCustomRole({ name: 'Маньяк', side: 'black', night: false })
+  const maniac = app.getState().settings.customRoles[0]!.id
+  app.dealDraft(); app.goHome()                                            // игра Б с маньяком
+  app.openSession(oldId); app.rematch(); app.dealDraft(); app.goHome()     // «с тем же составом» игры А
+  app.newGame()
+  expect(app.getState().draft.composition[maniac]).toBe(0)
+})
+test('роль переименовали после раздачи: игра показывает роль, какой она была при раздаче', () => {
+  const app = createAppStore(testEnv()); app.newGame(); app.addCustomRole(input)
+  const id = app.getState().settings.customRoles[0]!.id
+  app.editDraft({ playerCount: 11 }); app.dealDraft()
+  const sessionId = app.getState().session!.id; app.goHome()
+  expect(app.updateCustomRole(id, { name: 'Репортёр', side: 'black', night: false })).toBeNull()
+  app.openSession(sessionId)
+  expect(app.registry.roles.find((r) => r.id === id)).toMatchObject({ name: 'Журналист', side: 'red' })
+  expect(app.registry.nightActions.some((a) => a.performers.includes(id))).toBe(true)
+  app.goHome(); app.newGame()
+  expect(app.registry.roles.find((r) => r.id === id)).toMatchObject({ name: 'Репортёр', side: 'black' })
+  expect(app.registry.nightActions.some((a) => a.performers.includes(id))).toBe(false)
 })

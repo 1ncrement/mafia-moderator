@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import type { UserEvent } from '@testing-library/user-event'
-import { renderApp } from './helpers'
+import { advance, renderApp } from './helpers'
 
 const open = async (user: UserEvent) => user.click(screen.getByRole('button', { name: /Добавить свою роль/ }))
 const form = () => within(screen.getByRole('form', { name: 'Новая роль' }))
@@ -122,4 +122,23 @@ test('никто не ходит ночью — вместо списка стр
   renderApp((a) => { a.newGame(); a.editDraft({ composition: {} }) })
   expect(screen.queryByRole('list', { name: 'Ночью просыпаются' })).not.toBeInTheDocument()
   expect(screen.getByText('Ночью никто не просыпается.')).toBeInTheDocument()
+})
+
+// ── По итогам независимого ревью ────────────────────────────────────────────
+
+test('двойной Enter после названия роли карты не раздаёт; через полсекунды Enter снова раздаёт', async () => {
+  const { app, user, env } = renderApp((a) => a.newGame())
+  await open(user); await user.type(form().getByLabelText('Название'), 'Маньяк{Enter}')
+  await user.keyboard('{Enter}')
+  expect(app.getState().screen).toBe('setup'); expect(app.getState().settings.customRoles).toHaveLength(1)
+  advance(env, 500); await user.keyboard('{Enter}')
+  expect(app.getState().screen).toBe('deal')
+})
+test('Escape закрывает форму роли и когда фокус не в ней', async () => {
+  const { app, user } = renderApp((a) => a.newGame())
+  await open(user); await user.type(form().getByLabelText('Название'), 'черновик')
+  await user.click(screen.getByText('Игроков за столом'))          // фокус ушёл из формы
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('form', { name: 'Новая роль' })).not.toBeInTheDocument()
+  expect(app.getState().settings.customRoles).toEqual([])
 })

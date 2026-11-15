@@ -83,3 +83,24 @@ test('порядок ночи включает шаг, который доста
 test('перечень из одних негодных записей — встроенный справочник', () => {
   expect(registryFor(DEFAULT_REGISTRY, [{ id: 'a:b', name: 'x', side: 'red', night: true }])).toBe(DEFAULT_REGISTRY)
 })
+
+// ── По итогам независимого ревью ────────────────────────────────────────────
+
+test('носитель поменялся ролью на своём шаге — ведущий остаётся на шаге этой роли у нового носителя, запись идёт за ролью', () => {
+  const s = rec(customNight().s, { type: 'enterStep', step: 'act_custom_j:6' }, act('act_custom_j', 6, 9), { type: 'swapRoles', a: 6, b: 2 })
+  const game = deriveState(s, R)
+  expect(game.step).toBe('act_custom_j:2')
+  expect(game.night!.steps.at(-1)).toMatchObject({ id: 'act_custom_j:2', grey: false, recorded: true, target: 9 })
+})
+test('чёрная своя роль считается в предупреждении состава и в подсказке конца игры', () => {
+  // Глава мафии и маньяк против шерифа и доктора: чёрных не меньше, чем красных.
+  expect(checkComposition(4, { mafia: 1, sheriff: 1, doctor: 1, custom_m: 1 }, R).warnings).toContain('black_not_less_than_red')
+  expect(checkComposition(5, { mafia: 1, sheriff: 1, doctor: 1, custom_m: 1 }, R).warnings).not.toContain('black_not_less_than_red')
+  const out = (seat: number): Command => ({ type: 'setStatus', seat, status: 'out', cause: 'voted' })
+  const { s } = customNight()                                    // чёрных 4 (№3, 8, 9, 10), красных 7
+  expect(deriveState(s, R).endHint).toBeNull()
+  expect(deriveState(rec(s, ...[2, 5, 7, 11].map(out)), R).endHint).toBe('black_not_less')
+  const onlyManiac = rec(s, ...[3, 8, 10].map(out))              // из чёрных в игре только маньяк
+  expect(deriveState(onlyManiac, R)).toMatchObject({ endHint: null, counts: { bySide: { black: 1, red: 7 } } })
+  expect(deriveState(rec(onlyManiac, out(9)), R).endHint).toBe('no_black')
+})
