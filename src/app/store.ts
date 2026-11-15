@@ -352,7 +352,12 @@ export function createAppStore(env: Env): AppStore {
     },
 
     newGame() {
-      leaveSession({ screen: 'setup', draft: state.settings.lastConfig ?? firstDraft(), brokenSession: null })
+      const draft = state.settings.lastConfig ?? firstDraft()
+      // Своя роль, которой не было ни в одном розданном составе, — новая: она включена с количеством 1,
+      // даже если ведущий добавил её и ушёл на главную. Роль из прошлого состава сохраняет своё количество, в том числе 0.
+      const composition = { ...draft.composition }
+      for (const role of state.settings.customRoles) if (composition[role.id] === undefined) composition[role.id] = 1
+      leaveSession({ screen: 'setup', draft: { ...draft, composition }, brokenSession: null })
     },
 
     editDraft(patch) {

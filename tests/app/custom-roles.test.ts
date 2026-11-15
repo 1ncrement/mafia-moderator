@@ -132,3 +132,22 @@ test('черновик состава после «с тем же составо
   app.openSession(sessionId); app.rematch()
   expect(app.getState().draft).not.toHaveProperty('customRoles')
 })
+// Дополнение, раздел 8, шаги 3–4: «уйти на главную и вернуться — обе роли на месте», затем «раздать — обе роли названы».
+test('роль, добавленная без раздачи, после ухода на главную остаётся в составе с количеством 1', () => {
+  const env = testEnv(); const app = createAppStore(env); app.newGame(); app.addCustomRole(input)
+  const id = app.getState().settings.customRoles[0]!.id
+  app.goHome(); app.newGame()
+  expect(app.getState().draft.composition[id]).toBe(1)
+  // и после перезапуска приложения
+  const again = createAppStore(testEnv(env.kv)); again.newGame()
+  expect(again.getState().draft.composition[id]).toBe(1)
+  again.editDraft({ playerCount: 11 }); again.dealDraft()
+  expect(again.getState().game!.players.filter((p) => p.roleId === id)).toHaveLength(1)
+})
+test('роль, выключенная в розданном составе, в следующей новой игре остаётся выключенной', () => {
+  const app = createAppStore(testEnv()); app.newGame(); app.addCustomRole(input)
+  const id = app.getState().settings.customRoles[0]!.id
+  app.editDraft({ composition: { ...app.getState().draft.composition, [id]: 0 } }); app.dealDraft()
+  app.goHome(); app.newGame()
+  expect(app.getState().draft.composition[id]).toBe(0)
+})
