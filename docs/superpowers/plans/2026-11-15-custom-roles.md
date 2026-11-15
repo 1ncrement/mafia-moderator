@@ -507,7 +507,7 @@ test('«Сбросить к стандарту» выключает свою р�
 - `StepNav`: у шага, чья роль исполнителя помечена `custom`, рядом с названием пометка `role.custom.tag`; при скрытых ролях пометки нет.
 - `DealScreen` (`groupName`) и `StopDialog` (`sideRoles`) берут название через `roleTitle`.
 
-- [ ] **Step 1: Падающие тесты** — `tests/ui/custom-game.test.tsx`:
+- [x] **Step 1: Падающие тесты** — `tests/ui/custom-game.test.tsx`:
 
 ```tsx
 const seed = (day: number) => (a: AppStore) => seedCustomGame(a, [JOURNALIST, MANIAC], CUSTOM_TABLE, day)
@@ -560,11 +560,11 @@ test('окно остановки и итоги называют свои рол
 
 `seedCustomGame` с `day = 0` оставляет сессию в фазе распределения.
 
-- [ ] **Step 2: Запустить** — FAIL: вопрос шага пустой, блока «Записано» нет.
-- [ ] **Step 3: Реализовать** правки по списку Produces.
-- [ ] **Step 4: Запустить** файл — PASS; `npm run check` — PASS.
-- [ ] **Step 5: Сверить с макетом** `NightCustomStep.dc.html` — панель шага своей роли на ширине 1440.
-- [ ] **Step 6: Commit** — `feat(ui): своя роль в раздаче, ночи, журнале и итогах`.
+- [x] **Step 2: Запустить** — FAIL: вопрос шага пустой, блока «Записано» нет.
+- [x] **Step 3: Реализовать** правки по списку Produces.
+- [x] **Step 4: Запустить** файл — PASS; `npm run check` — PASS.
+- [x] **Step 5: Сверить с макетом** `NightCustomStep.dc.html` — панель шага своей роли на ширине 1440.
+- [x] **Step 6: Commit** — `feat(ui): своя роль в раздаче, ночи, журнале и итогах`.
 
 ---
 

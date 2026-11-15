@@ -43,6 +43,7 @@ export function StepNav({ game, balaganFromDay }: { game: GameState; balaganFrom
   if (game.night) {
     const night = game.night
     const seat = (n: number | null) => (n === null ? t('journal.nobody') : t('common.seat', { n }))
+    const isCustom = (roleId: string) => store.registry.roles.find((r) => r.id === roleId)?.custom === true
     return (
       <nav aria-label={t('steps.night')}>
         <ol className="night-steps">
@@ -53,7 +54,10 @@ export function StepNav({ game, balaganFromDay }: { game: GameState; balaganFrom
                 aria-current={s.id === game.step ? 'step' : undefined}
                 onClick={() => s.id !== game.step && store.dispatch({ type: 'enterStep', step: s.id })}
               >
-                <span className="night-step-name">{nightStepLabel(lang, store.registry, night, s.id, settings.rolesHidden)}</span>
+                <span className="night-step-name">
+                  {nightStepLabel(lang, store.registry, night, s.id, settings.rolesHidden)}
+                  {!settings.rolesHidden && isCustom(s.performerRole) && <span className="night-step-tag">{t('role.custom.tag')}</span>}
+                </span>
                 <span className="night-step-side">
                   {s.grey ? !settings.rolesHidden && <span className="night-step-last">{t('night.nav.grey')}</span> : (
                     <>

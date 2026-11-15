@@ -60,6 +60,8 @@
   font-size: 21px;
   white-space: normal;
   text-align: center;
+  /* В подписи бывает название своей роли одним длинным словом («Дальше: …»). */
+  overflow-wrap: anywhere;
 }
 .kbd {
   flex: none;

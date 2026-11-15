@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { cap, compositionText, hasKey, roleLabel, translateKey } from '../../app/i18n'
+import { cap, compositionText, hasKey, roleLabel, roleTitle, translateKey } from '../../app/i18n'
 import { useApp, useStore, useT } from '../../app/StoreContext'
 import { checkComposition, dealRoles } from '../../engine'
 import type { PlayerView, RoleId, Seat } from '../../engine'
@@ -48,8 +48,9 @@ export function DealScreen() {
   // Сначала активные роли, остаток (мирные) — в конце.
   groups.sort((a, b) => Number(registry.roles.find((r) => r.id === a.key)?.filler ?? false) - Number(registry.roles.find((r) => r.id === b.key)?.filler ?? false))
   const groupName = (key: RoleId) => {
-    const nameKey = registry.roles.find((r) => r.id === key)?.nameKey ?? key
-    return cap(translateKey(lang, hasKey(`${nameKey}.short`) ? `${nameKey}.short` : nameKey))
+    const def = registry.roles.find((r) => r.id === key)
+    if (!def) return key
+    return cap(hasKey(`${def.nameKey}.short`) ? translateKey(lang, `${def.nameKey}.short`) : roleTitle(lang, def))
   }
   const seatsText = (seats: PlayerView[]) => seats.map((p, i) => {
     const mark = roleLabel(lang, registry, p.roleId).mark

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { answerText, cap, hasKey, roleName, roleText, seatList, translateKey } from '../../app/i18n'
+import { answerText, cap, hasKey, roleName, roleText, seatList, stepQuestion, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { aliveSeats, nightPlayers, SUMMARY_STEP } from '../../engine'
 import type { GameState, NightStep, Seat } from '../../engine'
@@ -36,10 +36,7 @@ export function NightPanel({ game }: { game: GameState }) {
   const target = step?.target ?? null
   const recorded = step?.recorded ?? false
   const lastTarget = step?.lastNight.recorded ? step.lastNight.target : null
-  const question = !step || !def ? ''
-    : step.inherited && hasKey(`${def.questionKey}.inherited`)
-      ? translateKey(lang, `${def.questionKey}.inherited`, { role: roleName(lang, registry, step.performerRole) })
-      : translateKey(lang, def.questionKey)
+  const question = !step || !def ? '' : stepQuestion(lang, registry, def, step.performerRole, step.inherited)
 
   // Стол держит режим выбора, пока открыт несерый шаг.
   useEffect(() => {
@@ -68,7 +65,7 @@ export function NightPanel({ game }: { game: GameState }) {
   }, [stepId, grey, target, recorded, lastTarget, question, log, ask, hidden, idle])
   useEffect(() => clear, [clear, stepId])
 
-  useTableMarks(night && step && !hidden ? nightMarks(lang, night, step.actors) : {})
+  useTableMarks(night && step && !hidden ? nightMarks(lang, registry, night, step.actors) : {})
 
   const ids = night ? [...night.steps.map((s) => s.id), SUMMARY_STEP] : []
   const next = ids[ids.indexOf(game.step ?? '') + 1] ?? SUMMARY_STEP
@@ -132,6 +129,13 @@ export function NightPanel({ game }: { game: GameState }) {
                   ? roleText(lang, registry, game.players[step.target - 1]?.roleId ?? '')
                   : t(answer.found ? 'night.show.found' : 'night.show.notFound')}
               </span>
+            </div>
+          )}
+          {step.effect === 'note' && step.recorded && (
+            <div className="answer">
+              <span className="answer-cap">{t('night.recorded', { step: nightStepLabel(lang, registry, night, step.id) })}</span>
+              <span className="answer-big num">→ {step.target === null ? t('journal.nobody') : seat(step.target)}</span>
+              <span className="answer-cap">{t('night.custom.note')}</span>
             </div>
           )}
         </>

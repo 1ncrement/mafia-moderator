@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { cap, hasKey, phaseLabel, translateKey } from '../../app/i18n'
+import { cap, hasKey, phaseLabel, roleTitle, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import type { GameState, SideId } from '../../engine'
 import { Button } from '../common/Button'
@@ -13,7 +13,7 @@ export function useSideRoles() {
   return (side: SideId) => store.registry.roles
     .filter((r) => r.side === side && !r.displayAs)
     .sort((a, b) => Number(b.filler ?? false) - Number(a.filler ?? false))
-    .map((r) => translateKey(lang, hasKey(`${r.nameKey}.many`) ? `${r.nameKey}.many` : r.nameKey))
+    .map((r) => (hasKey(`${r.nameKey}.many`) ? translateKey(lang, `${r.nameKey}.many`) : roleTitle(lang, r)))
     .join(', ')
 }
 

@@ -254,6 +254,8 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--text-2);
+  /* «выбор: <название своей роли>» может быть одним длинным словом. */
+  overflow-wrap: anywhere;
 }
 .card-mark-day {
   color: var(--day);
@@ -788,7 +790,8 @@ button.journal-entry:hover {
 .facts {
   margin: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  /* Колонка подписей не шире своего текста и сжимается, когда подпись — длинное название своей роли. */
+  grid-template-columns: minmax(0, max-content) minmax(40%, 1fr);
   gap: 6px 14px;
   font-size: 14px;
 }
@@ -1032,8 +1035,27 @@ button.journal-entry:hover {
 }
 .night-step-name {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
   font-size: 15px;
   font-weight: 500;
+  overflow-wrap: anywhere;
+}
+/* Пометка «своя роль» у шага в полосе ночи. */
+.night-step-tag {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.night-step[aria-current='step'] .night-step-tag {
+  color: var(--night-ink);
 }
 .night-step-side {
   display: flex;
@@ -1359,4 +1381,30 @@ button.journal-entry:hover {
 }
 .answer-mid {
   font-size: 44px;
+}
+
+/* Свои роли: название может быть одним длинным словом — оно переносится, а не распирает экран. */
+.game-phase {
+  min-width: 0;
+}
+.game-phase .page-step,
+.journal-entry > span {
+  min-width: 0;
+}
+.game-phase .page-step,
+.table-question,
+.step-title,
+.step-warning,
+.night-lines,
+.night-grey-title,
+.answer-cap,
+.facts dt,
+.facts dd,
+.journal-entry,
+.journal-group-summary,
+.stop-option-text,
+.summary-side,
+.edit-record,
+.curtain-where {
+  overflow-wrap: anywhere;
 }

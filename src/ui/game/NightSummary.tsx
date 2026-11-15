@@ -49,7 +49,7 @@ export function NightSummary({ game }: { game: GameState }) {
   const dies = night?.outcome.dies ?? null
   const day = (night?.n ?? 0) + 1
 
-  useTableMarks(night && !hidden ? nightMarks(lang, night) : {})
+  useTableMarks(night && !hidden ? nightMarks(lang, store.registry, night) : {})
   useMainAction(night ? {
     // Роли скрыты — подпись не называет, кто выбывает.
     label: hidden ? t('night.confirm.hidden', { day }) : dies === null ? t('night.confirm.none', { day }) : t('night.confirm.shot', { n: dies, day }),

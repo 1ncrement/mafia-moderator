@@ -593,8 +593,11 @@ button.deal-card:hover:not(:disabled),
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   font-size: 18px;
   font-weight: 600;
+  /* Название своей роли может быть одним длинным словом. */
+  overflow-wrap: anywhere;
 }
 .deal-swap {
   display: flex;
@@ -616,7 +619,8 @@ button.deal-card:hover:not(:disabled),
 .deal-who-list {
   margin: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  /* Колонка названий не шире своего текста и сжимается, когда название длинное. */
+  grid-template-columns: minmax(0, max-content) minmax(45%, 1fr);
   gap: 10px 16px;
   font-size: 16px;
 }
@@ -627,6 +631,8 @@ button.deal-card:hover:not(:disabled),
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .deal-who-row dd {
   margin: 0;
