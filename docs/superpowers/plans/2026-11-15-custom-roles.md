@@ -235,7 +235,7 @@ test('носитель выбыл на своём шаге — ведущий о
 | `effect.note.summary` | {role} → {target} | {role} → {target} |
 | `setup.deck.aria` | Колода | Колода |
 
-- [ ] **Step 1: Падающие тесты** — `tests/app/custom-i18n.test.ts`:
+- [x] **Step 1: Падающие тесты** — `tests/app/custom-i18n.test.ts`:
 
 ```ts
 const R = registryFor(DEFAULT_REGISTRY, [JOURNALIST, MANIAC])
@@ -267,10 +267,10 @@ test('состав и журнал называют свою роль', () => {
 
 Тест одинакового набора ключей в двух словарях уже есть (`tests/app/i18n.test.ts`) и должен остаться зелёным.
 
-- [ ] **Step 2: Запустить** — FAIL, `roleTitle` не существует.
-- [ ] **Step 3: Реализовать** функции, перевести на них `roleLabel`, `roleName`, `compositionText`, `performer`, `nightStepLabel`; добавить строки таблицы в оба словаря.
-- [ ] **Step 4: Запустить** файл — PASS; `npm run check` — PASS.
-- [ ] **Step 5: Commit** — `feat(i18n): названия своих ролей и тексты для них`.
+- [x] **Step 2: Запустить** — FAIL, `roleTitle` не существует.
+- [x] **Step 3: Реализовать** функции, перевести на них `roleLabel`, `roleName`, `compositionText`, `performer`, `nightStepLabel`; добавить строки таблицы в оба словаря.
+- [x] **Step 4: Запустить** файл — PASS; `npm run check` — PASS.
+- [x] **Step 5: Commit** — `feat(i18n): названия своих ролей и тексты для них`.
 
 ---
 

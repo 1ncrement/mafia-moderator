@@ -1,4 +1,4 @@
-import { phaseLabel, translate, translateKey } from '../../app/i18n'
+import { phaseLabel, stepName, translate, translateKey } from '../../app/i18n'
 import type { Lang } from '../../app/i18n'
 import { SUMMARY_STEP } from '../../engine'
 import type { GameState, JournalEntry, NightState, PlayerView, Registry, Seat } from '../../engine'
@@ -9,7 +9,7 @@ export function nightStepLabel(lang: Lang, registry: Registry, night: NightState
   const step = night?.steps.find((s) => s.id === stepId)
   if (!night || !step) return stepId
   const def = registry.nightActions.find((a) => a.id === step.actionId)
-  const base = def ? translateKey(lang, def.stepKey) : step.actionId
+  const base = def ? stepName(lang, registry, def) : step.actionId
   const several = night.steps.filter((s) => s.actionId === step.actionId).length > 1
   // Номер носителя выдаёт роль: при скрытых ролях его в подписи нет.
   return several && step.actor !== null && !hideSeats ? `${base} ${translate(lang, 'common.seat', { n: step.actor })}` : base

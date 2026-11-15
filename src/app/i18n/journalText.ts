@@ -1,6 +1,6 @@
 import type { CheckAnswer, JournalEntry, JournalGroup, Registry, Seat } from '../../engine'
 import type { Lang } from '../../platform/storage'
-import { cap, compositionText, hasKey, phaseLabel, plural, roleName, seatList, translate, translateKey } from './index'
+import { cap, compositionText, hasKey, phaseLabel, plural, roleName, seatList, stepName, translate, translateKey } from './index'
 
 // Запись журнала → строка. Текст строится при показе, поэтому журнал переключается вместе с языком.
 
@@ -16,7 +16,7 @@ function performer(
   const inherited = entry.performerRole !== undefined && !def.performers.includes(entry.performerRole)
   let label = inherited
     ? `${cap(roleName(lang, registry, entry.performerRole ?? ''))} · ${translateKey(lang, `effect.${def.effect}`)}`
-    : translateKey(lang, def.stepKey)
+    : stepName(lang, registry, def)
   if (entry.numbered && entry.actor !== null) label += ` ${seat(lang, entry.actor)}`
   return label
 }
@@ -98,7 +98,9 @@ export function summaryBody(lang: Lang, group: JournalGroup, registry: Registry)
       if (e.kind !== 'night_action' || e.target === null) continue
       const effect = registry.nightActions.find((a) => a.id === e.actionId)?.effect
       const key = `effect.${effect}.summary`
-      if (hasKey(key)) did.push(translate(lang, key, { target: seat(lang, e.target) }) + answerText(lang, registry, e))
+      // role — название роли исполнителя: нужно записи своей роли («журналист → №9»).
+      const params = { target: seat(lang, e.target), role: roleName(lang, registry, e.performerRole) }
+      if (hasKey(key)) did.push(translate(lang, key, params) + answerText(lang, registry, e))
     }
     const result = group.entries.findLast((e) => e.kind === 'night_result')
     const outcome = result?.kind === 'night_result'

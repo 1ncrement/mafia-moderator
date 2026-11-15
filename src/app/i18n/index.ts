@@ -1,4 +1,4 @@
-import type { PhaseRef, Registry, RoleId, Seat } from '../../engine'
+import type { NightActionDef, PhaseRef, Registry, RoleDef, RoleId, Seat } from '../../engine'
 import type { Lang } from '../../platform/storage'
 import { ru } from './ru'
 import { uk } from './uk'
@@ -50,13 +50,18 @@ export function seatList(lang: Lang, seats: Seat[]): string {
   return `${names.slice(0, -1).join(', ')} ${translate(lang, 'common.and')} ${names.at(-1)}`
 }
 
+/** Название роли: у своей — как ввёл ведущий, у встроенной — из словаря. */
+export function roleTitle(lang: Lang, def: RoleDef): string {
+  return def.name ?? translateKey(lang, def.nameKey)
+}
+
 /** Название роли на столе: роль с displayAs показана названием этой роли и пометкой markKey. */
 export function roleLabel(lang: Lang, registry: Registry, roleId: RoleId): { name: string; mark: string | null; note: string | null } {
   const def = registry.roles.find((r) => r.id === roleId)
   const shown = (def?.displayAs && registry.roles.find((r) => r.id === def.displayAs)) || def
   const noteKey = def ? `${def.nameKey}.note` : ''
   return {
-    name: shown ? translateKey(lang, shown.nameKey) : roleId,
+    name: shown ? roleTitle(lang, shown) : roleId,
     mark: def?.markKey ? translateKey(lang, def.markKey) : null,
     note: hasKey(noteKey) ? translate(lang, noteKey) : null,
   }
@@ -71,7 +76,20 @@ export function roleText(lang: Lang, registry: Registry, roleId: RoleId): string
 /** Собственное название роли, без displayAs: «крёстный отец». */
 export function roleName(lang: Lang, registry: Registry, roleId: RoleId): string {
   const def = registry.roles.find((r) => r.id === roleId)
-  return def ? translateKey(lang, def.nameKey) : roleId
+  return def ? roleTitle(lang, def) : roleId
+}
+
+/** Название ночного шага без номера носителя: «Мафия», «Журналист». У своей роли строки в словаре нет — шаг назван ролью. */
+export function stepName(lang: Lang, registry: Registry, def: NightActionDef): string {
+  return hasKey(def.stepKey) ? translate(lang, def.stepKey) : cap(roleName(lang, registry, def.performers[0] ?? ''))
+}
+
+/** Вопрос шага над столом: «В кого стреляет мафия?», «Кого выбирает журналист?». */
+export function stepQuestion(lang: Lang, registry: Registry, def: NightActionDef, performerRole: RoleId, inherited: boolean): string {
+  const role = roleName(lang, registry, performerRole)
+  const inheritedKey = `${def.questionKey}.inherited`
+  if (inherited && hasKey(inheritedKey)) return translate(lang, inheritedKey, { role })
+  return hasKey(def.questionKey) ? translate(lang, def.questionKey) : translate(lang, 'night.custom.question', { role })
 }
 
 /**
@@ -88,9 +106,9 @@ export function compositionText(lang: Lang, registry: Registry, counts: Record<R
     const total = (counts[role.id] ?? 0) + nested.reduce((sum, r) => sum + (counts[r.id] ?? 0), 0)
     if (total === 0) continue
     const countKey = `${role.nameKey}.count`
-    let text = hasKey(countKey) ? translate(lang, countKey, { n: total }) : `${translateKey(lang, role.nameKey)} ${total}`
+    let text = hasKey(countKey) ? translate(lang, countKey, { n: total }) : `${roleTitle(lang, role)} ${total}`
     if (nested.length > 0) {
-      const inner = nested.map((r) => translate(lang, 'journal.nested', { role: translateKey(lang, r.nameKey), n: counts[r.id] ?? 0 }))
+      const inner = nested.map((r) => translate(lang, 'journal.nested', { role: roleTitle(lang, r), n: counts[r.id] ?? 0 }))
       text += ` (${inner.join(', ')})`
     }
     parts.push(text)
