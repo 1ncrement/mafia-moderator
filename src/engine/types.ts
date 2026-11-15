@@ -3,14 +3,22 @@
 export type Seat = number
 export type RoleId = string
 export type SideId = string
-export type EffectId = 'kill' | 'heal' | 'block' | 'check_side' | 'find_role'
+/** note — запись выбора своей роли: шаг и запись есть, в расчёте итога ночи не участвует. */
+export type EffectId = 'kill' | 'heal' | 'block' | 'check_side' | 'find_role' | 'note'
 
 /** colorVar — переменная CSS для точки стороны; ring — светлое кольцо вокруг точки. */
 export type SideDef = { id: SideId; nameKey: string; colorVar: string; ring?: true }
 
+/** Роль, которую создал ведущий. night — у роли есть ночной шаг, выбор которого только записывается. */
+export type CustomRole = { id: RoleId; name: string; side: SideId; night: boolean }
+
 export type RoleDef = {
   id: RoleId
   nameKey: string
+  /** Готовое название своей роли: показывается как есть, в словаре его нет. */
+  name?: string
+  /** Роль создал ведущий. */
+  custom?: true
   side: SideId
   /** Добирает остаток игроков (мирный житель). */
   filler?: true
@@ -116,6 +124,8 @@ export type SessionConfig = {
   durations: Durations
   rules: Rules
   separateTimerStart: boolean
+  /** Свои роли, которые участвуют в игре: копия на момент раздачи. В старых сохранениях поля нет. */
+  customRoles?: CustomRole[]
 }
 /** В сессии лежат настройки и журнал. Состояние стола не хранится — его выводит deriveState. */
 export type Session = {

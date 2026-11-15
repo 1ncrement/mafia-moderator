@@ -1,5 +1,5 @@
 import { blackNotLess } from './roles/rules'
-import type { Durations, Registry, RoleDef, RoleId, Rules, Session, SessionConfig, SideId } from './types'
+import type { Durations, NightActionDef, Registry, RoleDef, RoleId, Rules, Session, SessionConfig, SideId } from './types'
 
 export const MIN_PLAYERS = 4
 export const MAX_PLAYERS = 20
@@ -64,6 +64,17 @@ export function checkComposition(
   if (blackNotLess(bySide)) warnings.push('black_not_less_than_red')
 
   return { errors, warnings, deck, civilians, bySide }
+}
+
+/**
+ * Ночные действия состава по порядку: те, у кого в колоде есть хотя бы один исполнитель.
+ * Наследник действия (к кому переходит выстрел) тоже исполнитель: шаг в ночи будет и без основных носителей.
+ */
+export function nightOrder(registry: Registry, deck: readonly RoleId[]): NightActionDef[] {
+  const cards = new Set(deck)
+  return [...registry.nightActions]
+    .sort((a, b) => a.order - b.order)
+    .filter((def) => (def.inheritedBy ? [...def.performers, def.inheritedBy] : def.performers).some((role) => cards.has(role)))
 }
 
 // ── Умолчания сессии ────────────────────────────────────────────────────────

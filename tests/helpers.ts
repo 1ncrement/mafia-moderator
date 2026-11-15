@@ -1,9 +1,9 @@
 import {
-  applyPatch, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES, deriveState, execute, newSession, nextPhase,
+  applyPatch, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES, deriveState, execute, newSession, nextPhase, registryFor,
 } from '../src/engine'
 import { createAppStore } from '../src/app/store'
 import type { AppStore } from '../src/app/store'
-import type { Command, CommandResult, GameState, Registry, RoleId, Session, SessionConfig } from '../src/engine'
+import type { Command, CommandResult, CustomRole, GameState, Registry, RoleId, Session, SessionConfig } from '../src/engine'
 
 export const countBy = (xs: string[]): Record<string, number> =>
   xs.reduce<Record<string, number>>((acc, x) => ({ ...acc, [x]: (acc[x] ?? 0) + 1 }), {})
@@ -81,6 +81,21 @@ export const act = (actionId: string, actor: number | null, target: number | nul
 /** Начало Ночи 1. */
 export const n1 = (table = TABLE_11): Session =>
   play(toDay(game(table), 1), { type: 'startPhase', phase: { kind: 'night', n: 1 } })
+
+// ── Свои роли ───────────────────────────────────────────────────────────────
+
+export const JOURNALIST: CustomRole = { id: 'custom_j', name: 'журналист', side: 'red', night: true }
+export const MANIAC: CustomRole = { id: 'custom_m', name: 'маньяк', side: 'black', night: false }
+/** №1 шериф, №3 крёстный отец, №4 доктор, №6 журналист, №8 мафия, №9 маньяк, №10 проститутка. */
+export const CUSTOM_TABLE = ['sheriff', 'civilian', 'godfather', 'doctor', 'civilian', 'custom_j', 'civilian', 'mafia', 'custom_m', 'prostitute', 'civilian']
+
+/** Игра со своими ролями на начало Ночи 1 и её справочник. */
+export function customNight(roles: CustomRole[] = [JOURNALIST, MANIAC], assignment: RoleId[] = CUSTOM_TABLE): { s: Session; registry: Registry } {
+  const registry = registryFor(DEFAULT_REGISTRY, roles)
+  const dealt = gameWith(registry, assignment, { customRoles: roles })
+  const s = playWith(registry, dealt, { type: 'startPhase', phase: { kind: 'day', n: 1 } }, { type: 'startPhase', phase: { kind: 'night', n: 1 } })
+  return { s, registry }
+}
 
 // ── Помощники для приложения ────────────────────────────────────────────────
 

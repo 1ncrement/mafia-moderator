@@ -78,7 +78,7 @@
 - `sanitizeCustomRoles`: не массив — `[]`; запись годна, если `id` — непустая строка без `:`, не совпадает со встроенной ролью и не повторяется; `name` — строка, после `trim` непустая (длиннее 24 — обрезается); `side` есть в `base.sides`; `night` — boolean. Берутся первые 8 годных.
 - `night.ts`, `commands.ts`, `journal.ts` менять не нужно: эффект `note` в расчёте итога не упоминается, шаги и блок работают по общим правилам. Это проверяют тесты ниже.
 
-- [ ] **Step 1: Помощники тестов** — в `tests/helpers.ts`:
+- [x] **Step 1: Помощники тестов** — в `tests/helpers.ts`:
 
 ```ts
 export const JOURNALIST: CustomRole = { id: 'custom_j', name: 'журналист', side: 'red', night: true }
@@ -91,7 +91,7 @@ export function customNight(roles: CustomRole[] = [JOURNALIST, MANIAC], assignme
 
 `customNight` собирает `registryFor(DEFAULT_REGISTRY, roles)`, сессию через `gameWith(registry, assignment, { customRoles: roles })` и доводит её до Ночи 1 командами `startPhase` через `playWith(registry, …)`.
 
-- [ ] **Step 2: Падающие тесты** — `tests/engine/custom-roles.test.ts`:
+- [x] **Step 2: Падающие тесты** — `tests/engine/custom-roles.test.ts`:
 
 ```ts
 const ROLES = [JOURNALIST, MANIAC]
@@ -168,10 +168,10 @@ test('носитель выбыл на своём шаге — ведущий о
 })
 ```
 
-- [ ] **Step 3: Запустить** — `npx vitest run tests/engine/custom-roles.test.ts`. Ожидание: FAIL, `registryFor` не существует.
-- [ ] **Step 4: Реализовать** типы, `src/engine/roles/custom.ts`, `nightOrder` в `setup.ts`, экспорт из `src/engine/index.ts` (`export * from './roles/custom'`).
-- [ ] **Step 5: Запустить** тот же файл — PASS; затем `npm run check` — PASS.
-- [ ] **Step 6: Commit** — `feat(engine): свои роли в справочнике и ночное действие «запись»`.
+- [x] **Step 3: Запустить** — `npx vitest run tests/engine/custom-roles.test.ts`. Ожидание: FAIL, `registryFor` не существует.
+- [x] **Step 4: Реализовать** типы, `src/engine/roles/custom.ts`, `nightOrder` в `setup.ts`, экспорт из `src/engine/index.ts` (`export * from './roles/custom'`).
+- [x] **Step 5: Запустить** тот же файл — PASS; затем `npm run check` — PASS.
+- [x] **Step 6: Commit** — `feat(engine): свои роли в справочнике и ночное действие «запись»`.
 
 ---
 
