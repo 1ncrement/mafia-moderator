@@ -211,9 +211,223 @@
 .role-row-text .note-pill {
   margin-top: 4px;
 }
+.role-row-text {
+  min-width: 0;
+}
+.role-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
 .role-row-name {
+  min-width: 0;
   font-size: 19px;
   font-weight: 600;
+  /* Название своей роли может быть одним длинным словом: строку оно не распирает. */
+  overflow-wrap: anywhere;
+}
+
+/* Своя роль: строка, форма и кнопка добавления */
+.role-row-custom {
+  border-color: var(--border-strong);
+}
+.role-tag {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.role-row-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+.icon-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.role-add {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 12px 20px;
+  border-radius: var(--r-l);
+  border: 1px dashed var(--border-strong);
+  text-align: left;
+}
+.role-add:hover {
+  border-color: var(--text);
+}
+.role-add-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-s);
+  background: var(--card);
+}
+.role-add-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.role-add-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+.role-limit {
+  padding: 14px 20px;
+  border-radius: var(--r-l);
+  border: 1px dashed var(--border);
+}
+.role-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  border-radius: var(--r-l);
+  border: 1px solid var(--text);
+  background: var(--panel);
+}
+.role-form-title {
+  color: var(--text);
+}
+.role-form-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 24px;
+}
+.role-form-field {
+  flex: 1 1 300px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.role-form-label {
+  padding: 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+legend.role-form-label {
+  margin-bottom: 6px;
+}
+.role-form-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  font-size: 19px;
+  font-weight: 600;
+}
+.role-form-input[aria-invalid='true'] {
+  border-color: var(--alert);
+}
+.role-form-error {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--alert);
+}
+.role-form-sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.role-form-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 12px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--border);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.role-form-side .dot {
+  width: 12px;
+  height: 12px;
+}
+.role-form-side[aria-checked='true'] {
+  /* Рамка толще на 1 px — отступ меньше на 1 px, чтобы кнопка не прыгала. */
+  padding: 0 11px;
+  border: 2px solid var(--text);
+  background: var(--card);
+  font-weight: 700;
+  color: var(--text);
+}
+.role-form-night {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-m);
+  background: var(--card);
+}
+.role-form-night-text {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.role-form-night-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+.switch-night[aria-checked='true'] .switch-track {
+  background: var(--night);
+}
+.switch-night[aria-checked='true'] .switch-knob {
+  background: var(--night-ink);
+}
+.role-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.role-form-submit {
+  flex: 1 1 220px;
+  height: auto;
+  min-height: 56px;
+  padding: 0 20px;
+  border-radius: var(--r-m);
+  border: 2px solid var(--text);
+  font-size: 18px;
+  font-weight: 700;
+}
+.role-form-cancel {
+  height: 56px;
+  padding: 0 20px;
+  border-radius: var(--r-m);
+  font-size: 16px;
 }
 .role-row-fixed {
   min-width: 36px;
@@ -251,10 +465,34 @@
   gap: 6px;
 }
 .chip {
+  min-width: 0;
   padding: 5px 10px;
   border-radius: 8px;
   background: var(--card);
   font-size: 14px;
+  overflow-wrap: anywhere;
+}
+/* Карта и шаг своей роли — с рамкой; отступ меньше на её толщину, чтобы карта не была выше соседних. */
+.chip-custom,
+.chip-night {
+  padding: 4px 9px;
+  border: 1px solid var(--border-strong);
+}
+.chip-night {
+  border-color: var(--night);
+  background: var(--night-tint);
+  color: #c4cfff;
+}
+.setup-night {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.setup-night-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 .setup-timers {
   display: flex;

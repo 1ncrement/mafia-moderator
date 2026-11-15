@@ -1,14 +1,17 @@
 import { useState } from 'react'
-import { cap, hasKey, plural, roleText, translateKey } from '../../app/i18n'
+import { cap, hasKey, plural, roleText, roleTitle, stepName, translateKey } from '../../app/i18n'
 import { useApp, useStore, useT } from '../../app/StoreContext'
 import {
-  checkComposition, configurableRoles, DEFAULT_DURATIONS, defaultComposition, MAX_PLAYERS, MIN_PLAYERS, nestedRoles,
+  checkComposition, configurableRoles, DEFAULT_DURATIONS, defaultComposition, MAX_CUSTOM_ROLES, MAX_PLAYERS, MIN_PLAYERS, nestedRoles,
+  nightOrder,
 } from '../../engine'
-import type { Durations, RoleDef } from '../../engine'
+import type { Durations, RoleDef, RoleId } from '../../engine'
 import { Button } from '../common/Button'
+import { Pencil, Plus, Trash } from '../common/icons'
 import { SideDot } from '../common/SideDot'
 import { Stepper } from '../common/Stepper'
 import { useHotkeys } from '../common/useHotkeys'
+import { CustomRoleForm } from './CustomRoleForm'
 import './prepare.css'
 
 export const DURATION_KEYS = ['speech', 'balagan', 'defense', 'tiebreak', 'farewell'] as const
@@ -47,25 +50,42 @@ export function SetupScreen() {
   const lang = settings.lang
   const registry = store.registry
   const [editTimers, setEditTimers] = useState(false)
+  /** Какая форма своей роли открыта: новой роли, правки роли или никакая. Одновременно — одна. */
+  const [roleForm, setRoleForm] = useState<'new' | { edit: RoleId } | null>(null)
 
   const check = checkComposition(draft.playerCount, draft.composition, registry)
   const filler = registry.roles.find((r) => r.filler)
   const sideName = (role: RoleDef) => translateKey(lang, registry.sides.find((s) => s.id === role.side)?.nameKey ?? role.side)
-  const about = (role: RoleDef) => (hasKey(`${role.nameKey}.about`) ? translateKey(lang, `${role.nameKey}.about`) : '')
+  const actsAtNight = (role: RoleDef) => registry.nightActions.some((a) => a.performers.includes(role.id))
+  const about = (role: RoleDef) => {
+    if (role.custom) return t(actsAtNight(role) ? 'role.custom.about.night' : 'role.custom.about.passive')
+    return hasKey(`${role.nameKey}.about`) ? translateKey(lang, `${role.nameKey}.about`) : ''
+  }
   const sub = (role: RoleDef) => [sideName(role), about(role)].filter(Boolean).join(' · ')
   const setCount = (id: string, n: number) => store.editDraft({ composition: { ...draft.composition, [id]: n } })
 
-  // Колода, сгруппированная по названию: «мафия · глава», «мирный житель × 6».
-  const deck: { text: string; n: number }[] = []
+  // Колода, сгруппированная по карте: «мафия · глава», «мирный житель × 6». Своя роль — строчными, как встроенные.
+  const deck: { id: RoleId; text: string; n: number; custom: boolean }[] = []
   for (const card of check.deck) {
-    const text = roleText(lang, registry, card)
     const last = deck.at(-1)
-    if (last && last.text === text) last.n++
-    else deck.push({ text, n: 1 })
+    if (last && last.id === card) {
+      last.n++
+      continue
+    }
+    const custom = registry.roles.find((r) => r.id === card)?.custom === true
+    const text = roleText(lang, registry, card)
+    deck.push({ id: card, text: custom ? text.toLowerCase() : text, n: 1, custom })
   }
+  // Шаги ночи для этого состава, по порядку пробуждения.
+  const order = nightOrder(registry, check.deck).map((def) => ({
+    id: def.id,
+    text: stepName(lang, registry, def).toLowerCase(),
+    custom: def.performers.some((id) => registry.roles.find((r) => r.id === id)?.custom === true),
+  }))
 
   const canDeal = check.errors.length === 0
-  useHotkeys({ enter: () => canDeal && store.dealDraft() }, true)
+  // Пока открыта форма роли, Enter принадлежит ей: карты он не раздаёт.
+  useHotkeys({ enter: () => canDeal && store.dealDraft() }, roleForm === null)
 
   const extra = check.deck.length - draft.playerCount
   const errorText = check.errors.includes('players_out_of_range') ? t('setup.error.players_out_of_range')
@@ -98,11 +118,26 @@ export function SetupScreen() {
 
           <h2 className="h2">{t('setup.roles')}</h2>
           {configurableRoles(registry).map((role) => {
-            const name = cap(translateKey(lang, role.nameKey))
+            const name = cap(roleTitle(lang, role))
             const count = draft.composition[role.id] ?? 0
             const nested = nestedRoles(registry, role.id).map((n) => ({ def: n, n: Math.min(n.exactCount ?? 0, count) })).filter((x) => x.n > 0)
+            const own = role.custom ? settings.customRoles.find((r) => r.id === role.id) : undefined
+            if (own && roleForm !== null && roleForm !== 'new' && roleForm.edit === role.id) {
+              return (
+                <CustomRoleForm
+                  key={role.id} title={t('setup.custom.edit')} submitLabel={t('setup.custom.save')}
+                  initial={{ name: own.name, side: own.side, night: own.night }}
+                  onSubmit={(input) => {
+                    const issue = store.updateCustomRole(role.id, input)
+                    if (issue === null) setRoleForm(null)
+                    return issue
+                  }}
+                  onCancel={() => setRoleForm(null)}
+                />
+              )
+            }
             return (
-              <div key={role.id} className="role-row">
+              <div key={role.id} className={role.custom ? 'role-row role-row-custom' : 'role-row'}>
                 <button
                   type="button" role="switch" aria-checked={count > 0} aria-label={t('setup.role.on', { role: name })} className="switch"
                   onClick={() => setCount(role.id, count > 0 ? 0 : Math.max(1, role.defaultCount))}
@@ -111,14 +146,27 @@ export function SetupScreen() {
                 </button>
                 <SideDot registry={registry} side={role.side} />
                 <div className="role-row-text">
-                  <span className="role-row-name">{name}</span>
+                  <span className="role-row-head">
+                    <span className="role-row-name">{name}</span>
+                    {role.custom && <span className="role-tag">{t('role.custom.tag')}</span>}
+                  </span>
                   <span className="muted">{sub(role)}</span>
                   {nested.map((x) => (
                     <span key={x.def.id} className="note-pill">
-                      {t('setup.nested', { role: translateKey(lang, x.def.nameKey), n: x.n })}{about(x.def) ? ` — ${about(x.def)}` : ''}
+                      {t('setup.nested', { role: roleTitle(lang, x.def), n: x.n })}{about(x.def) ? ` — ${about(x.def)}` : ''}
                     </span>
                   ))}
                 </div>
+                {role.custom && (
+                  <div className="role-row-tools">
+                    <button type="button" className="icon-btn" aria-label={t('setup.custom.editAria', { role: name })} onClick={() => setRoleForm({ edit: role.id })}>
+                      <Pencil />
+                    </button>
+                    <button type="button" className="icon-btn" aria-label={t('setup.custom.deleteAria', { role: name })} onClick={() => store.removeCustomRole(role.id)}>
+                      <Trash />
+                    </button>
+                  </div>
+                )}
                 <Stepper
                   value={count} min={0} max={MAX_PLAYERS}
                   lessLabel={t('stepper.less', { name })} moreLabel={t('stepper.more', { name })}
@@ -138,6 +186,27 @@ export function SetupScreen() {
               <span className="role-row-fixed num">{check.civilians}</span>
             </div>
           )}
+          {roleForm === 'new' ? (
+            <CustomRoleForm
+              title={t('setup.custom.new')} submitLabel={t('setup.custom.submit')}
+              onSubmit={(input) => {
+                const issue = store.addCustomRole(input)
+                if (issue === null) setRoleForm(null)
+                return issue
+              }}
+              onCancel={() => setRoleForm(null)}
+            />
+          ) : settings.customRoles.length >= MAX_CUSTOM_ROLES ? (
+            <p className="role-limit muted">{t('setup.custom.limit')}</p>
+          ) : (
+            <button type="button" className="role-add" onClick={() => setRoleForm('new')}>
+              <span className="role-add-icon" aria-hidden="true"><Plus size={20} /></span>
+              <span className="role-add-text">
+                <span className="role-add-title">{t('setup.custom.add')}</span>
+                <span className="muted">{t('setup.custom.add.hint')}</span>
+              </span>
+            </button>
+          )}
         </section>
 
         <section className="split-side">
@@ -152,9 +221,21 @@ export function SetupScreen() {
               ))}
             </div>
             <span className="small muted">{t('setup.deck')}</span>
-            <div className="chips">
-              {deck.map((d) => <span key={d.text} className="chip">{d.n > 1 ? `${d.text} × ${d.n}` : d.text}</span>)}
+            <ul className="chips" aria-label={t('setup.deck.aria')}>
+              {deck.map((d) => <li key={d.id} className={d.custom ? 'chip chip-custom' : 'chip'}>{d.n > 1 ? `${d.text} × ${d.n}` : d.text}</li>)}
+            </ul>
+          </div>
+
+          <div className="panel setup-night">
+            <div className="setup-night-head">
+              <h2 className="h2">{t('setup.nightOrder')}</h2>
+              {order.length > 0 && <span className="small muted">{t('setup.nightOrder.hint')}</span>}
             </div>
+            {order.length > 0 ? (
+              <ol className="chips night-order" aria-label={t('setup.nightOrder')}>
+                {order.map((step, i) => <li key={step.id} className={step.custom ? 'chip chip-night' : 'chip'}>{`${i + 1} · ${step.text}`}</li>)}
+              </ol>
+            ) : <p className="muted">{t('setup.nightOrder.none')}</p>}
           </div>
 
           <div className="panel setup-timers">
