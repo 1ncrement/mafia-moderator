@@ -1,6 +1,6 @@
-import { DEFAULT_REGISTRY, journal, phaseOrder } from '../../src/engine'
+import { DEFAULT_REGISTRY, deriveState, execute, journal, nightState, phaseOrder } from '../../src/engine'
 import type { Command, PhaseRef, Session } from '../../src/engine'
-import { act, attempt, game, play, st, TABLE_11 } from '../helpers'
+import { act, attempt, customNight, game, play, playWith, st, TABLE_11 } from '../helpers'
 
 // Приёмочный сценарий из раздела 8 спецификации, пройденный командами движка.
 // Стол: №1 шериф, №3 крёстный отец, №4 доктор, №8 мафия, №10 проститутка.
@@ -117,4 +117,65 @@ test('полная партия на 11 игроков по приёмочном
   expect(groups[4]!.entries.find((e) => e.kind === 'votes')).toMatchObject({ ballot: 1, voters: 10, entries: [
     { candidate: 7, count: 4 }, { candidate: 3, count: 1 }, { candidate: 10, count: 1 }, { candidate: 11, count: 4 }, { candidate: 4, count: 0 }] })
   expect(groups[5]!.entries.at(-1)).toMatchObject({ kind: 'night_result', dies: 9 })
+})
+
+// Приёмочный сценарий дополнения «Свои роли» (раздел 8), шаги, которые выражаются командами движка.
+// Стол: №1 шериф, №3 крёстный отец, №4 доктор, №6 журналист (красный, ходит ночью), №8 мафия,
+// №9 маньяк (чёрный, ночью спит), №10 проститутка.
+test('партия со своими ролями: запись журналиста, блок, проверка маньяка, обмен ролей, журнал', () => {
+  const { s: start, registry: R } = customNight()
+  const go = (s: Session, ...cmds: Command[]) => playWith(R, s, ...cmds)
+  const now = (s: Session) => deriveState(s, R)
+  const stepOf = (s: Session, id: string) => now(s).night!.steps.find((x) => x.id === id)!
+  expect(now(start).counts.bySide).toEqual({ black: 4, red: 7 })
+
+  // Шаг 5: Ночь 1 — шаг журналиста идёт после доктора; запись есть, подсказка итога та же, что без неё.
+  let s = go(start, act('mafia_shot', null, 7), act('doctor_heal', 4, 2))
+  const hint = now(s).night!.outcome
+  expect(hint).toMatchObject({ dies: 7, reason: 'shot' })
+  expect(now(s).night!.steps.map((x) => x.actionId).slice(-2)).toEqual(['doctor_heal', 'act_custom_j'])
+  s = go(s, act('act_custom_j', 6, 9))
+  expect(now(s).night!.outcome).toEqual(hint)
+  expect(stepOf(s, 'act_custom_j:6')).toMatchObject({ effect: 'note', recorded: true, target: 9, blocked: false })
+  s = go(s, { type: 'confirmNight', chosen: 7 })
+  expect(now(s).phase).toEqual(day(2)); expect(now(s).counts.bySide).toEqual({ black: 4, red: 6 }); expect(now(s).warnings).toEqual([])
+
+  // Шаг 6: Ночь 2 — проститутка блокирует журналиста (запись всё равно делается), шериф видит маньяка чёрным.
+  s = go(s, { type: 'startPhase', phase: night(2) })
+  expect(stepOf(s, 'act_custom_j:6').lastNight).toEqual({ recorded: true, target: 9 })
+  s = go(s, act('prostitute_block', 10, 6), act('sheriff_check', 1, 9), act('act_custom_j', 6, 9))   // та же цель — без предупреждения
+  expect(stepOf(s, 'act_custom_j:6')).toMatchObject({ blocked: true, recorded: true, target: 9 })
+  expect(stepOf(s, 'sheriff_check:1').answer).toEqual({ kind: 'side', side: 'black' })
+  expect(now(s).night!.outcome).toMatchObject({ dies: null, reason: 'no_shot' })
+  s = go(s, { type: 'confirmNight', chosen: null })
+
+  // День 3: своя роль — обычный игрок. Маньяк выставлен один и выгнан: чёрных на одного меньше.
+  expect(now(s).phase).toEqual(day(3))
+  s = go(s, { type: 'nominate', by: 6, target: 9 })
+  expect(now(s).day!.ballots[0]).toMatchObject({ voters: 10, hint: { outcome: 'eliminated', seats: [9] } })
+  s = go(s, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [9] })
+  expect(now(s).counts.bySide).toEqual({ black: 3, red: 6 })
+
+  // Обмен ролей с носителем своей роли: журналистом становится №2, ночные записи идут за ролью.
+  s = go(s, { type: 'swapRoles', a: 6, b: 2 })
+  expect(now(s).players[1]!.roleId).toBe('custom_j'); expect(now(s).players[5]!.roleId).toBe('civilian')
+  expect(nightState(s, R, 2).steps.at(-1)).toMatchObject({ id: 'act_custom_j:2', recorded: true, target: 9 })
+  expect(now(s).warnings).toEqual([])
+
+  // Ночь 3: единственный носитель выбыл — шаг остаётся серым, записать в него нельзя.
+  s = go(s, { type: 'startPhase', phase: night(3) }, { type: 'setStatus', seat: 2, status: 'out', cause: 'shot' })
+  expect(now(s).night!.steps.at(-1)).toMatchObject({ id: 'act_custom_j', grey: true, recorded: false })
+  expect(execute(s, act('act_custom_j', null, 5), R)).toEqual({ ok: false, reason: 'step_grey' })
+
+  // Шаг 8: остановка игры; журнал от Ночи 3 до распределения называет записи своей роли.
+  s = go(s, { type: 'finishGame', winner: 'red' })
+  expect(now(s).finished).toEqual({ winner: 'red' })
+  const groups = journal(s, R)
+  expect(groups.map((g) => phaseOrder(g.phase))).toEqual([6, 5, 4, 3, 2, 1, 0])
+  const noted = (order: number) => groups.find((g) => phaseOrder(g.phase) === order)!.entries.filter((e) => e.kind === 'night_action' && e.actionId === 'act_custom_j')
+  expect(noted(2)).toMatchObject([{ performerRole: 'custom_j', actor: 2, target: 9 }])
+  expect(noted(4)).toMatchObject([{ performerRole: 'custom_j', actor: 2, target: 9 }])
+  expect(noted(6)).toEqual([])
+  expect(groups.at(-1)!.entries[0]).toMatchObject({ kind: 'deal', counts: { custom_j: 1, custom_m: 1, civilian: 4 } })
+  expect(groups.find((g) => phaseOrder(g.phase) === 2)!.entries.at(-1)).toMatchObject({ kind: 'night_result', dies: 7 })
 })
