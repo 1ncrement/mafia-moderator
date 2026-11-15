@@ -1,4 +1,4 @@
-import type { PhaseRef, Session, SessionConfig, SideId } from '../engine'
+import type { CustomRole, PhaseRef, Session, SessionConfig, SideId } from '../engine'
 
 // Единственный модуль, который знает о хранилище браузера. Любая ошибка чтения или записи
 // превращается в результат, а не в исключение: приватное окно и переполнение не роняют приложение.
@@ -17,8 +17,9 @@ export type SessionMeta = {
 }
 
 export type Lang = 'ru' | 'uk'
-export type Settings = { lang: Lang; sound: boolean; rolesHidden: boolean; lastConfig: SessionConfig | null }
-export const DEFAULT_SETTINGS: Settings = { lang: 'ru', sound: true, rolesHidden: false, lastConfig: null }
+/** customRoles — перечень своих ролей ведущего: хранится отдельно от игр. */
+export type Settings = { lang: Lang; sound: boolean; rolesHidden: boolean; lastConfig: SessionConfig | null; customRoles: CustomRole[] }
+export const DEFAULT_SETTINGS: Settings = { lang: 'ru', sound: true, rolesHidden: false, lastConfig: null, customRoles: [] }
 
 /** null — такой сессии нет; ok: false — данные есть, но прочитать их нельзя (они не затираются). */
 export type Loaded = { ok: true; session: Session } | { ok: false; raw: string } | null
@@ -62,7 +63,13 @@ function looksLikeConfig(c: unknown): c is SessionConfig {
     && isRecord(c.durations) && DURATION_KEYS.every((k) => typeof (c.durations as Record<string, unknown>)[k] === 'number')
     && isRecord(c.rules) && typeof c.rules.nominationsFromDay === 'number' && typeof c.rules.balaganFromDay === 'number'
     && typeof c.separateTimerStart === 'boolean'
+    // Сохранения до «своих ролей» поля не имеют.
+    && (c.customRoles === undefined || Array.isArray(c.customRoles))
 }
+
+/** Запись перечня своих ролей с полями нужных типов. Смысл (сторона, повторы, предел) проверяет справочник. */
+const looksLikeRole = (r: unknown): r is CustomRole =>
+  isRecord(r) && typeof r.id === 'string' && typeof r.name === 'string' && typeof r.side === 'string' && typeof r.night === 'boolean'
 
 function looksLikeSession(v: unknown): v is Session {
   return isRecord(v) && v.schemaVersion === 1 && typeof v.id === 'string' && Array.isArray(v.log)
@@ -149,6 +156,7 @@ export function createStorage(kv: KV) {
         sound: typeof data.sound === 'boolean' ? data.sound : DEFAULT_SETTINGS.sound,
         rolesHidden: typeof data.rolesHidden === 'boolean' ? data.rolesHidden : DEFAULT_SETTINGS.rolesHidden,
         lastConfig: looksLikeConfig(data.lastConfig) ? data.lastConfig : null,
+        customRoles: Array.isArray(data.customRoles) ? (data.customRoles as unknown[]).filter(looksLikeRole) : [],
       }
     },
 

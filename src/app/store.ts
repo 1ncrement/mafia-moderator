@@ -1,13 +1,15 @@
 import {
   applyPatch, applyUndo, checkComposition, dealRoles, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES,
-  defaultComposition, deriveState, execute, journal, newSession, newTimer, timerReduce,
+  defaultComposition, deriveState, execute, journal, MAX_CUSTOM_ROLES, newSession, newTimer, registryFor, sanitizeCustomRoles, timerReduce,
 } from '../engine'
 import type {
-  Command, CommandResult, GameEvent, GameState, RandomInt, Registry, Seat, Session, SessionConfig, SpeechKind,
+  Command, CommandResult, CustomRole, GameEvent, GameState, RandomInt, Registry, RoleId, Seat, Session, SessionConfig, SpeechKind,
   TimerAction, UndoEntry,
 } from '../engine'
 import { createStorage, DEFAULT_SETTINGS } from '../platform/storage'
 import type { KV, SessionMeta, Settings } from '../platform/storage'
+import { checkRoleName, cleanRoleName, takenNames } from './customRoles'
+import type { RoleInput, RoleIssue } from './customRoles'
 
 // Состояние приложения: один маленький store без библиотек. Журнал сессии — источник истины,
 // состояние стола каждый раз выводит deriveState. Сохранение — после каждой команды, синхронно.
@@ -64,18 +66,27 @@ export type AppStore = {
   deleteSession(id: string): void
   goHome(): void
   rematch(): void
+  /** Новая своя роль: попадает в перечень и сразу в состав с количеством 1. null — добавлена. */
+  addCustomRole(input: RoleInput): RoleIssue | null
+  updateCustomRole(id: RoleId, input: RoleInput): RoleIssue | null
+  /** Убирает роль из перечня и из черновика состава. Игры, в которых она участвовала, хранят свою копию. */
+  removeCustomRole(id: RoleId): void
   /** Сырые данные сессии, которую не удалось прочитать, — чтобы ведущий мог их скопировать. */
   rawSession(id: string): string | null
   now(): number
   beep(): void
   randomInt: RandomInt
-  registry: Registry
+  /** Справочник идущей сессии; без сессии — встроенный справочник плюс перечень своих ролей из настроек. */
+  readonly registry: Registry
 }
 
 const UNDO_LIMIT = 50
 
-export function metaOf(session: Session, registry: Registry = DEFAULT_REGISTRY): SessionMeta {
-  const game = deriveState(session, registry)
+/** Справочник сессии: встроенный плюс свои роли, которые она запомнила при раздаче. */
+const sessionRegistry = (base: Registry, session: Session): Registry => registryFor(base, session.config.customRoles)
+
+export function metaOf(session: Session, base: Registry = DEFAULT_REGISTRY): SessionMeta {
+  const game = deriveState(session, sessionRegistry(base, session))
   const phase = game.phase ?? { kind: 'deal' }
   return {
     id: session.id,
@@ -107,12 +118,13 @@ function diffLogs(before: GameEvent[], after: GameEvent[]): UndoEntry {
 
 export function createAppStore(env: Env): AppStore {
   const storage = createStorage(env.kv)
-  const registry = env.registry
+  const base = env.registry
+  const regOf = (session: Session): Registry => sessionRegistry(base, session)
   const listeners = new Set<() => void>()
 
   const firstDraft = (): SessionConfig => ({
     playerCount: 10,
-    composition: defaultComposition(registry),
+    composition: defaultComposition(base),
     durations: DEFAULT_DURATIONS,
     rules: DEFAULT_RULES,
     separateTimerStart: false,
@@ -160,7 +172,7 @@ export function createAppStore(env: Env): AppStore {
   /** Игры, которые не удалось сохранить: живут в памяти вкладки и остаются в списке на главной. */
   const unsaved = new Map<string, Session>()
   const listSessions = (): SessionMeta[] => [
-    ...[...unsaved.values()].map((session) => metaOf(session, registry)),
+    ...[...unsaved.values()].map((session) => metaOf(session, base)),
     ...storage.list().filter((m) => !unsaved.has(m.id)),
   ].sort((a, b) => b.updatedAt - a.updatedAt)
 
@@ -170,8 +182,8 @@ export function createAppStore(env: Env): AppStore {
    */
   const tryDerive = (session: Session): GameState | null => {
     try {
-      const game = deriveState(session, registry)
-      journal(session, registry)
+      const game = deriveState(session, regOf(session))
+      journal(session, regOf(session))
       return game
     } catch {
       return null
@@ -180,9 +192,9 @@ export function createAppStore(env: Env): AppStore {
 
   /** Принять новое состояние сессии: вывести стол, сохранить, сообщить подписчикам. */
   const commit = (session: Session, timer: 'sync' | 'keep' = 'sync') => {
-    const game = deriveState(session, registry)
+    const game = deriveState(session, regOf(session))
     const next = timer === 'keep' ? session : { ...session, timer: timerFor(session, game, null) }
-    const saved = storage.save(next, metaOf(next, registry))
+    const saved = storage.save(next, metaOf(next, base))
     if (saved) unsaved.delete(next.id)
     else unsaved.set(next.id, next)
     set({ session: next, game, screen: screenOf(game), storageError: !saved })
@@ -200,7 +212,7 @@ export function createAppStore(env: Env): AppStore {
     let nextSeq = start.nextSeq
     let last: CommandResult = { ok: true, patch: { add: [], replace: [], remove: [] } }
     for (const cmd of cmds) {
-      last = execute({ ...start, log, nextSeq }, cmd, registry)
+      last = execute({ ...start, log, nextSeq }, cmd, regOf(start))
       if (!last.ok) return last
       const applied = applyPatch(log, last.patch, nextSeq, env.newId)
       log = applied.log
@@ -220,8 +232,42 @@ export function createAppStore(env: Env): AppStore {
     if (state.session) commit(fn(state.session), 'keep')
   }
 
+  /** Перечень своих ролей меняется только здесь: сразу в настройки браузера. */
+  const saveRoles = (customRoles: CustomRole[]) => {
+    const settings = { ...state.settings, customRoles }
+    storage.saveSettings(settings)
+    set({ settings })
+  }
+
+  /**
+   * Состав прошлой игры как черновик новой: её свои роли, которых в перечне уже нет, возвращаются в перечень
+   * (пока не достигнут предел). Если в перечне успели завести роль с тем же названием, двойник не создаётся —
+   * количество переходит к роли перечня.
+   */
+  const adoptRoles = (config: SessionConfig): SessionConfig => {
+    const list = [...state.settings.customRoles]
+    const composition = { ...config.composition }
+    for (const role of sanitizeCustomRoles(base, config.customRoles)) {
+      if (list.some((r) => r.id === role.id)) continue
+      const twin = list.find((r) => r.name.toLowerCase() === role.name.toLowerCase())
+      if (twin) {
+        composition[twin.id] = (composition[twin.id] ?? 0) + (composition[role.id] ?? 0)
+        delete composition[role.id]
+      } else if (list.length < MAX_CUSTOM_ROLES) {
+        list.push(role)
+      }
+    }
+    if (list.length !== state.settings.customRoles.length) saveRoles(list)
+    // Черновик состава своих ролей не хранит: их перечень — в настройках, копию для игры делает раздача.
+    const draft: SessionConfig = { ...config, composition }
+    delete draft.customRoles
+    return draft
+  }
+
   const store: AppStore = {
-    registry,
+    get registry() {
+      return state.session ? regOf(state.session) : registryFor(base, state.settings.customRoles)
+    },
     now: env.now,
     beep: env.beep,
     randomInt: env.randomInt,
@@ -244,7 +290,7 @@ export function createAppStore(env: Env): AppStore {
         // После отмены таймер шага встаёт в «готов» — и принадлежит тому, кто говорит после отмены.
         const reset = session.timer ? timerReduce(rebased(session, session.timer), { type: 'reset' }, env.now()) : null
         const undone = { ...session, log: applyUndo(session.log, entry), undo: session.undo.slice(0, -1), timer: reset, updatedAt: env.now() }
-        return { ...undone, timer: timerFor(undone, deriveState(undone, registry), reset) }
+        return { ...undone, timer: timerFor(undone, deriveState(undone, regOf(undone)), reset) }
       })
     },
 
@@ -275,7 +321,7 @@ export function createAppStore(env: Env): AppStore {
       // Закрыли свободный таймер посреди речи — говорящий получает свой таймер обратно, в «готов».
       withSession((session) => {
         const cleared = { ...session, timer: null }
-        return { ...cleared, timer: timerFor(cleared, deriveState(cleared, registry), null) }
+        return { ...cleared, timer: timerFor(cleared, deriveState(cleared, regOf(cleared)), null) }
       })
     },
 
@@ -315,10 +361,12 @@ export function createAppStore(env: Env): AppStore {
 
     dealDraft() {
       const draft = state.draft
-      const check = checkComposition(draft.playerCount, draft.composition, registry)
+      const check = checkComposition(draft.playerCount, draft.composition, registryFor(base, state.settings.customRoles))
       if (check.errors.length > 0) return
-      const empty = newSession(env.newId(), env.now(), draft)
-      const dealt = execute(empty, { type: 'deal', assignment: dealRoles(check.deck, env.randomInt) }, registry)
+      // Игра запоминает свои роли, которые в ней участвуют: потом их можно переименовать или удалить из перечня.
+      const customRoles = state.settings.customRoles.filter((role) => check.deck.includes(role.id))
+      const empty = newSession(env.newId(), env.now(), { ...draft, customRoles })
+      const dealt = execute(empty, { type: 'deal', assignment: dealRoles(check.deck, env.randomInt) }, regOf(empty))
       if (!dealt.ok) return
       // Сама раздача в стек отмены не входит: отменять её некуда.
       const applied = applyPatch(empty.log, dealt.patch, empty.nextSeq, env.newId)
@@ -335,7 +383,7 @@ export function createAppStore(env: Env): AppStore {
       // Раздача, по которой игру не начали, не нужна в списке игр.
       storage.remove(session.id)
       unsaved.delete(session.id)
-      leaveSession({ screen: 'setup', draft: session.config })
+      leaveSession({ screen: 'setup', draft: adoptRoles(session.config) })
     },
 
     openSession(id) {
@@ -361,7 +409,37 @@ export function createAppStore(env: Env): AppStore {
 
     rematch() {
       const session = state.session
-      leaveSession({ screen: 'setup', draft: session ? session.config : state.draft })
+      leaveSession({ screen: 'setup', draft: session ? adoptRoles(session.config) : state.draft })
+    },
+
+    addCustomRole(input) {
+      const list = state.settings.customRoles
+      if (list.length >= MAX_CUSTOM_ROLES) return 'limit'
+      const issue = checkRoleName(input.name, takenNames(base, list))
+      if (issue) return issue
+      // Идентификатор от названия не зависит: переименование ничего не ломает.
+      let id: RoleId
+      do id = `custom_${env.newId()}`
+      while (list.some((r) => r.id === id))
+      saveRoles([...list, { id, name: cleanRoleName(input.name), side: input.side, night: input.night }])
+      set({ draft: { ...state.draft, composition: { ...state.draft.composition, [id]: 1 } } })
+      return null
+    },
+
+    updateCustomRole(id, input) {
+      const list = state.settings.customRoles
+      if (!list.some((r) => r.id === id)) return null
+      const issue = checkRoleName(input.name, takenNames(base, list, id))
+      if (issue) return issue
+      saveRoles(list.map((r) => (r.id === id ? { id, name: cleanRoleName(input.name), side: input.side, night: input.night } : r)))
+      return null
+    },
+
+    removeCustomRole(id) {
+      saveRoles(state.settings.customRoles.filter((r) => r.id !== id))
+      const composition = { ...state.draft.composition }
+      delete composition[id]
+      set({ draft: { ...state.draft, composition } })
     },
 
     rawSession(id) {
@@ -371,7 +449,9 @@ export function createAppStore(env: Env): AppStore {
   }
 
   // Запуск: настройки, список игр и незавершённая игра на том же шаге.
-  state = { ...state, settings: storage.settings(), sessions: storage.list() }
+  const stored = storage.settings()
+  // Негодные записи перечня своих ролей пропускаются: повреждённый перечень не роняет запуск.
+  state = { ...state, settings: { ...stored, customRoles: sanitizeCustomRoles(base, stored.customRoles) }, sessions: storage.list() }
   const active = storage.activeId()
   if (active !== null) {
     const loaded = storage.load(active)

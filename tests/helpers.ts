@@ -64,16 +64,17 @@ export const attempt = (s: Session, cmd: Command): CommandResult => execute(s, c
 export const st = (s: Session): GameState => deriveState(s, DEFAULT_REGISTRY)
 
 /** До начала Дня n: дни без действий, ночи без записей с итогом «никто не выбыл». */
-export function toDay(s: Session, n: number): Session {
+export function toDayWith(registry: Registry, s: Session, n: number): Session {
   let cur = s
   for (;;) {
-    const phase = st(cur).phase ?? { kind: 'deal' as const }
+    const phase = deriveState(cur, registry).phase ?? { kind: 'deal' as const }
     if (phase.kind === 'day' && phase.n >= n) return cur
     cur = phase.kind === 'night'
-      ? play(cur, { type: 'confirmNight', chosen: null })
-      : play(cur, { type: 'startPhase', phase: nextPhase(phase) })
+      ? playWith(registry, cur, { type: 'confirmNight', chosen: null })
+      : playWith(registry, cur, { type: 'startPhase', phase: nextPhase(phase) })
   }
 }
+export const toDay = (s: Session, n: number): Session => toDayWith(DEFAULT_REGISTRY, s, n)
 
 /** Запись ночного действия. */
 export const act = (actionId: string, actor: number | null, target: number | null): Command =>

@@ -9,6 +9,8 @@ export type TKey = keyof Dict
 export type Params = Record<string, string | number>
 
 const DICTS: Record<Lang, Dict> = { ru, uk }
+/** Языки интерфейса. */
+export const LANGS = Object.keys(DICTS) as Lang[]
 
 const fill = (text: string, params?: Params) =>
   params ? text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in params ? String(params[name]) : whole)) : text

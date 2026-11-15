@@ -310,7 +310,7 @@ test('состав и журнал называют свою роль', () => {
 - Изменение перечня сразу сохраняется в настройки (`storage.saveSettings`).
 - `tests/ui/helpers.tsx`: `seedCustomGame(app, roles, assignment, day)` — как `seedGame`, но сессия со своими ролями и справочником `registryFor`.
 
-- [ ] **Step 1: Падающие тесты** — `tests/app/custom-roles.test.ts`:
+- [x] **Step 1: Падающие тесты** — `tests/app/custom-roles.test.ts`:
 
 ```ts
 const input = { name: '  Журналист ', side: 'red', night: true }
@@ -376,10 +376,10 @@ test('сессия без customRoles и мусор в настройках не
 })
 ```
 
-- [ ] **Step 2: Запустить** — FAIL, `addCustomRole` не существует.
-- [ ] **Step 3: Реализовать** `src/app/customRoles.ts`, правки `storage.ts` и `store.ts`, помощник `seedCustomGame`.
-- [ ] **Step 4: Запустить** файл — PASS; `npm run check` — PASS (старые тесты `store`, `storage` и интерфейса не меняются).
-- [ ] **Step 5: Commit** — `feat(app): перечень своих ролей в настройках и копия в сессии`.
+- [x] **Step 2: Запустить** — FAIL, `addCustomRole` не существует.
+- [x] **Step 3: Реализовать** `src/app/customRoles.ts`, правки `storage.ts` и `store.ts`, помощник `seedCustomGame`.
+- [x] **Step 4: Запустить** файл — PASS; `npm run check` — PASS (старые тесты `store`, `storage` и интерфейса не меняются).
+- [x] **Step 5: Commit** — `feat(app): перечень своих ролей в настройках и копия в сессии`.
 
 ---
 
