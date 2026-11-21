@@ -27,7 +27,9 @@ test('после «Добавить выбывшего…» и подтверж�
   expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 2 })
   // Ночь подтверждена: её вопрос над столом больше не к месту.
   expect(screen.queryByText(QUESTION)).not.toBeInTheDocument()
-  // Стол в режиме «Обзор»: клик по карточке открывает панель игрока.
+  // Ведущий объявил утро; стол в режиме «Обзор»: клик по карточке открывает панель игрока.
+  advance(env, 500)
+  await user.click(screen.getByRole('button', { name: 'Объявил' }))
   await user.click(screen.getByRole('button', { name: 'Игрок №2' }))
   expect(screen.getByRole('button', { name: 'Вернуть в игру' })).toBeInTheDocument()
 })

@@ -70,6 +70,14 @@ export function playersBefore(session: Session, registry: Registry, event: GameE
   return players(session, registry, { order: phaseOrder(event.phase), seq: event.seq })
 }
 
+/**
+ * Кто покинул стол за ночь n и до сих пор вне игры: статус «выбыл», поставленный в этой ночи, — итогом ночи,
+ * вручную посреди неё или записью задним числом. Возвращённый в игру сюда не попадает.
+ */
+export function leftAtNight(views: readonly PlayerView[], n: number): Seat[] {
+  return views.filter((p) => p.status === 'out' && p.outPhase !== undefined && samePhase(p.outPhase, { kind: 'night', n })).map((p) => p.seat)
+}
+
 export function aliveSeats(views: readonly PlayerView[]): Seat[] {
   return views.filter((p) => p.status === 'alive').map((p) => p.seat)
 }

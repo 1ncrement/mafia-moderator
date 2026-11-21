@@ -17,6 +17,8 @@ const seed = (a: AppStore) => {
   a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 })
   a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 3 })
   a.dispatch({ type: 'confirmNight', died: [] })
+  // Утро объявлено: окно «Объяви столу» закрыто.
+  a.dispatch({ type: 'announceMorning' })
   // Утром роли скрыты (видимость по фазе), а предложение — часть журнала: ведущий открывает роли кнопкой.
   a.setSettings({ rolesHidden: false })
 }

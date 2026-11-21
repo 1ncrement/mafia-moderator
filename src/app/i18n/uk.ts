@@ -435,6 +435,16 @@ export const uk: Dict = {
   'night.note.healed.shot': 'у нього стріляла мафія',
   'night.note.healed.safe': 'у нього не стріляли',
   'edit.save': 'Зберегти',
+  'morning.title': 'Оголоси столу',
+  'morning.out.one': 'Стіл залишає гравець',
+  'morning.out.many': 'Стіл залишають гравці',
+  'morning.quiet': 'Місто прокидається в повному складі',
+  'morning.quiet.sub': 'Цієї ночі ніхто не залишив стіл.',
+  'morning.farewell': 'прощається зі столом — {sec}',
+  'morning.spared': 'був у бронежилеті — залишається в грі',
+  'morning.silenced': 'сьогодні мовчить',
+  'morning.done': 'Оголосив',
+  'morning.reopen': 'Оголошення ранку',
   'night.nobody': 'Ніхто не вибув',
 
   // ── Завершение игры и итоги ──

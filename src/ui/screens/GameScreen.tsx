@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import { seatList } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { Button } from '../common/Button'
+import { Sun } from '../common/icons'
 import { useHotkeys } from '../common/useHotkeys'
 import type { HotkeyMap } from '../common/useHotkeys'
 import { toggleTimer } from '../game/dayFlow'
@@ -14,6 +15,7 @@ import type { GameModal } from '../game/Header'
 import { JournalPanel } from '../game/JournalPanel'
 import { stepLabel } from '../game/labels'
 import { MainActionProvider, MainButton, useMainPress } from '../game/MainButton'
+import { MorningDialog } from '../game/MorningDialog'
 import { NightPanel } from '../game/NightPanel'
 import { NightSummary } from '../game/NightSummary'
 import { PauseCurtain } from '../game/PauseCurtain'
@@ -80,6 +82,8 @@ function Game({ game }: { game: GameState }) {
   const [modal, setModal] = useState<GameModal>(null)
   const [editing, setEditing] = useState<{ entry: JournalEntry; phase: PhaseRef } | null>(null)
   const [adding, setAdding] = useState<PhaseRef | null>(null)
+  /** Окно утра открыто снова из панели шага. Первый раз оно открывается само — пока утро не объявлено. */
+  const [morningOpen, setMorningOpen] = useState(false)
   const { selection } = useSelection()
   const flash = useTimerSignal()
   const digits = useRef<((n: number) => void) | null>(null)
@@ -101,6 +105,7 @@ function Game({ game }: { game: GameState }) {
   const Panel = panelFor(game)
   // Ведущий ушёл дальше через полосу шагов, а круг не закончен или не начат вовсе — предупреждение, не запрет.
   const day = game.day
+  const morning = game.morning
   const notSpoken = day && game.step !== 'balagan' && game.step !== 'speeches' ? day.waiting : []
 
   // Итог прошлой ночи разошёлся с отметкой — предложение исправить. Живёт в журнале,
@@ -134,6 +139,9 @@ function Game({ game }: { game: GameState }) {
         <section className="step-panel" aria-label={t('step.panel')}>
           {journalCollapsed && !settings.rolesHidden && nightOffers}
           <StepNav game={game} rules={session.config.rules} />
+          {morning?.announced && (
+            <Button variant="ghost" className="morning-reopen" onClick={() => setMorningOpen(true)}><Sun size={18} />{t('morning.reopen')}</Button>
+          )}
           {session.timer?.kind === 'free' && Panel !== SpeechPanel && <TimerPanel game={game} flash={flash} />}
           <DigitKeysContext.Provider value={digits}>
             {Panel ? <Panel game={game} flash={flash} /> : <h3 className="step-title">{stepLabel(lang, store.registry, game)}</h3>}
@@ -155,6 +163,17 @@ function Game({ game }: { game: GameState }) {
       {modal === 'timers' && <TimerSettings onClose={() => setModal(null)} />}
       {editing && <RecordEditor entry={editing.entry} phase={editing.phase} onClose={() => setEditing(null)} />}
       {adding && <AddRecord phase={adding} onClose={() => setAdding(null)} />}
+      {morning && day && (!morning.announced || morningOpen) && (
+        <MorningDialog
+          day={day.n} morning={morning} seconds={session.config.durations.farewell} first={!morning.announced}
+          onDone={() => {
+            if (!morning.announced) store.dispatch({ type: 'announceMorning' })
+            setMorningOpen(false)
+          }}
+          // Под окном шапка недоступна: подтверждение ночи отменяется прямо из него.
+          onUndo={!morning.announced && store.canUndo() ? () => store.undo() : undefined}
+        />
+      )}
     </>
   )
 }

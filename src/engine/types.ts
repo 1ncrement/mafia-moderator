@@ -113,6 +113,8 @@ export type GameEvent =
   | Ev<'voters_set', { ballot: 1 | 2; count: number }>
   | Ev<'vote_resolved', { ballot: 1 | 2; outcome: 'eliminated' | 'tie' | 'nobody'; seats: Seat[] }>
   | Ev<'game_finished', { winner: SideId | null }>
+  /** Ведущий объявил столу итог прошлой ночи: событие дня, в видимый журнал не попадает. */
+  | Ev<'morning_announced', object>
 
 export type EventOf<T extends GameEvent['type']> = Extract<GameEvent, { type: T }>
 export type NewEvent = GameEvent extends infer E ? (E extends GameEvent ? Omit<E, 'id' | 'seq' | 'tx'> : never) : never
@@ -219,6 +221,8 @@ export type Command =
   | { type: 'confirmNight'; died: Seat[] }
   /** Ответ на «итог ночи теперь другой»: apply — исправить статусы, иначе оставить как есть. */
   | { type: 'acknowledgeNight'; night: number; apply: boolean }
+  /** «Объявил» в утреннем окне: записывается один раз за день, со второго дня. */
+  | { type: 'announceMorning' }
   /** Правка итога уже подтверждённой ночи: кто выбыл на самом деле — весь набор. */
   | { type: 'setNightResult'; night: number; died: Seat[] }
 
@@ -252,9 +256,20 @@ export type GameState = {
   warnings: StateWarning[]
   day: DayState | null
   night: NightState | null
+  /** Что объявить столу утром; есть со второго дня. */
+  morning: Morning | null
   /** Кого проверяли действия check_side и find_role за всю игру. */
   permanentMarks: { seat: Seat; actionId: string }[]
 }
+
+// ── Утро ────────────────────────────────────────────────────────────────────
+
+/**
+ * Утреннее объявление: что сказать столу в начале дня. Ролей и причин здесь нет — окно открывается днём, когда роли скрыты.
+ * deaths — кто покинул стол прошлой ночью; farewell — кто из них прощается со столом; spared — остался в игре благодаря жилету;
+ * silenced — сегодня молчит. announced — ведущий нажал «Объявил».
+ */
+export type Morning = { deaths: Seat[]; farewell: Seat[]; spared: Seat[]; silenced: Seat[]; announced: boolean }
 
 // ── День ────────────────────────────────────────────────────────────────────
 

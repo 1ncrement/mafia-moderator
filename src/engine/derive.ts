@@ -1,10 +1,10 @@
 import { dayState } from './day'
 import { currentPhase, lastOf, samePhase } from './log'
 import { actionOfStepId, deathSeats, nightState, permanentMarks } from './night'
-import { playersNow } from './players'
+import { leftAtNight, playersNow } from './players'
 import { endHintFor } from './roles/rules'
 import { balaganInDay } from './setup'
-import type { GameState, NightState, PhaseRef, Registry, Session, SideId, StateWarning, StepId } from './types'
+import type { GameState, Morning, NightState, PhaseRef, Registry, Session, SideId, StateWarning, StepId } from './types'
 
 // Вывод состояния стола из журнала. Проход по журналу никогда не бросает исключений:
 // событие с неизвестной ссылкой или местом вне диапазона просто пропускается.
@@ -57,6 +57,12 @@ export function deriveState(session: Session, registry: Registry): GameState {
   }
   for (const b of day?.ballots ?? []) if (b.overflow && !b.resolved) warnings.push({ code: 'votes_overflow', ballot: b.n })
 
+  // Утро выводится из статусов после прошлой ночи: ручная правка статуса и правка итога сразу меняют объявление.
+  const morning: Morning | null = day && day.n >= 2 ? {
+    deaths: leftAtNight(views, day.n - 1), farewell: [], spared: [], silenced: [],
+    announced: session.log.some((e) => e.type === 'morning_announced' && samePhase(e.phase, phase)),
+  } : null
+
   return {
     phase: dealt ? phase : null,
     step,
@@ -67,6 +73,7 @@ export function deriveState(session: Session, registry: Registry): GameState {
     warnings,
     day,
     night,
+    morning,
     // Ночей в журнале не больше, чем номер текущей фазы.
     permanentMarks: permanentMarks(session, registry, nights),
   }

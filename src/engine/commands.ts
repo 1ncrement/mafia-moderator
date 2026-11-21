@@ -313,6 +313,14 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       })
     }
 
+    case 'announceMorning': {
+      // Утро есть со второго дня: до него объявлять нечего.
+      if (phase.kind !== 'day' || phase.n < 2) return no('wrong_phase')
+      // Окно, открытое снова, в журнал не пишет.
+      if (eventsOf(log, phase).some((e) => e.type === 'morning_announced')) return ok({})
+      return add({ type: 'morning_announced', phase })
+    }
+
     case 'setNightResult': {
       const p: PhaseRef = { kind: 'night', n: cmd.night }
       const confirmed = lastOf(eventsOf(log, p), 'night_confirmed')

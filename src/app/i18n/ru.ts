@@ -434,6 +434,16 @@ export const ru = {
   'night.note.healed.shot': 'в него стреляла мафия',
   'night.note.healed.safe': 'в него не стреляли',
   'edit.save': 'Сохранить',
+  'morning.title': 'Объяви столу',
+  'morning.out.one': 'Стол покидает игрок',
+  'morning.out.many': 'Стол покидают игроки',
+  'morning.quiet': 'Город просыпается в полном составе',
+  'morning.quiet.sub': 'Этой ночью никто не покинул стол.',
+  'morning.farewell': 'прощается со столом — {sec}',
+  'morning.spared': 'был в бронежилете — остаётся в игре',
+  'morning.silenced': 'сегодня молчит',
+  'morning.done': 'Объявил',
+  'morning.reopen': 'Объявление утра',
   'night.nobody': 'Никто не выбыл',
 
   // ── Завершение игры и итоги ──

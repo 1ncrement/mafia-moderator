@@ -63,14 +63,14 @@ export const play = (s: Session, ...cmds: Command[]): Session => playWith(DEFAUL
 export const attempt = (s: Session, cmd: Command): CommandResult => execute(s, cmd, DEFAULT_REGISTRY)
 export const st = (s: Session): GameState => deriveState(s, DEFAULT_REGISTRY)
 
-/** До начала Дня n: дни без действий, ночи без записей с итогом «никто не выбыл». */
+/** До начала Дня n: дни без действий, ночи без записей с итогом «никто не выбыл»; утро каждого дня объявлено — окно утра закрыто. */
 export function toDayWith(registry: Registry, s: Session, n: number): Session {
   let cur = s
   for (;;) {
     const phase = deriveState(cur, registry).phase ?? { kind: 'deal' as const }
     if (phase.kind === 'day' && phase.n >= n) return cur
     cur = phase.kind === 'night'
-      ? playWith(registry, cur, { type: 'confirmNight', died: [] })
+      ? playWith(registry, cur, { type: 'confirmNight', died: [] }, { type: 'announceMorning' })
       : playWith(registry, cur, { type: 'startPhase', phase: nextPhase(phase) })
   }
 }
