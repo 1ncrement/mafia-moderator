@@ -1,5 +1,5 @@
 import { DEFAULT_REGISTRY } from '../../src/engine/roles/registry'
-import { checkComposition, defaultComposition } from '../../src/engine/setup'
+import { checkComposition, DEFAULT_RULES, defaultComposition, normalizeRules } from '../../src/engine/setup'
 import { countBy } from '../helpers'
 
 const std = { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1 }
@@ -24,4 +24,29 @@ test('границы числа игроков', () => {
 test('предупреждения состава', () => {
   expect(checkComposition(8, { ...std, mafia: 0, prostitute: 0 }, DEFAULT_REGISTRY).warnings).toContain('no_killer')
   expect(checkComposition(4, { mafia: 2 }, DEFAULT_REGISTRY).warnings).toContain('black_not_less_than_red')
+})
+
+// ── Правила партии ──────────────────────────────────────────────────────────
+
+const OLD_RULES = { nominationsFromDay: 2, balaganFromDay: 2 }
+const LEGACY = { ...OLD_RULES, balagan: true, farewellAfterVote: true, farewellAfterNight: false, prostituteFirst: false }
+
+test('умолчания новой игры: балаган и прощание после голосования есть, после ночи нет, проститутка первой', () => {
+  expect(DEFAULT_RULES).toEqual({ ...OLD_RULES, balagan: true, farewellAfterVote: true, farewellAfterNight: false, prostituteFirst: true })
+})
+test('правила игры до обновления: недостающие поля читаются «как было» — проститутка после мафии', () => {
+  expect(normalizeRules(OLD_RULES)).toEqual(LEGACY)
+})
+test('заданные правила сохраняются как есть', () => {
+  const rules = { nominationsFromDay: 3, balaganFromDay: 4, balagan: false, farewellAfterVote: false, farewellAfterNight: true, prostituteFirst: true }
+  expect(normalizeRules(rules)).toEqual(rules)
+})
+test('мусор в полях правил заменяется прежним значением, а не роняет чтение', () => {
+  expect(normalizeRules({ ...OLD_RULES, balagan: 'да', farewellAfterVote: null, farewellAfterNight: 1, prostituteFirst: {} })).toEqual(LEGACY)
+  expect(normalizeRules(null)).toEqual(LEGACY)
+  expect(normalizeRules('rules')).toEqual(LEGACY)
+})
+test('недостающие поля можно читать и по умолчаниям новой игры — для черновика состава', () => {
+  expect(normalizeRules(OLD_RULES, DEFAULT_RULES)).toEqual(DEFAULT_RULES)
+  expect(normalizeRules({ ...OLD_RULES, prostituteFirst: false }, DEFAULT_RULES)).toEqual({ ...DEFAULT_RULES, prostituteFirst: false })
 })

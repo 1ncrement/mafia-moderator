@@ -80,7 +80,33 @@ export function nightOrder(registry: Registry, deck: readonly RoleId[]): NightAc
 // ── Умолчания сессии ────────────────────────────────────────────────────────
 
 export const DEFAULT_DURATIONS: Durations = { speech: 60, balagan: 60, defense: 30, tiebreak: 30, farewell: 30 }
-export const DEFAULT_RULES: Rules = { nominationsFromDay: 2, balaganFromDay: 2 }
+/** Правила новой игры. */
+export const DEFAULT_RULES: Rules = {
+  nominationsFromDay: 2, balaganFromDay: 2, balagan: true, farewellAfterVote: true, farewellAfterNight: false, prostituteFirst: true,
+}
+/** Как играли до появления правил партии: балаган есть, прощание только после голосования, проститутка после мафии. */
+export const LEGACY_RULES: Rules = { ...DEFAULT_RULES, prostituteFirst: false }
+
+/**
+ * Правила сохранённой игры: недостающее или испорченное поле читается «как было до обновления».
+ * fallback — откуда брать недостающее: для черновика новой игры это умолчания новой игры.
+ */
+export function normalizeRules(input: unknown, fallback: Rules = LEGACY_RULES): Rules {
+  const given: Record<string, unknown> = typeof input === 'object' && input !== null ? (input as Record<string, unknown>) : {}
+  const num = (key: 'nominationsFromDay' | 'balaganFromDay'): number => {
+    const value = given[key]
+    return typeof value === 'number' && Number.isFinite(value) ? value : fallback[key]
+  }
+  const flag = (key: 'balagan' | 'farewellAfterVote' | 'farewellAfterNight' | 'prostituteFirst'): boolean => {
+    const value = given[key]
+    return typeof value === 'boolean' ? value : fallback[key]
+  }
+  return {
+    nominationsFromDay: num('nominationsFromDay'), balaganFromDay: num('balaganFromDay'),
+    balagan: flag('balagan'), farewellAfterVote: flag('farewellAfterVote'), farewellAfterNight: flag('farewellAfterNight'),
+    prostituteFirst: flag('prostituteFirst'),
+  }
+}
 
 /** Пустая сессия: настройки есть, журнал пуст. Раздачу добавляет команда deal. */
 export function newSession(id: string, now: number, config: SessionConfig): Session {

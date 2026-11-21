@@ -1,4 +1,5 @@
-import type { CustomRole, PhaseRef, Session, SessionConfig, SideId } from '../engine'
+import { DEFAULT_RULES, normalizeRules } from '../engine'
+import type { CustomRole, PhaseRef, Rules, Session, SessionConfig, SideId } from '../engine'
 
 // Единственный модуль, который знает о хранилище браузера. Любая ошибка чтения или записи
 // превращается в результат, а не в исключение: приватное окно и переполнение не роняют приложение.
@@ -58,6 +59,10 @@ function toMeta(m: unknown): SessionMeta | null {
 
 const DURATION_KEYS = ['speech', 'balagan', 'defense', 'tiebreak', 'farewell']
 
+/**
+ * Настройки игры нужной формы. Правила партии проверяются по двум полям, которые были всегда:
+ * остальные появились позже, их дочитывает withRules.
+ */
 function looksLikeConfig(c: unknown): c is SessionConfig {
   return isRecord(c) && Number.isInteger(c.playerCount) && isRecord(c.composition)
     && isRecord(c.durations) && DURATION_KEYS.every((k) => typeof (c.durations as Record<string, unknown>)[k] === 'number')
@@ -66,6 +71,9 @@ function looksLikeConfig(c: unknown): c is SessionConfig {
     // Сохранения до «своих ролей» поля не имеют.
     && (c.customRoles === undefined || Array.isArray(c.customRoles))
 }
+
+/** Настройки с полным набором правил партии: недостающие поля берутся из fallback (по умолчанию — «как было до обновления»). */
+const withRules = (config: SessionConfig, fallback?: Rules): SessionConfig => ({ ...config, rules: normalizeRules(config.rules, fallback) })
 
 /** Запись перечня своих ролей с полями нужных типов. Смысл (сторона, повторы, предел) проверяет справочник. */
 const looksLikeRole = (r: unknown): r is CustomRole =>
@@ -124,7 +132,8 @@ export function createStorage(kv: KV) {
       const raw = read(sessionKey(id))
       if (raw === null) return null
       const data = parse(raw)
-      return looksLikeSession(data) ? { ok: true, session: data } : { ok: false, raw }
+      // Игра, сохранённая до появления правил партии, доигрывается по прежним правилам.
+      return looksLikeSession(data) ? { ok: true, session: { ...data, config: withRules(data.config) } } : { ok: false, raw }
     },
 
     /** Запись сессии и строки индекса. false — сохранить не удалось. */
@@ -155,7 +164,8 @@ export function createStorage(kv: KV) {
         lang: data.lang === 'uk' ? 'uk' : 'ru',
         sound: typeof data.sound === 'boolean' ? data.sound : DEFAULT_SETTINGS.sound,
         rolesHidden: typeof data.rolesHidden === 'boolean' ? data.rolesHidden : DEFAULT_SETTINGS.rolesHidden,
-        lastConfig: looksLikeConfig(data.lastConfig) ? data.lastConfig : null,
+        // Последний состав — черновик новой игры: правил, которых в нём ещё нет, ведущий не выбирал — берём умолчания новой игры.
+        lastConfig: looksLikeConfig(data.lastConfig) ? withRules(data.lastConfig, DEFAULT_RULES) : null,
         customRoles: Array.isArray(data.customRoles) ? (data.customRoles as unknown[]).filter(looksLikeRole) : [],
       }
     },

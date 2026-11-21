@@ -116,8 +116,24 @@ export type TimerState = {
 
 /** Длительности в секундах. */
 export type Durations = { speech: number; balagan: number; defense: number; tiebreak: number; farewell: number }
-/** Домашние правила: с какого дня выставляют и с какого дня есть балаган. */
-export type Rules = { nominationsFromDay: number; balaganFromDay: number }
+/**
+ * Правила партии: задаются на экране состава и после раздачи не меняются.
+ * В сохранениях до обновления есть только первые два поля — остальные дочитывает normalizeRules.
+ */
+export type Rules = {
+  /** С какого дня выставляют. */
+  nominationsFromDay: number
+  /** С какого дня есть балаган — если он включён правилом balagan. */
+  balaganFromDay: number
+  /** Балаган перед кругом речей. Выключен — шага «Балаган» нет ни в один день. */
+  balagan: boolean
+  /** Выгнанный голосованием говорит прощальное слово. */
+  farewellAfterVote: boolean
+  /** Выбывший ночью говорит прощальное слово утром. */
+  farewellAfterNight: boolean
+  /** Блокирующая роль просыпается первой в ночи; иначе — на своём прежнем месте, после мафии. */
+  prostituteFirst: boolean
+}
 export type SessionConfig = {
   playerCount: number
   composition: Record<RoleId, number>
