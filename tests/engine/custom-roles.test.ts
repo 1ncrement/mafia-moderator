@@ -49,7 +49,7 @@ test('запись своей роли не меняет итог ночи', () 
   const shot = rec(customNight().s, act('mafia_shot', null, 7))
   const noted = rec(shot, act('act_custom_j', 6, 7))
   expect(night(noted).outcome).toEqual(night(shot).outcome)
-  expect(night(noted).outcome.dies).toBe(7)
+  expect(night(noted).outcome.deaths).toEqual([{ seat: 7, cause: 'shot' }])
   expect(night(noted).steps.at(-1)).toMatchObject({ effect: 'note', recorded: true, target: 7, blocked: false })
 })
 test('проститутка заблокировала носителя — шаг помечен, запись остаётся', () => {

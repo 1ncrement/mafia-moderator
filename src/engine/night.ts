@@ -1,8 +1,9 @@
 import { allOf, eventsOf, lastOf } from './log'
-import { aliveSeats, isSeat, nightPlayers, rolesBySeat } from './players'
+import { aliveSeats, isSeat, nightPlayers, rolesBySeat, seatsOf } from './players'
 import { roleOption } from './setup'
 import type {
-  CheckAnswer, EventOf, GameEvent, NightActionDef, NightOutcome, NightState, NightStep, PhaseRef, Registry, RoleId, Seat, Session,
+  CheckAnswer, EventOf, GameEvent, NightActionDef, NightDeath, NightNote, NightOutcome, NightState, NightStep, PhaseRef, QuietNight, Registry, RoleId,
+  Seat, Session,
 } from './types'
 
 // Ночь: шаги строятся из справочника, итог считает общая функция по типу эффекта.
@@ -21,6 +22,16 @@ export function actionOfStepId(stepId: string): string {
 }
 
 const unique = (seats: Seat[]): Seat[] => [...new Set(seats)]
+const bySeat = (a: { seat: Seat }, b: { seat: Seat }) => a.seat - b.seat
+
+/** Кто выбывает по подсказке — по возрастанию номеров. */
+export const deathSeats = (outcome: NightOutcome): Seat[] => outcome.deaths.map((d) => d.seat)
+
+/** Почему по подсказке никто не выбывает; null — кто-то выбывает. */
+export function quietNight(outcome: NightOutcome): QuietNight | null {
+  if (outcome.deaths.length > 0) return null
+  return outcome.noAttack ?? 'saved'
+}
 
 /**
  * Обмен ролями действует задним числом, а ночная запись принадлежит роли, не месту:
@@ -105,14 +116,16 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
   const healed = unique(drafts.flatMap((d) =>
     d.def.effect === 'heal' && targetOf(d) !== null && !isBlocked(d) ? [targetOf(d) as Seat] : []))
 
-  let outcome: NightOutcome = { shotAt: null, dies: null, reason: 'no_shot', blocked, healed }
-  const shot = drafts.find((d) => d.def.effect === 'kill' && targetOf(d) !== null)
-  if (shot) {
-    const shotAt = targetOf(shot) as Seat
-    if (isBlocked(shot)) outcome = { shotAt, dies: null, reason: 'shooter_blocked', blocked, healed }
-    else if (healed.includes(shotAt)) outcome = { shotAt, dies: null, reason: 'healed', blocked, healed }
-    else outcome = { shotAt, dies: shotAt, reason: 'shot', blocked, healed }
-  }
+  // Нападения: записанные действия «убийство». Заблокированное не состоялось.
+  const attacks = drafts.filter((d) => d.def.effect === 'kill' && targetOf(d) !== null)
+  const landed = attacks.filter((d) => !isBlocked(d))
+  const attacked = unique(landed.map((d) => targetOf(d) as Seat))
+  // Лечение срабатывает первым: нападение на вылеченного отменяется. Несколько нападений на одного — одна смерть.
+  const deaths: NightDeath[] = attacked.filter((seat) => !healed.includes(seat)).map((seat) => ({ seat, cause: 'shot' as const })).sort(bySeat)
+  const notes: NightNote[] = healed
+    .map((seat): NightNote => (attacked.includes(seat) ? { seat, kind: 'healed', cause: 'shot' } : { seat, kind: 'healed' }))
+    .sort(bySeat)
+  const outcome: NightOutcome = { deaths, notes, blocked, healed, noAttack: attacks.length === 0 ? 'none' : landed.length === 0 ? 'blocked' : null }
 
   const seenAs = new Map(registry.roles.map((r) => [r.id, r.seenBySheriffAs]))
   const answerOf = (d: Draft): CheckAnswer | undefined => {
@@ -146,11 +159,10 @@ export function nightState(session: Session, registry: Registry, n: number): Nig
     return { ...step, lastNight }
   })
   const confirmed = lastOf(eventsOf(session.log, phase), 'night_confirmed')
-  const seatOrNull = (seat: Seat | null) => (isSeat(session, seat) ? seat : null)
   return {
     n, steps, outcome,
     complete: steps.every((s) => s.grey || s.recorded),
-    confirmed: confirmed ? { hinted: seatOrNull(confirmed.hinted), chosen: seatOrNull(confirmed.chosen) } : null,
+    confirmed: confirmed ? { hinted: seatsOf(session, confirmed.hinted), chosen: seatsOf(session, confirmed.chosen) } : null,
   }
 }
 

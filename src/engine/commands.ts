@@ -1,9 +1,9 @@
 import { dayState, nominationsOf } from './day'
 import { currentPhase, EMPTY_PATCH, eventsOf, lastOf, nextPhase, samePhase } from './log'
-import { actorMapper, nightState, stepIdOf } from './night'
-import { aliveSeats, isSeat, nightPlayers, playersAt, playersNow } from './players'
+import { actorMapper, deathSeats, nightState, stepIdOf } from './night'
+import { aliveSeats, isSeat, nightPlayers, playersAt, playersNow, seatsOf } from './players'
 import type {
-  Command, CommandResult, EventOf, LogPatch, NewEvent, PhaseRef, Registry, RejectCode, Seat, Session,
+  Command, CommandResult, EventOf, LogPatch, NewEvent, NightOutcome, PhaseRef, Registry, RejectCode, Seat, Session,
 } from './types'
 import { enteredVotes, maxVotesFor } from './vote'
 
@@ -46,6 +46,14 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       : []
     return [...resolved, ...statuses, ...later].map((e) => e.id)
   }
+
+  /** Статусы выбывших ночью: причина — из подсказки; у добавленного ведущим её нет, он записан застреленным. */
+  const nightStatuses = (p: PhaseRef, outcome: NightOutcome, seats: Seat[]): NewEvent[] => seats.map((seat) => ({
+    type: 'status_set', phase: p, seat, status: 'out', cause: outcome.deaths.find((d) => d.seat === seat)?.cause ?? 'shot', source: 'night',
+  }))
+  /** Статусы, которые поставил итог этой ночи: их заменяет правка итога. */
+  const nightStatusIds = (p: PhaseRef): string[] =>
+    eventsOf(log, p).filter((e) => e.type === 'status_set' && e.source === 'night').map((e) => e.id)
 
   switch (cmd.type) {
     case 'deal': {
@@ -276,42 +284,46 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
 
     case 'confirmNight': {
       if (phase.kind !== 'night') return no('wrong_phase')
-      if (cmd.chosen !== null && !isSeat(session, cmd.chosen)) return no('not_alive')
-      // Одна пачка: статус выбывшего, отметка итога и начало следующего дня. Отменяется целиком.
-      const hinted = nightState(session, registry, phase.n).outcome.dies
-      const events: NewEvent[] = []
-      // Отметка итога пишется раньше статуса: «кто был в игре этой ночью» считается на момент перед ней.
-      events.push({ type: 'night_confirmed', phase, hinted, chosen: cmd.chosen })
-      if (cmd.chosen !== null) events.push({ type: 'status_set', phase, seat: cmd.chosen, status: 'out', cause: 'shot', source: 'night' })
-      events.push({ type: 'phase_started', phase: nextPhase(phase) })
-      return ok({ remove: eventsOf(log, phase).filter((e) => e.type === 'night_confirmed').map((e) => e.id), add: events })
+      if (!cmd.died.every((seat) => isSeat(session, seat))) return no('not_alive')
+      // Одна пачка: отметка итога, статусы всех выбывших и начало следующего дня. Отменяется целиком.
+      const { outcome } = nightState(session, registry, phase.n)
+      const died = seatsOf(session, cmd.died)
+      // Отметка итога пишется раньше статусов: «кто был в игре этой ночью» считается на момент перед ней.
+      return ok({
+        remove: eventsOf(log, phase).filter((e) => e.type === 'night_confirmed').map((e) => e.id),
+        add: [
+          { type: 'night_confirmed', phase, hinted: deathSeats(outcome), chosen: died },
+          ...nightStatuses(phase, outcome, died),
+          { type: 'phase_started', phase: nextPhase(phase) },
+        ],
+      })
     }
 
     case 'acknowledgeNight': {
       const p: PhaseRef = { kind: 'night', n: cmd.night }
       const confirmed = lastOf(eventsOf(log, p), 'night_confirmed')
       if (!confirmed) return ok({})
-      const expected = nightState(session, registry, cmd.night).outcome.dies
+      const { outcome } = nightState(session, registry, cmd.night)
+      const expected = deathSeats(outcome)
       // «Оставить»: статусы не трогаем, запоминаем новую подсказку — предупреждение уходит.
-      if (!cmd.apply) return ok({ replace: [{ ...confirmed, hinted: expected }] })
-      // «Исправить»: прежний выбывший этой ночи возвращается в игру, новый получает статус той же ночью.
-      const previous = eventsOf(log, p).filter((e) => e.type === 'status_set' && e.source === 'night').map((e) => e.id)
-      const events: NewEvent[] = expected === null ? []
-        : [{ type: 'status_set', phase: p, seat: expected, status: 'out', cause: 'shot', source: 'night' }]
-      return ok({ remove: previous, replace: [{ ...confirmed, hinted: expected, chosen: expected }], add: events })
+      if (!cmd.apply) return ok({ replace: [{ ...confirmed, hinted: expected, chosen: seatsOf(session, confirmed.chosen) }] })
+      // «Исправить»: все прежние выбывшие этой ночи возвращаются в игру, набор подсказки получает статус той же ночью.
+      return ok({
+        remove: nightStatusIds(p), replace: [{ ...confirmed, hinted: expected, chosen: expected }], add: nightStatuses(p, outcome, expected),
+      })
     }
 
     case 'setNightResult': {
       const p: PhaseRef = { kind: 'night', n: cmd.night }
       const confirmed = lastOf(eventsOf(log, p), 'night_confirmed')
       if (!confirmed) return no('wrong_phase')
-      if (cmd.chosen !== null && !isSeat(session, cmd.chosen)) return no('not_alive')
-      // Ведущий правит сам итог: прежний статус этой ночи снимается, новый ставится той же ночью.
-      const previous = eventsOf(log, p).filter((e) => e.type === 'status_set' && e.source === 'night').map((e) => e.id)
-      const events: NewEvent[] = cmd.chosen === null ? []
-        : [{ type: 'status_set', phase: p, seat: cmd.chosen, status: 'out', cause: 'shot', source: 'night' }]
-      const hinted = nightState(session, registry, cmd.night).outcome.dies
-      return ok({ remove: previous, replace: [{ ...confirmed, hinted, chosen: cmd.chosen }], add: events })
+      if (!cmd.died.every((seat) => isSeat(session, seat))) return no('not_alive')
+      // Ведущий правит сам итог: прежние статусы этой ночи снимаются, новый набор получает статус той же ночью.
+      const { outcome } = nightState(session, registry, cmd.night)
+      const died = seatsOf(session, cmd.died)
+      return ok({
+        remove: nightStatusIds(p), replace: [{ ...confirmed, hinted: deathSeats(outcome), chosen: died }], add: nightStatuses(p, outcome, died),
+      })
     }
   }
 }

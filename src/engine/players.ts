@@ -8,6 +8,15 @@ export function isSeat(session: Session, seat: unknown): seat is Seat {
   return typeof seat === 'number' && Number.isInteger(seat) && seat >= 1 && seat <= session.config.playerCount
 }
 
+/**
+ * Набор мест из записи журнала: по возрастанию, без повторов. Принимает и один номер, и null —
+ * так записано подтверждение ночи в сохранениях до обновления. Не-номера и места вне стола отбрасываются.
+ */
+export function seatsOf(session: Session, value: unknown): Seat[] {
+  const list: unknown[] = Array.isArray(value) ? value : [value]
+  return [...new Set(list.filter((x): x is Seat => isSeat(session, x)))].sort((a, b) => a - b)
+}
+
 /** Роли по местам: последняя раздача и все обмены после неё. Обмен действует задним числом. */
 export function rolesBySeat(session: Session, registry: Registry): RoleId[] {
   const dealt = lastOf(session.log, 'roles_dealt')

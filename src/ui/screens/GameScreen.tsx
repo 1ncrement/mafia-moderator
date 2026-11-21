@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { FC } from 'react'
+import { seatList } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { Button } from '../common/Button'
 import { useHotkeys } from '../common/useHotkeys'
@@ -106,7 +107,11 @@ function Game({ game }: { game: GameState }) {
   // а при свёрнутом журнале переезжает в панель шага: ведущий должен его увидеть.
   const nightOffers = game.warnings.flatMap((w) => (w.code === 'night_outcome_changed' ? [w] : [])).map((w) => (
     <div key={w.night} className="journal-warning" role="alert">
-      <span>{w.expected === null ? t('warn.night.none', { night: w.night }) : t('warn.night', { night: w.night, n: w.expected })}</span>
+      <span>
+        {w.expected.length === 0 ? t('warn.night.none', { night: w.night })
+          : w.expected.length === 1 ? t('warn.night', { night: w.night, n: w.expected[0] ?? 0 })
+          : t('warn.night.many', { night: w.night, seats: seatList(lang, w.expected) })}
+      </span>
       <div className="speech-secondary">
         <Button onClick={() => store.dispatch({ type: 'acknowledgeNight', night: w.night, apply: true })}>{t('warn.fix')}</Button>
         <Button variant="outline" onClick={() => store.dispatch({ type: 'acknowledgeNight', night: w.night, apply: false })}>{t('warn.keep')}</Button>

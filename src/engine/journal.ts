@@ -1,6 +1,6 @@
 import { dayState } from './day'
 import { currentPhase, eventsOf, phaseAt, phaseOrder, samePhase } from './log'
-import { nightState } from './night'
+import { nightState, quietNight } from './night'
 import { isSeat } from './players'
 import type { GameEvent, JournalEntry, JournalGroup, PhaseRef, Registry, RoleId, Session } from './types'
 
@@ -102,7 +102,7 @@ function nightEntries(session: Session, registry: Registry, n: number, events: G
   }
   const confirmed = events.findLast((e) => e.type === 'night_confirmed')
   if (confirmed && night.confirmed) {
-    out.push({ ...flags(confirmed), kind: 'night_result', dies: night.confirmed.chosen, reason: night.outcome.reason })
+    out.push({ ...flags(confirmed), kind: 'night_result', died: night.confirmed.chosen, reason: quietNight(night.outcome) })
   }
   return out
 }

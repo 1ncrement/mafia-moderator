@@ -32,7 +32,7 @@ test('заблокированному шерифу ответа нет', async 
 })
 test('доктор: прошлая ночь, предупреждение и «Записать всё равно»', async () => {
   const { app, user } = renderApp((a) => { night1(a); a.dispatch({ type: 'recordNightAction', actionId: 'doctor_heal', actor: 4, target: 5 })
-    a.dispatch({ type: 'confirmNight', chosen: null }); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 2 } }); a.dispatch({ type: 'enterStep', step: 'doctor_heal:4' }) })
+    a.dispatch({ type: 'confirmNight', died: [] }); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 2 } }); a.dispatch({ type: 'enterStep', step: 'doctor_heal:4' }) })
   expect(screen.getByText(/Прошлой ночью: №5/)).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Выбрать игрока №5' }))
   expect(screen.getByText('Этого игрока лечили прошлой ночью')).toBeInTheDocument(); expect(app.getState().game!.night!.steps.at(-1)!.recorded).toBe(false)

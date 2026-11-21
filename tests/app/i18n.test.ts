@@ -30,7 +30,7 @@ test('запись журнала переводится на оба языка'
   expect(entryText('uk', e, DEFAULT_REGISTRY)).not.toBe(entryText('ru', e, DEFAULT_REGISTRY))
 })
 test('резюме ночи и журнал текстом', () => {
-  const s = play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7), { type: 'confirmNight', chosen: null })
+  const s = play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7), { type: 'confirmNight', died: [] })
   const groups = journal(s, DEFAULT_REGISTRY)
   expect(summaryText('ru', groups[1]!, DEFAULT_REGISTRY)).toBe('Ночь 1: выстрел в №7, лечили №7 → никто не выбыл')
   const text = journalAsText('ru', groups, DEFAULT_REGISTRY)

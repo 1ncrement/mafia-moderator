@@ -22,7 +22,7 @@ test('шаг и вопрос своей роли строятся из её на
 test('состав и журнал называют свою роль', () => {
   expect(compositionText('ru', R, { godfather: 1, mafia: 1, custom_j: 1, custom_m: 1, civilian: 4 })).toBe('мафия 2 (из них крёстный отец 1), журналист 1, маньяк 1, мирных 4')
   const { s } = customNight()
-  const done = playWith(R, s, act('mafia_shot', null, 7), act('act_custom_j', 6, 9), { type: 'confirmNight', chosen: 7 })
+  const done = playWith(R, s, act('mafia_shot', null, 7), act('act_custom_j', 6, 9), { type: 'confirmNight', died: [7] })
   const group = journal(done, R).find((g) => g.phase.kind === 'night')!
   expect(group.entries.map((e) => entryText('ru', e, R))).toContain('Журналист → №9')
   expect(summaryBody('ru', group, R)).toContain('журналист: №9')

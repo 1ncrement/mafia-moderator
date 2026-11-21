@@ -25,11 +25,11 @@ test('полная партия на 11 игроков по приёмочном
   // Шаг 2: Ночь 1 — выстрел не в того, поиск шерифа, доктор лечит №4; утром правка выстрела.
   s = play(s, { type: 'startPhase', phase: night(1) }, act('mafia_shot', null, 6), act('godfather_search', 3, 5), act('doctor_heal', 4, 4))
   expect(step(s, 'godfather_search:3').answer).toEqual({ kind: 'found', found: false })
-  expect(st(s).night!.outcome).toMatchObject({ dies: 6, reason: 'shot' })
-  s = play(s, { type: 'confirmNight', chosen: 6 })
+  expect(st(s).night!.outcome).toMatchObject({ deaths: [{ seat: 6, cause: 'shot' }], noAttack: null })
+  s = play(s, { type: 'confirmNight', died: [6] })
   expect(st(s).phase).toEqual(day(2)); expect(st(s).players[5]!.status).toBe('out')
   s = play(s, { type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 9, phase: night(1) })
-  expect(st(s).warnings).toContainEqual({ code: 'night_outcome_changed', night: 1, expected: 9 })
+  expect(st(s).warnings).toContainEqual({ code: 'night_outcome_changed', night: 1, expected: [9] })
   expect(st(s).players[5]!.status).toBe('out')
   s = play(s, { type: 'acknowledgeNight', night: 1, apply: true })
   expect(st(s).players[8]).toMatchObject({ status: 'out', cause: 'shot', outPhase: night(1) })
@@ -77,8 +77,8 @@ test('полная партия на 11 игроков по приёмочном
   expect(attempt(s, act('doctor_heal', 4, 4))).toEqual({ ok: false, reason: 'repeat_target' })
   s = play(s, act('mafia_shot', null, 5), act('godfather_search', 3, 7), act('prostitute_block', 10, 1), act('sheriff_check', 1, 3), act('doctor_heal', 4, 5))
   expect(step(s, 'sheriff_check:1').answer).toEqual({ kind: 'blocked' })
-  expect(st(s).night!.outcome).toMatchObject({ dies: null, reason: 'healed' })
-  s = play(s, { type: 'confirmNight', chosen: null })
+  expect(st(s).night!.outcome).toMatchObject({ deaths: [], noAttack: null })
+  s = play(s, { type: 'confirmNight', died: [] })
 
   // Шаг 7: День 3 — выставлен один игрок, шериф: без голосования, выгнан.
   expect(st(s).phase).toEqual(day(3))
@@ -93,8 +93,8 @@ test('полная партия на 11 игроков по приёмочном
   expect(st(s).night!.steps.find((x) => x.actionId === 'sheriff_check')).toMatchObject({ id: 'sheriff_check', grey: true })
   expect(attempt(s, act('sheriff_check', null, 2))).toEqual({ ok: false, reason: 'step_grey' })
   s = play(s, act('mafia_shot', null, 5), act('prostitute_block', 10, 3))
-  expect(st(s).night!.outcome).toMatchObject({ dies: null, reason: 'shooter_blocked' })
-  s = play(s, { type: 'confirmNight', chosen: null })
+  expect(st(s).night!.outcome).toMatchObject({ deaths: [], noAttack: 'blocked' })
+  s = play(s, { type: 'confirmNight', died: [] })
   expect(st(s).phase).toEqual(day(4)); expect(st(s).day!.ballots).toEqual([])
 
   // Шаг 9: случайно отметить выбывшим и вернуть; обмен ролями посреди игры.
@@ -116,7 +116,7 @@ test('полная партия на 11 игроков по приёмочном
   expect(groups[4]!.entries.filter((e) => e.kind === 'vote_result')).toMatchObject([{ outcome: 'tie', seats: [7, 11] }, { outcome: 'eliminated', seats: [11] }])
   expect(groups[4]!.entries.find((e) => e.kind === 'votes')).toMatchObject({ ballot: 1, voters: 10, entries: [
     { candidate: 7, count: 4 }, { candidate: 3, count: 1 }, { candidate: 10, count: 1 }, { candidate: 11, count: 4 }, { candidate: 4, count: 0 }] })
-  expect(groups[5]!.entries.at(-1)).toMatchObject({ kind: 'night_result', dies: 9 })
+  expect(groups[5]!.entries.at(-1)).toMatchObject({ kind: 'night_result', died: [9] })
 })
 
 // Приёмочный сценарий дополнения «Свои роли» (раздел 8), шаги, которые выражаются командами движка.
@@ -132,12 +132,12 @@ test('партия со своими ролями: запись журналис
   // Шаг 5: Ночь 1 — шаг журналиста идёт после доктора; запись есть, подсказка итога та же, что без неё.
   let s = go(start, act('mafia_shot', null, 7), act('doctor_heal', 4, 2))
   const hint = now(s).night!.outcome
-  expect(hint).toMatchObject({ dies: 7, reason: 'shot' })
+  expect(hint).toMatchObject({ deaths: [{ seat: 7, cause: 'shot' }], noAttack: null })
   expect(now(s).night!.steps.map((x) => x.actionId).slice(-2)).toEqual(['doctor_heal', 'act_custom_j'])
   s = go(s, act('act_custom_j', 6, 9))
   expect(now(s).night!.outcome).toEqual(hint)
   expect(stepOf(s, 'act_custom_j:6')).toMatchObject({ effect: 'note', recorded: true, target: 9, blocked: false })
-  s = go(s, { type: 'confirmNight', chosen: 7 })
+  s = go(s, { type: 'confirmNight', died: [7] })
   expect(now(s).phase).toEqual(day(2)); expect(now(s).counts.bySide).toEqual({ black: 4, red: 6 }); expect(now(s).warnings).toEqual([])
 
   // Шаг 6: Ночь 2 — проститутка блокирует журналиста (запись всё равно делается), шериф видит маньяка чёрным.
@@ -146,8 +146,8 @@ test('партия со своими ролями: запись журналис
   s = go(s, act('prostitute_block', 10, 6), act('sheriff_check', 1, 9), act('act_custom_j', 6, 9))   // та же цель — без предупреждения
   expect(stepOf(s, 'act_custom_j:6')).toMatchObject({ blocked: true, recorded: true, target: 9 })
   expect(stepOf(s, 'sheriff_check:1').answer).toEqual({ kind: 'side', side: 'black' })
-  expect(now(s).night!.outcome).toMatchObject({ dies: null, reason: 'no_shot' })
-  s = go(s, { type: 'confirmNight', chosen: null })
+  expect(now(s).night!.outcome).toMatchObject({ deaths: [], noAttack: 'none' })
+  s = go(s, { type: 'confirmNight', died: [] })
 
   // День 3: своя роль — обычный игрок. Маньяк выставлен один и выгнан: чёрных на одного меньше.
   expect(now(s).phase).toEqual(day(3))
@@ -177,5 +177,5 @@ test('партия со своими ролями: запись журналис
   expect(noted(4)).toMatchObject([{ performerRole: 'custom_j', actor: 2, target: 9 }])
   expect(noted(6)).toEqual([])
   expect(groups.at(-1)!.entries[0]).toMatchObject({ kind: 'deal', counts: { custom_j: 1, custom_m: 1, civilian: 4 } })
-  expect(groups.find((g) => phaseOrder(g.phase) === 2)!.entries.at(-1)).toMatchObject({ kind: 'night_result', dies: 7 })
+  expect(groups.find((g) => phaseOrder(g.phase) === 2)!.entries.at(-1)).toMatchObject({ kind: 'night_result', died: [7] })
 })

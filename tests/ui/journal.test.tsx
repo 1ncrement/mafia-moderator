@@ -6,7 +6,7 @@ import { renderApp, seedGame } from './helpers'
 // Утром роли скрываются вместе с журналом (видимость по фазе): эти тесты про журнал, поэтому ведущий открывает роли кнопкой.
 const showRoles = (a: AppStore) => a.setSettings({ rolesHidden: false })
 const afterNight = (a: AppStore) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
-  a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 }); a.dispatch({ type: 'confirmNight', chosen: 7 }); showRoles(a) }
+  a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 }); a.dispatch({ type: 'confirmNight', died: [7] }); showRoles(a) }
 test('правка прошлой ночи предлагает исправить статусы', async () => {
   const { app, user } = renderApp(afterNight)
   await user.click(screen.getByRole('button', { name: /^Ночь 1/ }))
@@ -55,7 +55,7 @@ test('правка записей дня: выставление, голоса, 
 test('правка голосов прошлого дня и запись задним числом', async () => {
   const { app, user } = renderApp((a) => { seedGame(a, TABLE_11, 2); a.dispatch({ type: 'nominate', by: 5, target: 7 }); a.dispatch({ type: 'nominate', by: 6, target: 3 })
     a.dispatch({ type: 'setVotes', ballot: 1, candidate: 7, count: 4 }); a.dispatch({ type: 'resolveVote', ballot: 1, outcome: 'nobody', seats: [] })
-    a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 2 } }); a.dispatch({ type: 'confirmNight', chosen: null }); showRoles(a) })
+    a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 2 } }); a.dispatch({ type: 'confirmNight', died: [] }); showRoles(a) })
   await user.click(screen.getByRole('button', { name: /^День 2/ }))
   await user.click(screen.getByRole('button', { name: /Голоса: №7 — 4/ }))
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '№7: больше' }))

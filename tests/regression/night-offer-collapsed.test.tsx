@@ -16,7 +16,7 @@ const seed = (a: AppStore) => {
   a.dispatch({ type: 'startPhase', phase: N1 })
   a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 })
   a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 3 })
-  a.dispatch({ type: 'confirmNight', chosen: null })
+  a.dispatch({ type: 'confirmNight', died: [] })
   // Утром роли скрыты (видимость по фазе), а предложение — часть журнала: ведущий открывает роли кнопкой.
   a.setSettings({ rolesHidden: false })
 }
@@ -33,7 +33,7 @@ test('при свёрнутом журнале обмен ролями тоже 
   await user.click(screen.getByRole('button', { name: 'Свернуть' }))
   await swap3and8(user)
   // Подсказка Ночи 1 пересчиталась: №7 должен был выбыть, статусы не тронуты.
-  expect(app.getState().game!.warnings).toEqual([{ code: 'night_outcome_changed', night: 1, expected: 7 }])
+  expect(app.getState().game!.warnings).toEqual([{ code: 'night_outcome_changed', night: 1, expected: [7] }])
   expect(app.getState().game!.players[6]!.status).toBe('alive')
   // Расхождение должно быть показано предложением — ведущий его должен увидеть.
   expect(screen.getByText(/Итог Ночи 1 теперь другой/)).toBeInTheDocument()

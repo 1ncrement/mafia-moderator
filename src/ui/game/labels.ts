@@ -35,7 +35,7 @@ export function entryMentions(entry: JournalEntry, seat: Seat): boolean {
   switch (entry.kind) {
     case 'night_action': return entry.actor === seat || entry.target === seat
     case 'night_missing': return entry.actor === seat
-    case 'night_result': return entry.dies === seat
+    case 'night_result': return entry.died.includes(seat)
     case 'circle': return entry.first === seat
     case 'nomination': return entry.by === seat || entry.target === seat
     case 'votes': return entry.entries.some((e) => e.candidate === seat)

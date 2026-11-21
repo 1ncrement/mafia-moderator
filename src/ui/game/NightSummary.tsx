@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { answerText, roleName, seatList } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { aliveSeats, nightPlayers } from '../../engine'
+import { aliveSeats, nightPlayers, quietNight } from '../../engine'
 import type { GameState, NightState } from '../../engine'
 import { Button } from '../common/Button'
 import { nightStepLabel } from './labels'
@@ -18,16 +18,16 @@ function useHintText(night: NightState | null): { big: string; detail: string } 
   const store = useStore()
   if (!night) return { big: '', detail: '' }
   const { outcome } = night
-  const shotAt = outcome.shotAt ?? 0
-  switch (outcome.reason) {
-    case 'shot':
-      return { big: t('night.hint.shot', { n: shotAt }), detail: t('night.hint.shot.detail', { n: shotAt }) }
-    case 'healed': {
-      const healers = night.steps.filter((s) => s.effect === 'heal' && s.target === shotAt && !s.blocked)
+  const dies = outcome.deaths[0]?.seat
+  if (dies !== undefined) return { big: t('night.hint.shot', { n: dies }), detail: t('night.hint.shot.detail', { n: dies }) }
+  switch (quietNight(outcome)) {
+    case 'saved': {
+      const saved = outcome.notes.find((note) => note.cause !== undefined)?.seat ?? 0
+      const healers = night.steps.filter((s) => s.effect === 'heal' && s.target === saved && !s.blocked)
       const who = [...new Set(healers.map((s) => roleName(lang, store.registry, s.performerRole)))].join(', ')
-      return { big: t('night.hint.healed', { who, n: shotAt }), detail: '' }
+      return { big: t('night.hint.healed', { who, n: saved }), detail: '' }
     }
-    case 'shooter_blocked':
+    case 'blocked':
       return { big: t('night.hint.none'), detail: t('night.hint.blocked.detail') }
     default:
       return { big: t('night.hint.none'), detail: t('night.hint.noshot.detail') }
@@ -47,14 +47,14 @@ export function NightSummary({ game }: { game: GameState }) {
   useEffect(() => clear, [clear])
   const night = game.night
   const hint = useHintText(night)
-  const dies = night?.outcome.dies ?? null
+  const dies = night?.outcome.deaths[0]?.seat ?? null
   const day = (night?.n ?? 0) + 1
 
   useTableMarks(night && !hidden ? nightMarks(lang, store.registry, night) : {})
   useMainAction(night ? {
     // Роли скрыты — подпись не называет, кто выбывает.
     label: hidden ? t('night.confirm.hidden', { day }) : dies === null ? t('night.confirm.none', { day }) : t('night.confirm.shot', { n: dies, day }),
-    onPress: () => store.dispatch({ type: 'confirmNight', chosen: dies }),
+    onPress: () => store.dispatch({ type: 'confirmNight', died: dies === null ? [] : [dies] }),
   } : null)
 
   if (!night || !session) return null
@@ -69,7 +69,7 @@ export function NightSummary({ game }: { game: GameState }) {
       question: t('night.other.question'),
       allowed: aliveSeats(nightPlayers(session, registry, night.n)),
       onPick: (chosen) => {
-        if (chosen !== null) store.dispatch({ type: 'confirmNight', chosen })
+        if (chosen !== null) store.dispatch({ type: 'confirmNight', died: [chosen] })
       },
     })}>{t('night.other')}</Button>
   )
@@ -119,7 +119,7 @@ export function NightSummary({ game }: { game: GameState }) {
       )}
 
       <div className="speech-secondary">
-        {dies !== null && <Button size="l" onClick={() => store.dispatch({ type: 'confirmNight', chosen: null })}>{t('night.nobody')}</Button>}
+        {dies !== null && <Button size="l" onClick={() => store.dispatch({ type: 'confirmNight', died: [] })}>{t('night.nobody')}</Button>}
         {other}
       </div>
     </div>

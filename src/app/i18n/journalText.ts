@@ -32,6 +32,13 @@ export function answerText(lang: Lang, registry: Registry, entry: { actionId: st
   return ` — ${answer.found ? role : translate(lang, 'journal.notRole', { role })}`
 }
 
+/** Кто выбыл ночью: «никто не выбыл», «№7 застрелен», «выбыли №2 и №7». */
+function diedText(lang: Lang, died: Seat[]): string {
+  const only = died[0]
+  if (only === undefined) return translate(lang, 'journal.result.none')
+  return died.length === 1 ? translate(lang, 'journal.result.shot', { n: only }) : translate(lang, 'journal.result.many', { seats: seatList(lang, died) })
+}
+
 export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): string {
   const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(lang, key, params)
   switch (entry.kind) {
@@ -45,9 +52,9 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
       return t('journal.missing', { who: performer(lang, registry, entry) })
 
     case 'night_result': {
-      if (entry.dies !== null) return t('journal.night.result', { result: t('journal.result.shot', { n: entry.dies }) })
-      const why = entry.reason === 'shot' ? '' : ` (${t(`journal.reason.${entry.reason}`)})`
-      return t('journal.night.result', { result: t('journal.result.none') + why })
+      // Причину называем, только когда никто не выбыл и по подсказке не должен был.
+      const why = entry.died.length === 0 && entry.reason !== null ? ` (${t(`journal.reason.${entry.reason}`)})` : ''
+      return t('journal.night.result', { result: diedText(lang, entry.died) + why })
     }
 
     case 'circle':
@@ -104,9 +111,7 @@ export function summaryBody(lang: Lang, group: JournalGroup, registry: Registry)
       if (hasKey(key)) did.push(translate(lang, key, params) + answerText(lang, registry, e))
     }
     const result = group.entries.findLast((e) => e.kind === 'night_result')
-    const outcome = result?.kind === 'night_result'
-      ? (result.dies === null ? t('journal.result.none') : t('journal.result.shot', { n: result.dies }))
-      : ''
+    const outcome = result?.kind === 'night_result' ? diedText(lang, result.died) : ''
     body = [did.join(', '), outcome].filter(Boolean).join(' → ')
   } else {
     const nominated = group.entries.flatMap((e) => (e.kind === 'nomination' ? [e] : [])).sort((a, b) => a.index - b.index)

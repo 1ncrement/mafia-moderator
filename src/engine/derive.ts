@@ -1,6 +1,6 @@
 import { dayState } from './day'
 import { currentPhase, lastOf, samePhase } from './log'
-import { actionOfStepId, nightState, permanentMarks } from './night'
+import { actionOfStepId, deathSeats, nightState, permanentMarks } from './night'
 import { playersNow } from './players'
 import { endHintFor } from './roles/rules'
 import { balaganInDay } from './setup'
@@ -48,9 +48,11 @@ export function deriveState(session: Session, registry: Registry): GameState {
   const nights = phase.kind === 'deal' ? 0 : phase.n
   for (let n = 1; n <= nights; n++) {
     const past = night?.n === n ? night : nightState(session, registry, n)
-    // Подсказка изменилась, но совпала с отметкой ведущего — исправлять нечего.
-    if (past.confirmed && past.confirmed.hinted !== past.outcome.dies && past.confirmed.chosen !== past.outcome.dies) {
-      warnings.push({ code: 'night_outcome_changed', night: n, expected: past.outcome.dies })
+    // Набор выбывших по подсказке изменился, но совпал с отметкой ведущего — исправлять нечего.
+    const expected = deathSeats(past.outcome)
+    const same = (seats: readonly number[]) => seats.join() === expected.join()
+    if (past.confirmed && !same(past.confirmed.hinted) && !same(past.confirmed.chosen)) {
+      warnings.push({ code: 'night_outcome_changed', night: n, expected })
     }
   }
   for (const b of day?.ballots ?? []) if (b.overflow && !b.resolved) warnings.push({ code: 'votes_overflow', ballot: b.n })

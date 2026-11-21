@@ -70,7 +70,7 @@ export function toDayWith(registry: Registry, s: Session, n: number): Session {
     const phase = deriveState(cur, registry).phase ?? { kind: 'deal' as const }
     if (phase.kind === 'day' && phase.n >= n) return cur
     cur = phase.kind === 'night'
-      ? playWith(registry, cur, { type: 'confirmNight', chosen: null })
+      ? playWith(registry, cur, { type: 'confirmNight', died: [] })
       : playWith(registry, cur, { type: 'startPhase', phase: nextPhase(phase) })
   }
 }

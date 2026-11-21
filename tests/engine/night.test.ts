@@ -1,6 +1,6 @@
 import { entryText } from '../../src/app/i18n'
 import { applyUndo, checkComposition, DEFAULT_REGISTRY, DEFAULT_RULES, journal, nightOrder, nightState, registryFor, roleOption } from '../../src/engine'
-import type { Command, Registry, Session } from '../../src/engine'
+import type { Command, GameEvent, Registry, Session } from '../../src/engine'
 import { act, attempt, customNight, game, gameWith, JOURNALIST, n1, play, playWith, st, TABLE_11, toDay } from '../helpers'
 
 const out = (s: Session) => st(s).night!.outcome
@@ -11,34 +11,34 @@ test('шаги ночи из справочника', () => {
   expect(st(n1('S D G M c c c c D')).night!.steps.map((x) => x.id)).toContain('doctor_heal:9')
 })
 test('выстрел, лечение, пропуск', () => {
-  expect(out(play(n1(), act('mafia_shot', null, 7)))).toMatchObject({ dies: 7, reason: 'shot' })
-  expect(out(play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7)))).toMatchObject({ dies: null, reason: 'healed', healed: [7] })
-  expect(out(play(n1(), act('mafia_shot', null, null)))).toMatchObject({ dies: null, reason: 'no_shot' })
-  expect(out(play(n1(), act('mafia_shot', null, 8)))).toMatchObject({ dies: 8 })
-  expect(out(play(n1(), act('mafia_shot', null, 4), act('doctor_heal', 4, 4)))).toMatchObject({ dies: null, reason: 'healed' })
+  expect(out(play(n1(), act('mafia_shot', null, 7)))).toMatchObject({ deaths: [{ seat: 7, cause: 'shot' }], noAttack: null })
+  expect(out(play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7)))).toMatchObject({ deaths: [], notes: [{ seat: 7, kind: 'healed', cause: 'shot' }], healed: [7], noAttack: null })
+  expect(out(play(n1(), act('mafia_shot', null, null)))).toMatchObject({ deaths: [], noAttack: 'none' })
+  expect(out(play(n1(), act('mafia_shot', null, 8)))).toMatchObject({ deaths: [{ seat: 8, cause: 'shot' }] })
+  expect(out(play(n1(), act('mafia_shot', null, 4), act('doctor_heal', 4, 4)))).toMatchObject({ deaths: [], noAttack: null })
 })
 test('блок', () => {
-  expect(out(play(n1(), act('mafia_shot', null, 7), act('prostitute_block', 10, 3)))).toMatchObject({ dies: null, reason: 'shooter_blocked' })
-  expect(out(play(n1(), act('mafia_shot', null, 7), act('prostitute_block', 10, 8)))).toMatchObject({ dies: 7 })
-  expect(out(play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7), act('prostitute_block', 10, 4)))).toMatchObject({ dies: 7, blocked: [4] })
+  expect(out(play(n1(), act('mafia_shot', null, 7), act('prostitute_block', 10, 3)))).toMatchObject({ deaths: [], noAttack: 'blocked' })
+  expect(out(play(n1(), act('mafia_shot', null, 7), act('prostitute_block', 10, 8)))).toMatchObject({ deaths: [{ seat: 7, cause: 'shot' }] })
+  expect(out(play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7), act('prostitute_block', 10, 4)))).toMatchObject({ deaths: [{ seat: 7, cause: 'shot' }], blocked: [4] })
 })
 test('крёстный отец выбыл: стреляют оставшиеся, шерифа никто не ищет', () => {
   const t = 'S c G D c c M M c P c'
   let s = play(toDay(game(t), 1), { type: 'setStatus', seat: 3, status: 'out', cause: 'voted' }, { type: 'startPhase', phase: { kind: 'night', n: 1 } })
   expect(st(s).night!.steps.find((x) => x.actionId === 'godfather_search')).toMatchObject({ id: 'godfather_search', grey: true })
   expect(attempt(s, act('godfather_search', null, 1))).toEqual({ ok: false, reason: 'step_grey' })
-  expect(out(play(s, act('mafia_shot', null, 5), act('prostitute_block', 10, 7)))).toMatchObject({ dies: 5 })
+  expect(out(play(s, act('mafia_shot', null, 5), act('prostitute_block', 10, 7)))).toMatchObject({ deaths: [{ seat: 5, cause: 'shot' }] })
   s = play(toDay(game(t), 1), { type: 'setStatus', seat: 3, status: 'out', cause: 'voted' }, { type: 'setStatus', seat: 7, status: 'out', cause: 'voted' },
     { type: 'startPhase', phase: { kind: 'night', n: 1 } })
-  expect(out(play(s, act('mafia_shot', null, 5), act('prostitute_block', 10, 8)))).toMatchObject({ reason: 'shooter_blocked' })
+  expect(out(play(s, act('mafia_shot', null, 5), act('prostitute_block', 10, 8)))).toMatchObject({ deaths: [], noAttack: 'blocked' })
 })
 test('все мафии выбыли: стреляет проститутка', () => {
   let s = toDay(game(TABLE_11), 1)
   for (const seat of [3, 8]) s = play(s, { type: 'setStatus', seat, status: 'out', cause: 'voted' })
   s = play(s, { type: 'startPhase', phase: { kind: 'night', n: 1 } })
   expect(st(s).night!.steps[0]).toMatchObject({ id: 'mafia_shot', actors: [10], performerRole: 'prostitute', inherited: true, grey: false })
-  expect(out(play(s, act('mafia_shot', null, 5)))).toMatchObject({ dies: 5 })
-  expect(out(play(s, act('mafia_shot', null, 5), act('prostitute_block', 10, 10)))).toMatchObject({ reason: 'shooter_blocked' })
+  expect(out(play(s, act('mafia_shot', null, 5)))).toMatchObject({ deaths: [{ seat: 5, cause: 'shot' }] })
+  expect(out(play(s, act('mafia_shot', null, 5), act('prostitute_block', 10, 10)))).toMatchObject({ deaths: [], noAttack: 'blocked' })
 })
 test('ответы шерифу и крёстному отцу', () => {
   const answer = (s: Session, id: string) => st(s).night!.steps.find((x) => x.id === id)!.answer
@@ -50,13 +50,13 @@ test('ответы шерифу и крёстному отцу', () => {
 })
 
 test('доктор: повтор цели — предупреждение, через ночь можно', () => {
-  let s = play(n1(), act('doctor_heal', 4, 5), { type: 'confirmNight', chosen: null })
+  let s = play(n1(), act('doctor_heal', 4, 5), { type: 'confirmNight', died: [] })
   s = play(s, { type: 'startPhase', phase: { kind: 'night', n: 2 } })
   expect(st(s).night!.steps.at(-1)!.lastNight).toMatchObject({ recorded: true, target: 5 })
   expect(attempt(s, act('doctor_heal', 4, 5))).toEqual({ ok: false, reason: 'repeat_target' })
   const forced = play(s, act('mafia_shot', null, 5), { type: 'recordNightAction', actionId: 'doctor_heal', actor: 4, target: 5, force: true })
-  expect(out(forced)).toMatchObject({ dies: null, reason: 'healed' })
-  s = play(s, act('doctor_heal', 4, 6), { type: 'confirmNight', chosen: null }, { type: 'startPhase', phase: { kind: 'night', n: 3 } })
+  expect(out(forced)).toMatchObject({ deaths: [], noAttack: null })
+  s = play(s, act('doctor_heal', 4, 6), { type: 'confirmNight', died: [] }, { type: 'startPhase', phase: { kind: 'night', n: 3 } })
   expect(attempt(s, act('doctor_heal', 4, 5)).ok).toBe(true)
 })
 test('цель должна быть в игре; постоянные метки', () => {
@@ -68,12 +68,65 @@ test('цель должна быть в игре; постоянные метк�
 test('подтверждение итога — одна пачка: статус, отметка и новый день', () => {
   const before = play(n1(), act('mafia_shot', null, 7))
   expect(st(before).night!.complete).toBe(false)
-  const s = play(before, { type: 'confirmNight', chosen: 7 })
+  const s = play(before, { type: 'confirmNight', died: [7] })
   expect(st(s).phase).toEqual({ kind: 'day', n: 2 })
   expect(st(s).players[6]).toMatchObject({ status: 'out', cause: 'shot', outPhase: { kind: 'night', n: 1 } })
-  expect(nightState(s, DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: 7, chosen: 7 })
+  expect(nightState(s, DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: [7], chosen: [7] })
   expect(st({ ...s, log: applyUndo(s.log, s.undo.at(-1)!) }).phase).toEqual({ kind: 'night', n: 1 })
-  expect(st(play(before, { type: 'confirmNight', chosen: 2 })).players[1]!.status).toBe('out')
+  expect(st(play(before, { type: 'confirmNight', died: [2] })).players[1]!.status).toBe('out')
+})
+// ── Итог ночи — список событий ──────────────────────────────────────────────
+
+test('итог ночи — список событий: выстрел даёт одну смерть с причиной', () => {
+  expect(out(play(n1(), act('mafia_shot', null, 7)))).toEqual({ deaths: [{ seat: 7, cause: 'shot' }], notes: [], blocked: [], healed: [], noAttack: null })
+})
+test('лечение — заметка «вылечен»: спасённый от выстрела — с причиной нападения, вылеченный без нападения — без неё', () => {
+  expect(out(play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7))))
+    .toEqual({ deaths: [], notes: [{ seat: 7, kind: 'healed', cause: 'shot' }], blocked: [], healed: [7], noAttack: null })
+  // Доктор лечил не того: застреленный выбывает, вылеченный остаётся заметкой без причины.
+  expect(out(play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 5))))
+    .toEqual({ deaths: [{ seat: 7, cause: 'shot' }], notes: [{ seat: 5, kind: 'healed' }], blocked: [], healed: [5], noAttack: null })
+  // Заблокированный доктор не лечит: заметки нет.
+  expect(out(play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7), act('prostitute_block', 10, 4))).notes).toEqual([])
+})
+test('нападения не было: никто не стрелял — none, стрелявший заблокирован — blocked', () => {
+  expect(out(n1())).toEqual({ deaths: [], notes: [], blocked: [], healed: [], noAttack: 'none' })
+  expect(out(play(n1(), act('mafia_shot', null, null)))).toMatchObject({ deaths: [], noAttack: 'none' })
+  expect(out(play(n1(), act('mafia_shot', null, 7), act('prostitute_block', 10, 3)))).toEqual({ deaths: [], notes: [], blocked: [3], healed: [], noAttack: 'blocked' })
+})
+test('подтверждение с двумя выбывшими: два статуса одной пачкой, отменяется одним нажатием', () => {
+  const before = play(n1(), act('mafia_shot', null, 7))
+  // Ведущий оставил отметку у застреленного №7 и добавил №2; повтор номера не даёт второго статуса.
+  const s = play(before, { type: 'confirmNight', died: [7, 2, 7] })
+  expect(st(s).phase).toEqual({ kind: 'day', n: 2 }); expect(st(s).counts.alive).toBe(9)
+  for (const seat of [2, 7]) expect(st(s).players[seat - 1]).toMatchObject({ status: 'out', cause: 'shot', outPhase: { kind: 'night', n: 1 } })
+  expect(s.log.filter((e) => e.type === 'status_set')).toHaveLength(2)
+  expect(nightState(s, DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: [7], chosen: [2, 7] }); expect(st(s).warnings).toEqual([])
+  const undone = st({ ...s, log: applyUndo(s.log, s.undo.at(-1)!) })
+  expect(undone.phase).toEqual({ kind: 'night', n: 1 }); expect(undone.counts.alive).toBe(11); expect(undone.night!.confirmed).toBeNull()
+  // Номера вне стола подтверждение не принимает.
+  expect(attempt(before, { type: 'confirmNight', died: [7, 99] })).toEqual({ ok: false, reason: 'not_alive' })
+})
+test('запись подтверждения из сохранения до обновления (один номер или null) читается как набор', () => {
+  const N1 = { kind: 'night', n: 1 } as const
+  const s = play(n1(), act('mafia_shot', null, 7), { type: 'confirmNight', died: [7] })
+  const saved = (hinted: unknown, chosen: unknown): Session =>
+    ({ ...s, log: s.log.map((e) => (e.type === 'night_confirmed' ? { ...e, hinted, chosen } as unknown as GameEvent : e)) })
+  const old = saved(7, 7)
+  expect(nightState(old, DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: [7], chosen: [7] }); expect(st(old).warnings).toEqual([])
+  expect(journal(old, DEFAULT_REGISTRY).find((g) => g.phase.kind === 'night')!.entries.at(-1)).toMatchObject({ kind: 'night_result', died: [7] })
+  expect(nightState(saved(null, null), DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: [], chosen: [] })
+  // Мусор в записи не роняет вывод: номера вне стола и не-числа отбрасываются.
+  expect(nightState(saved('чепуха', [7, 99, 'x', 7]), DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: [], chosen: [7] })
+  expect(() => st(saved({ a: 1 }, undefined))).not.toThrow()
+  // По старой записи работает и правка задним числом: предупреждение, «Исправить» и «Оставить».
+  const edited = play(old, { type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 9, phase: N1 })
+  expect(st(edited).warnings).toEqual([{ code: 'night_outcome_changed', night: 1, expected: [9] }])
+  const fixed = play(edited, { type: 'acknowledgeNight', night: 1, apply: true })
+  expect(st(fixed).players[6]!.status).toBe('alive'); expect(st(fixed).players[8]).toMatchObject({ status: 'out', cause: 'shot', outPhase: N1 })
+  expect(nightState(fixed, DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: [9], chosen: [9] })
+  const kept = play(edited, { type: 'acknowledgeNight', night: 1, apply: false })
+  expect(nightState(kept, DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: [9], chosen: [7] }); expect(st(kept).warnings).toEqual([])
 })
 test('вымышленная роль с существующим эффектом работает без правок движка', () => {
   const reg: Registry = { ...DEFAULT_REGISTRY,
@@ -84,7 +137,7 @@ test('вымышленная роль с существующим эффекто
     act('mafia_shot', null, 3), act('bodyguard_guard', 2, 3)]
   const night = playWith(reg, s, ...cmds)
   expect(nightState(night, reg, 1).steps.map((x) => x.id)).toEqual(['mafia_shot', 'godfather_search:1', 'bodyguard_guard:2'])
-  expect(nightState(night, reg, 1).outcome).toMatchObject({ dies: null, reason: 'healed' })
+  expect(nightState(night, reg, 1).outcome).toMatchObject({ deaths: [], noAttack: null })
 })
 
 test('шаг знает, что его исполнитель заблокирован этой ночью', () => {
@@ -103,17 +156,17 @@ test('статус меняется посреди ночи: шаги и цел�
   s = play(s, { type: 'setStatus', seat: 7, status: 'alive' }, { type: 'setStatus', seat: 4, status: 'alive' })
   expect(st(s).night!.steps.at(-1)).toMatchObject({ id: 'doctor_heal:4', grey: false }); expect(attempt(s, act('mafia_shot', null, 7)).ok).toBe(true)
   // Подтверждённая ночь смотрится по статусам на момент подтверждения: застреленный доктор успел вылечить.
-  s = play(s, act('mafia_shot', null, 4), act('doctor_heal', 4, 5), { type: 'confirmNight', chosen: 4 })
+  s = play(s, act('mafia_shot', null, 4), act('doctor_heal', 4, 5), { type: 'confirmNight', died: [4] })
   expect(nightState(s, DEFAULT_REGISTRY, 1).steps.at(-1)).toMatchObject({ id: 'doctor_heal:4', grey: false, recorded: true, target: 5 })
   expect(st(s).warnings).toEqual([]); expect(st(s).players[3]).toMatchObject({ status: 'out', cause: 'shot' })
 })
 test('обмен ролями не теряет ночные записи роли', () => {
-  let s = play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7), act('sheriff_check', 1, 8), { type: 'confirmNight', chosen: null })
+  let s = play(n1(), act('mafia_shot', null, 7), act('doctor_heal', 4, 7), act('sheriff_check', 1, 8), { type: 'confirmNight', died: [] })
   s = play(s, { type: 'swapRoles', a: 4, b: 9 }, { type: 'swapRoles', a: 1, b: 2 })
   const night = nightState(s, DEFAULT_REGISTRY, 1)
   expect(night.steps.find((x) => x.id === 'doctor_heal:9')).toMatchObject({ recorded: true, target: 7 })
   expect(night.steps.find((x) => x.id === 'sheriff_check:2')).toMatchObject({ recorded: true, target: 8, answer: { kind: 'side', side: 'black' } })
-  expect(night.outcome).toMatchObject({ dies: null, reason: 'healed' }); expect(st(s).warnings).toEqual([])
+  expect(night.outcome).toMatchObject({ deaths: [], noAttack: null }); expect(st(s).warnings).toEqual([])
   expect(st(s).permanentMarks).toContainEqual({ seat: 8, actionId: 'sheriff_check' })
   const n2 = play(s, { type: 'startPhase', phase: { kind: 'night', n: 2 } })
   expect(st(n2).night!.steps.find((x) => x.id === 'doctor_heal:9')!.lastNight).toMatchObject({ recorded: true, target: 7 })
@@ -167,24 +220,24 @@ test('опция проститутки описана в справочнике
 })
 test('блок крёстного отца: что отменяется — выстрел, поиск шерифа или оба — по значению опции', () => {
   const shot = nightWith({ [OPTION.id]: 'shot' }, 3)
-  expect(out(shot)).toMatchObject({ dies: null, reason: 'shooter_blocked', blocked: [3] })
+  expect(out(shot)).toMatchObject({ deaths: [], noAttack: 'blocked', blocked: [3] })
   expect(stepOf(shot, 'godfather_search:3').answer).toEqual(FOUND)
   expect([stepOf(shot, 'mafia_shot').blocked, stepOf(shot, 'godfather_search:3').blocked]).toEqual([true, false])
 
   const search = nightWith({ [OPTION.id]: 'search' }, 3)
-  expect(out(search)).toMatchObject({ dies: 7, reason: 'shot', blocked: [3] })
+  expect(out(search)).toMatchObject({ deaths: [{ seat: 7, cause: 'shot' }], noAttack: null, blocked: [3] })
   expect(stepOf(search, 'godfather_search:3').answer).toEqual({ kind: 'blocked' })
   expect([stepOf(search, 'mafia_shot').blocked, stepOf(search, 'godfather_search:3').blocked]).toEqual([false, true])
 
   const both = nightWith({ [OPTION.id]: 'both' }, 3)
-  expect(out(both)).toMatchObject({ dies: null, reason: 'shooter_blocked' })
+  expect(out(both)).toMatchObject({ deaths: [], noAttack: 'blocked' })
   expect(stepOf(both, 'godfather_search:3').answer).toEqual({ kind: 'blocked' })
   expect([stepOf(both, 'mafia_shot').blocked, stepOf(both, 'godfather_search:3').blocked]).toEqual([true, true])
 })
 test('блок рядовой мафии при живом крёстном отце ничего не отменяет при любом значении опции', () => {
   for (const value of ['shot', 'search', 'both']) {
     const s = nightWith({ [OPTION.id]: value }, 8)
-    expect(out(s)).toMatchObject({ dies: 7, reason: 'shot', blocked: [8] })
+    expect(out(s)).toMatchObject({ deaths: [{ seat: 7, cause: 'shot' }], noAttack: null, blocked: [8] })
     expect(stepOf(s, 'godfather_search:3').answer).toEqual(FOUND)
     expect([stepOf(s, 'mafia_shot').blocked, stepOf(s, 'godfather_search:3').blocked]).toEqual([false, false])
   }
@@ -192,7 +245,7 @@ test('блок рядовой мафии при живом крёстном от
 test('игра без опций ролей ведёт себя как «выстрел»; мусор в значении опции — тоже', () => {
   for (const options of [undefined, {}, { [OPTION.id]: 'чепуха' }, { [OPTION.id]: true }, { чужая: 'both' }]) {
     const s = nightWith(options, 3)
-    expect(out(s)).toMatchObject({ dies: null, reason: 'shooter_blocked' })
+    expect(out(s)).toMatchObject({ deaths: [], noAttack: 'blocked' })
     expect(stepOf(s, 'godfather_search:3').answer).toEqual(FOUND)
   }
 })
@@ -200,7 +253,7 @@ test('крёстный отец выбыл: блок единственной м
   for (const value of ['shot', 'search', 'both']) {
     const s = play(toDay(game(TABLE_11, { roleOptions: { [OPTION.id]: value } }), 1), { type: 'setStatus', seat: 3, status: 'out', cause: 'voted' },
       { type: 'startPhase', phase: { kind: 'night', n: 1 } }, act('mafia_shot', null, 7), act('prostitute_block', 10, 8))
-    expect(out(s)).toMatchObject({ dies: null, reason: 'shooter_blocked' })
+    expect(out(s)).toMatchObject({ deaths: [], noAttack: 'blocked' })
   }
 })
 test('отменённый блоком поиск: постоянной метки нет, запись журнала говорит, что поиск не состоялся', () => {

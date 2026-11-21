@@ -97,7 +97,11 @@ export type GameEvent =
   | Ev<'phase_started', object>
   | Ev<'step_entered', { step: StepId }>
   | Ev<'night_action', { actionId: string; actor: Seat | null; target: Seat | null }>
-  | Ev<'night_confirmed', { hinted: Seat | null; chosen: Seat | null }>
+  /**
+   * Подтверждение итога ночи: hinted — кто выбывал по подсказке, chosen — кого отметил ведущий.
+   * В сохранениях до обновления оба поля — один номер или null: читать только через seatsOf.
+   */
+  | Ev<'night_confirmed', { hinted: Seat[] | Seat | null; chosen: Seat[] | Seat | null }>
   | Ev<'status_set', { seat: Seat; status: 'alive' | 'out'; cause?: OutCause; source: 'night' | 'vote' | 'manual' }>
   /** random — начинающего выбрало приложение (первый круг), а не ведущий. */
   | Ev<'circle_opened', { first: Seat; random?: true }>
@@ -211,17 +215,19 @@ export type Command =
   // ночь
   /** force — записать, несмотря на предупреждение о повторе цели. */
   | { type: 'recordNightAction'; actionId: string; actor: Seat | null; target: Seat | null; phase?: PhaseRef; force?: true }
-  | { type: 'confirmNight'; chosen: Seat | null }
+  /** died — все, кого ведущий отметил выбывшими этой ночью: статусы ставятся одной пачкой с началом дня. */
+  | { type: 'confirmNight'; died: Seat[] }
   /** Ответ на «итог ночи теперь другой»: apply — исправить статусы, иначе оставить как есть. */
   | { type: 'acknowledgeNight'; night: number; apply: boolean }
-  /** Правка итога уже подтверждённой ночи: кто выбыл на самом деле. */
-  | { type: 'setNightResult'; night: number; chosen: Seat | null }
+  /** Правка итога уже подтверждённой ночи: кто выбыл на самом деле — весь набор. */
+  | { type: 'setNightResult'; night: number; died: Seat[] }
 
 export type RejectCode =
   | 'redeal_closed' | 'wrong_phase' | 'not_alive' | 'unknown_event' | 'nominations_closed'
   | 'already_nominated' | 'votes_exceed' | 'step_grey' | 'repeat_target'
 export type StateWarning =
-  | { code: 'night_outcome_changed'; night: number; expected: Seat | null }
+  /** expected — кто должен выбыть по пересчитанной подсказке; пусто — никто. */
+  | { code: 'night_outcome_changed'; night: number; expected: Seat[] }
   | { code: 'votes_overflow'; ballot: 1 | 2 }
 export type CommandResult = { ok: true; patch: LogPatch } | { ok: false; reason: RejectCode }
 
@@ -322,20 +328,35 @@ export type NightStep = {
   edited: boolean
   lastNight: { recorded: boolean; target: Seat | null; answer?: CheckAnswer }
 }
+/** Выбывает этой ночью по подсказке. guarded — кого закрыл собой погибший (причина «защита»). */
+export type NightDeath = { seat: Seat; cause: OutCause; guarded?: Seat }
+/**
+ * Остаётся в игре, и ведущему стоит об этом знать: вылечен, спасён жилетом, жертва визита.
+ * cause — от какого нападения спасён; поля нет — на игрока этой ночью не нападали.
+ */
+export type NightNote = { seat: Seat; kind: 'healed' | 'vest' | 'silenced'; cause?: OutCause }
+/**
+ * Подсказка итога ночи — список событий. Ведущий подтверждает её или меняет: отметку можно снять, выбывшего — добавить.
+ * deaths и notes — по возрастанию номеров; несколько нападений на одного игрока — одна смерть.
+ */
 export type NightOutcome = {
-  shotAt: Seat | null
-  dies: Seat | null
-  reason: 'shot' | 'healed' | 'no_shot' | 'shooter_blocked'
+  deaths: NightDeath[]
+  notes: NightNote[]
   blocked: Seat[]
   healed: Seat[]
+  /** Почему нападений не было: 'none' — никто не нападал, 'blocked' — все нападавшие заблокированы; null — нападение было. */
+  noAttack: 'none' | 'blocked' | null
 }
+/** Почему по подсказке никто не выбывает: нападений не было, нападавший заблокирован, цель спасена. */
+export type QuietNight = 'none' | 'blocked' | 'saved'
 export type NightState = {
   n: number
   steps: NightStep[]
   outcome: NightOutcome
   /** У каждого несерого шага есть запись. */
   complete: boolean
-  confirmed: { hinted: Seat | null; chosen: Seat | null } | null
+  /** Подтверждение итога: наборы номеров по возрастанию (старая запись с одним номером читается как набор из одного). */
+  confirmed: { hinted: Seat[]; chosen: Seat[] } | null
 }
 
 // ── Журнал для показа ───────────────────────────────────────────────────────
@@ -346,7 +367,8 @@ export type JournalEntry = { eventId: string | null; edited: boolean; manual: bo
   | { kind: 'night_action'; actionId: string; performerRole: RoleId; actor: Seat | null; target: Seat | null; answer?: CheckAnswer; numbered?: true }
   /** Шаг прошлой ночи без записи. */
   | { kind: 'night_missing'; actionId: string; actor: Seat | null; numbered?: true }
-  | { kind: 'night_result'; dies: Seat | null; reason: NightOutcome['reason'] }
+  /** died — кого отметил ведущий; reason — почему по подсказке никто не выбывает (null — по подсказке кто-то выбывает). */
+  | { kind: 'night_result'; died: Seat[]; reason: QuietNight | null }
   | { kind: 'circle'; first: Seat; random?: true }
   | { kind: 'nomination'; index: number; by: Seat | null; target: Seat }
   | { kind: 'votes'; ballot: 1 | 2; voters: number; entries: { candidate: Seat; count: number }[] }

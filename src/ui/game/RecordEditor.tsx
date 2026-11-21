@@ -154,8 +154,8 @@ export const RecordEditor: FC<{ entry: JournalEntry; phase: PhaseRef; onClose():
       <>
         <p className="dialog-text">{t('edit.nightResult')}</p>
         <SeatGrid
-          total={total} allowed={aliveIn(session, store, phase)} picked={entry.dies} nobody={t('night.nobody')}
-          onPick={(chosen) => run({ type: 'setNightResult', night: phase.n, chosen })}
+          total={total} allowed={aliveIn(session, store, phase)} picked={entry.died[0] ?? null} nobody={t('night.nobody')}
+          onPick={(chosen) => run({ type: 'setNightResult', night: phase.n, died: chosen === null ? [] : [chosen] })}
         />
       </>
     )

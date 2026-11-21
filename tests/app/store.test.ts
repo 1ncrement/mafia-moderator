@@ -1,5 +1,6 @@
 import { createAppStore } from '../../src/app/store'
-import { game, seeded, TABLE_11, testEnv } from '../helpers'
+import { journal } from '../../src/engine'
+import { act, game, n1, play, seeded, TABLE_11, testEnv } from '../helpers'
 
 test('новая игра: 10 игроков при первом запуске, раздача создаёт сессию', () => {
   const env = testEnv(); const app = createAppStore(env); app.newGame()
@@ -128,14 +129,14 @@ test('День 1 начался — роли скрыты; началась но
   const { app } = day1()
   expect(hidden(app)).toBe(true)
   app.dispatch(toNight1); expect(hidden(app)).toBe(false)
-  app.dispatch({ type: 'confirmNight', chosen: null }); expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 2 }); expect(hidden(app)).toBe(true)
+  app.dispatch({ type: 'confirmNight', died: [] }); expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 2 }); expect(hidden(app)).toBe(true)
 })
 test('ведущий открыл роли днём — до конца дня они открыты, следующий день снова скрыт', () => {
   const { app } = day1()
   app.setSettings({ rolesHidden: false })
   app.dispatch({ type: 'openCircle', first: 5 }); app.speak('speech', 5); app.dispatch({ type: 'endSpeech' })
   expect(hidden(app)).toBe(false)
-  app.dispatch(toNight1); app.dispatch({ type: 'confirmNight', chosen: null })
+  app.dispatch(toNight1); app.dispatch({ type: 'confirmNight', died: [] })
   expect(hidden(app)).toBe(true)
 })
 test('ведущий скрыл роли ночью — до конца ночи они скрыты, шаги ночи видимость не трогают', () => {
@@ -149,7 +150,7 @@ test('«Отменить» переход фазы ставит видимост
   app.setSettings({ rolesHidden: false }); app.dispatch(toNight1)
   app.undo()
   expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 1 }); expect(hidden(app)).toBe(true)
-  app.dispatch(toNight1); app.dispatch({ type: 'confirmNight', chosen: null }); expect(hidden(app)).toBe(true)
+  app.dispatch(toNight1); app.dispatch({ type: 'confirmNight', died: [] }); expect(hidden(app)).toBe(true)
   app.undo()
   expect(app.getState().game!.phase).toEqual({ kind: 'night', n: 1 }); expect(hidden(app)).toBe(false)
 })
@@ -237,10 +238,10 @@ test('игра, сохранённая до обновления, доигрыв
   app.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 })
   app.dispatch({ type: 'recordNightAction', actionId: 'godfather_search', actor: 3, target: 1 })
   app.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 3 })
-  expect(app.getState().game!.night!.outcome).toMatchObject({ dies: null, reason: 'shooter_blocked' })
+  expect(app.getState().game!.night!.outcome).toMatchObject({ deaths: [], noAttack: 'blocked' })
   expect(app.getState().game!.night!.steps.find((s) => s.actionId === 'godfather_search')!.answer).toEqual({ kind: 'found', found: true })
   // Балаган и прощание после голосования у старой игры на месте.
-  app.dispatch({ type: 'confirmNight', chosen: null }); expect(app.getState().game!.step).toBe('balagan')
+  app.dispatch({ type: 'confirmNight', died: [] }); expect(app.getState().game!.step).toBe('balagan')
   expect(app.getState().session!.config.rules).toMatchObject({ balagan: true, farewellAfterVote: true, farewellAfterNight: false, prostituteFirst: false })
 })
 test('опции ролей из черновика попадают в игру и запоминаются для следующей', () => {
@@ -256,4 +257,23 @@ test('справочник экрана состава следует прави
   expect(order()[0]).toBe('prostitute_block')
   app.editDraft({ rules: { ...app.getState().draft.rules, prostituteFirst: false } })
   expect(order().slice(0, 3)).toEqual(['mafia_shot', 'godfather_search', 'prostitute_block'])
+})
+
+test('игра, сохранённая до обновления, открывается с прежним итогом ночи: подтверждение с одним номером читается как набор', () => {
+  const env = testEnv()
+  // Ночь 1: выстрел в №7 подтверждён; Ночь 2 без выстрела. В старом сохранении отметка итога — один номер или null.
+  const played = play(n1(), act('mafia_shot', null, 7), { type: 'confirmNight', died: [7] }, { type: 'startPhase', phase: { kind: 'night', n: 2 } }, { type: 'confirmNight', died: [] })
+  const one = (seats: unknown) => (Array.isArray(seats) ? seats[0] ?? null : seats)
+  const saved = { ...played, id: 'old', log: played.log.map((e) => (e.type === 'night_confirmed' ? { ...e, hinted: one(e.hinted), chosen: one(e.chosen) } : e)) }
+  expect(saved.log.filter((e) => e.type === 'night_confirmed').map((e) => e.chosen)).toEqual([7, null])
+  env.kv.setItem('mafia:session:old', JSON.stringify(saved)); env.kv.setItem('mafia:active', 'old')
+  const app = createAppStore(env)
+  expect(app.getState()).toMatchObject({ screen: 'game', brokenSession: null, game: { phase: { kind: 'day', n: 3 }, warnings: [] } })
+  expect(app.getState().game!.players[6]).toMatchObject({ status: 'out', cause: 'shot', outPhase: { kind: 'night', n: 1 } })
+  const results = journal(app.getState().session!, app.registry).flatMap((g) => g.entries.flatMap((e) => (e.kind === 'night_result' ? [e.died] : [])))
+  expect(results).toEqual([[], [7]])
+  // Правка итога старой ночи записывает его уже набором — и игра по-прежнему читается после перезагрузки.
+  expect(app.dispatch({ type: 'setNightResult', night: 1, died: [7, 2] }).ok).toBe(true)
+  const reloaded = createAppStore(env)
+  expect(reloaded.getState().game!.counts.alive).toBe(9); expect(reloaded.getState().game!.warnings).toEqual([])
 })
