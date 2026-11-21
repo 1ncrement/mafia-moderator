@@ -121,12 +121,14 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
   }
 
   // Молчат сегодня: к кому приходили прошлой ночью и кто в игре. Выбывший из списка пропадает, возвращённый — возвращается.
-  const silenced = n > 1 ? visitsAt(session, registry, n - 1).filter((s) => alive.has(s)).sort((a, b) => a - b) : []
+  const visited = n > 1 ? visitsAt(session, registry, n - 1) : []
+  const silenced = visited.filter((s) => alive.has(s)).sort((a, b) => a - b)
   const silence = silenceOf(session, registry)
 
-  // Выставление и голосование. Молчащие не голосуют, если так задано опцией.
+  // Выставление и голосование. Молчащие не голосуют, если так задано опцией. В тур уходят все, к кому приходили: кто из них
+  // был в игре, тур решает сам — на свой момент. Иначе тур, подтверждённый до выбытия жертвы, после него пересчитался бы.
   const nominations = nominationsOf(session, phase, alive)
-  const ballots = buildBallots(session, registry, events, nominations, now, silence.noVote ? silenced : [])
+  const ballots = buildBallots(session, registry, events, nominations, now, silence.noVote ? visited : [])
 
   // Очереди речей по 30 секунд.
   const order = nominations.map((x) => x.target)

@@ -22,7 +22,7 @@ function useCards(game: GameState): CardView[] {
     const seat = player.seat
     const speaking = day?.speaking?.seat === seat
     const marks: SeatMark[] = []
-    if (speaking) marks.push({ text: t('card.speaking'), tone: 'day' })
+    if (speaking && day?.speaking?.kind !== 'silent') marks.push({ text: t('card.speaking'), tone: 'day' })
     else {
       const parts: string[] = []
       if (day?.spoken.includes(seat)) parts.push(t('card.spoke'))

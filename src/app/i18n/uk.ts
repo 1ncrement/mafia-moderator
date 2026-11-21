@@ -482,6 +482,7 @@ export const uk: Dict = {
   'night.repeat': 'Ця сама ціль була минулої ночі',
   'action.doctor_heal.repeat': 'Цього гравця лікували минулої ночі',
   'night.force': 'Записати все одно',
+  'night.refused': 'Не записано: цього гравця на цьому кроці обрати не можна.',
   'night.answer': 'Відповідь · {step}',
   'night.answer.pair': 'Відповідь · {step} · {seats}',
   'night.answer.side': '{seat} — {side}',

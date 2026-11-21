@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { answerText, cap, hasKey, roleName, roleText, seatList, stepQuestion, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { SUMMARY_STEP } from '../../engine'
+import { aliveSeats, nightPlayers, SUMMARY_STEP } from '../../engine'
 import type { GameState, NightState, NightStep, Seat } from '../../engine'
 import { Button } from '../common/Button'
 import { Blocked } from '../common/icons'
@@ -65,6 +65,8 @@ export function NightPanel({ game }: { game: GameState }) {
   const step: NightStep | undefined = night?.steps.find((s) => s.id === game.step)
   /** Цель, которую движок отклонил как повтор прошлой ночи. */
   const [repeat, setRepeat] = useState<{ step: string; target: Seat } | null>(null)
+  /** Шаг, на котором движок отклонил выбор: этого игрока здесь выбрать нельзя. Видно при скрытых ролях, когда карточки не заперты. */
+  const [refused, setRefused] = useState<string | null>(null)
   /** Действие с двумя целями: первый выбранный игрок пары — пока не выбран второй. Живёт, пока открыт этот шаг. */
   const [first, setFirst] = useState<{ step: string; seat: Seat } | null>(null)
   const def = registry.nightActions.find((a) => a.id === step?.actionId)
@@ -92,12 +94,14 @@ export function NightPanel({ game }: { game: GameState }) {
       if (!current || current.grey) return
       const result = store.dispatch({ type: 'recordNightAction', actionId: current.actionId, actor: current.actor, target: seat, force })
       setRepeat(!result.ok && result.reason === 'repeat_target' && seat !== null ? { step: current.id, target: seat } : null)
+      setRefused(!result.ok && result.reason === 'target_not_allowed' ? current.id : null)
     }
     /** Действие с двумя целями: первый клик выбирает игрока, повторный по нему же — снимает, клик по второму записывает пару. */
     const pickPair = (seat: Seat | null) => {
       const now = store.getState().game
       const current = now?.night?.steps.find((s) => s.id === now.step)
       if (!current || current.grey) return
+      setRefused(null)
       if (seat === null) {
         setFirst(null)
         store.dispatch({ type: 'recordNightAction', actionId: current.actionId, actor: current.actor, target: null, target2: null })
@@ -105,12 +109,15 @@ export function NightPanel({ game }: { game: GameState }) {
       else if (firstSeat === seat) setFirst(null)
       else {
         setFirst(null)
-        store.dispatch({ type: 'recordNightAction', actionId: current.actionId, actor: current.actor, target: firstSeat, target2: seat })
+        const result = store.dispatch({ type: 'recordNightAction', actionId: current.actionId, actor: current.actor, target: firstSeat, target2: seat })
+        if (!result.ok && result.reason === 'target_not_allowed') setRefused(current.id)
       }
     }
     ask({
       question,
-      allowed: step.allowed,
+      // Роли скрыты — запираем только выбывших: карточка, запертая по правилу действия (сам исполнитель, уже проверенные),
+      // выдала бы, кто исполнитель и кого он выбирал. Такой выбор движок не запишет — ведущий увидит строку «не записано».
+      allowed: hidden && !resting ? aliveSeats(nightPlayers(session, registry, night.n)) : step.allowed,
       // Роли скрыты — записанный выбор и цель прошлой ночи на столе не показываем.
       // Начатая пара: выделен первый выбранный; иначе — записанная пара целиком.
       picked: hidden ? null : two && firstSeat !== null ? firstSeat : target,
@@ -153,6 +160,7 @@ export function NightPanel({ game }: { game: GameState }) {
     two && def.noSelf && step.actor !== null ? t('night.compare.locked.self', { seats: seat(step.actor), role }) : '',
   ].filter(Boolean)
 
+  const refusedLine = refused === step.id && <p className="alert-line" role="status">{t('night.refused')}</p>
   const pendingBox = pending !== null && (
             <div className="night-repeat" role="alert">
               <span>{hasKey(`action.${step.actionId}.repeat`) ? translateKey(lang, `action.${step.actionId}.repeat`) : t('night.repeat')}</span>
@@ -205,6 +213,7 @@ export function NightPanel({ game }: { game: GameState }) {
           )}
           {step.restNext && <span className="night-rest-next">{t('night.compare.restNext', { n: night.n + 1, role })}</span>}
           {pending !== null && pendingBox}
+          {refusedLine}
           {answer && (answer.kind === 'side' || answer.kind === 'found') && step.target !== null && (
             <div className="answer">
               <span className="answer-cap">{t('night.answer', { step: nightStepLabel(lang, registry, night, step.id) })}</span>
@@ -240,6 +249,7 @@ export function NightPanel({ game }: { game: GameState }) {
       {/* Блок виден и при скрытых ролях: ведущему надо показать игроку, что он заблокирован. */}
       {hidden && <BlockNotice night={night} step={step} hidden />}
       {hidden && pending !== null && pendingBox}
+      {hidden && refusedLine}
     </div>
   )
 }

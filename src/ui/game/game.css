@@ -289,6 +289,29 @@
   font-weight: 600;
   line-height: 1.1;
 }
+/* Итог ночи: полоса шагов сжата в плашки — название и записанный выбор в одну строку, без «прошлой ночью». */
+.night-steps[data-compact] {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.night-steps[data-compact] .night-step {
+  width: auto;
+  min-height: 34px;
+  padding: 2px 10px;
+  gap: 6px;
+}
+.night-steps[data-compact] .night-step-name,
+.night-steps[data-compact] .night-step-pick {
+  font-size: 13px;
+}
+.night-steps[data-compact] .night-step-side {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.night-steps[data-compact] .night-step-last {
+  display: none;
+}
 /* Шаг сравнения: строка про следующую ночь отдыха. */
 .night-rest-next {
   font-size: 14px;

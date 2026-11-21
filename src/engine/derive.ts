@@ -67,7 +67,9 @@ export function deriveState(session: Session, registry: Registry): GameState {
   // Утро выводится из статусов после прошлой ночи: ручная правка статуса и правка итога сразу меняют объявление.
   const morning: Morning | null = day && day.n >= 2 ? {
     deaths: leftAtNight(views, day.n - 1), farewell, spared: sparedAt(day.n - 1), silenced: day.silenced, silence: day.silence,
-    announced: session.log.some((e) => e.type === 'morning_announced' && samePhase(e.phase, phase)),
+    // В сохранении до обновления события «объявил» нет: если день уже идёт (в нём есть что-то, кроме его начала),
+    // утро считается объявленным — окно само посреди дня не открывается.
+    announced: session.log.some((e) => e.type !== 'phase_started' && samePhase(e.phase, phase)),
   } : null
 
   return {

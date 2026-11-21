@@ -54,7 +54,7 @@ function DayActions({ game, seat, onDone }: { game: GameState; seat: Seat; onDon
   if (!day) return null
   const alive = game.players[seat - 1]?.status === 'alive'
   const nominated = day.nominations.some((x) => x.target === seat)
-  const speaker = day.speaking?.kind === 'speech' ? day.speaking.seat : null
+  const speaker = day.speaking?.kind === 'speech' || (day.speaking?.kind === 'silent' && !day.silence.noNominate) ? day.speaking.seat : null
   return (
     <>
       <Button size="l" disabled={!alive} onClick={() => { store.speak('speech', seat); onDone(null) }}>{t('panel.giveWord')}</Button>
@@ -108,6 +108,8 @@ function Game({ game }: { game: GameState }) {
   // Ведущий ушёл дальше через полосу шагов, а круг не закончен или не начат вовсе — предупреждение, не запрет.
   const day = game.day
   const morning = game.morning
+  const dayStart = session.log.findLast((e) => e.type === 'phase_started')
+  const undoStartsDay = dayStart !== undefined && session.undo.at(-1)?.added.includes(dayStart.id) === true
   const notSpoken = day && game.step !== 'night_farewell' && game.step !== 'balagan' && game.step !== 'speeches' ? day.waiting : []
 
   // Итог прошлой ночи разошёлся с отметкой — предложение исправить. Живёт в журнале,
@@ -177,8 +179,9 @@ function Game({ game }: { game: GameState }) {
             if (!morning.announced) store.dispatch({ type: 'announceMorning' })
             setMorningOpen(false)
           }}
-          // Под окном шапка недоступна: подтверждение ночи отменяется прямо из него.
-          onUndo={!morning.announced && store.canUndo() ? () => store.undo() : undefined}
+          // Под окном шапка недоступна: подтверждение ночи отменяется прямо из него — и только оно:
+          // если последнее действие другое, общая отмена из окна сняла бы его, а окно осталось бы.
+          onUndo={!morning.announced && undoStartsDay ? () => store.undo() : undefined}
         />
       )}
     </>

@@ -481,6 +481,7 @@ export const ru = {
   'night.repeat': 'Эта же цель была прошлой ночью',
   'action.doctor_heal.repeat': 'Этого игрока лечили прошлой ночью',
   'night.force': 'Записать всё равно',
+  'night.refused': 'Не записано: этого игрока на этом шаге выбрать нельзя.',
   'night.answer': 'Ответ · {step}',
   'night.answer.pair': 'Ответ · {step} · {seats}',
   'night.answer.side': '{seat} — {side}',

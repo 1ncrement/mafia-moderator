@@ -812,12 +812,15 @@ async function run() {
     scrollTo(0, 0)
     const rect = (e) => (e ? e.getBoundingClientRect() : null)
     const add = rect(__find('Добавить выбывшего…')), back = rect(__find('Назад к шагам ночи')), main = rect(document.querySelector('.main-button'))
-    if (!add || !back || !main) return { ok: false }
+    const row = rect(document.querySelector('.result-row-out'))
+    if (!add || !back || !main || !row) return { ok: false }
     const hit = (a) => !(a.bottom <= main.top || a.top >= main.bottom)
     const seen = (a) => a.top >= 0 && a.bottom <= innerHeight
-    return { ok: !hit(add) && !hit(back) && seen(add) && seen(back) && seen(main), add: [Math.round(add.top), Math.round(add.bottom)], main: [Math.round(main.top), Math.round(main.bottom)], vh: innerHeight }
+    // Строка выбывшего целиком выше кнопок: прилипающий низ панели её не закрывает.
+    return { ok: !hit(add) && !hit(back) && seen(add) && seen(back) && seen(main) && row.top >= 0 && row.bottom <= add.top,
+      row: [Math.round(row.top), Math.round(row.bottom)], add: [Math.round(add.top), Math.round(add.bottom)], main: [Math.round(main.top), Math.round(main.bottom)], vh: innerHeight }
   })()`)
-  check(15, 'окно 1440×900: кнопки «Добавить выбывшего…» и «Назад к шагам ночи» видны и главной кнопкой не закрыты', fit15.ok, JSON.stringify(fit15))
+  check(15, 'окно 1440×900: строка выбывшего видна над кнопками; «Добавить выбывшего…» и «Назад к шагам ночи» главной кнопкой не закрыты', fit15.ok, JSON.stringify(fit15))
   await main(`№${G15} выбывает · начать День 2`)
   const morning15 = (await morning()) ?? '', lines15 = await morningLines()
   check(15, 'утро: охранник покидает стол и прощается (правило выключено), бронежилет остаётся, жертва маньяка молчит и не голосует; ролей нет',

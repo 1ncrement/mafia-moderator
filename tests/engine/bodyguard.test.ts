@@ -94,9 +94,9 @@ test('охранник выбыл вручную посреди ночи: его
   // Вернули в игру — запись и защита снова на месте.
   s = play(s, { type: 'setStatus', seat: 2, status: 'alive' })
   expect(out(s).deaths).toEqual([{ seat: 2, cause: 'guard', guarded: 7 }]); expect(st(s).step).toBe('bodyguard_guard:2')
-  // Подзащитный выбыл вручную — защищать некого, нападение на него ничего не даёт.
+  // Подзащитный выбыл вручную — защищать некого: охранник не гибнет. Выстрел в уже выбывшего подсказка называет, как и раньше.
   s = play(s, { type: 'setStatus', seat: 7, status: 'out', cause: 'voted' })
-  expect(out(s).deaths).toEqual([])
+  expect(out(s).deaths).toEqual([{ seat: 7, cause: 'shot' }])
 })
 test('правка прошлой ночи: защита, записанная задним числом, меняет подсказку и предлагает исправить статусы', () => {
   let s = play(night1(), act('mafia_shot', null, 7), { type: 'confirmNight', died: [7] })

@@ -63,7 +63,8 @@ export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
     const isCustom = (roleId: string) => store.registry.roles.find((r) => r.id === roleId)?.custom === true
     return (
       <nav aria-label={t('steps.night')}>
-        <ol className="night-steps">
+        {/* На итоге ночи полоса сжата в плашки: список выбывших должен помещаться над кнопками и в окне 1440×900. */}
+        <ol className="night-steps" data-compact={game.step === SUMMARY_STEP ? '' : undefined}>
           {night.steps.map((s) => (
             <li key={s.id}>
               <button
