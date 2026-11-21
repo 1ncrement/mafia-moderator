@@ -25,7 +25,7 @@ test('подсказка итога ночи не зависит от запис
   renderApp((a) => { seed(1)(a); a.dispatch({ type: 'startPhase', phase: N1 })
     a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 })
     a.dispatch({ type: 'recordNightAction', actionId: 'act_custom_j', actor: 6, target: 7 }); a.dispatch({ type: 'enterStep', step: 'summary' }) })
-  expect(screen.getByText('№7 застрелен')).toBeInTheDocument()
+  expect(screen.getByRole('checkbox', { name: '№7 покидает стол' })).toBeChecked(); expect(screen.getByText('Застрелен мафией')).toBeInTheDocument()
 })
 test('блок проститутки показан плашкой; шериф видит чёрную свою роль чёрной', async () => {
   const { user } = renderApp((a) => { seed(1)(a); a.dispatch({ type: 'startPhase', phase: N1 })

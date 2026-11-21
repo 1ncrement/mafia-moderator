@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import type { AppStore } from '../../src/app/store'
 import { TABLE_11 } from '../helpers'
 import { renderApp, seedGame } from './helpers'
@@ -76,9 +76,31 @@ test('запись итога ночи и запись исхода голосо
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Никто не выгнан' }))
   expect(app.getState().game!.players[2]!.status).toBe('alive'); expect(screen.getByRole('button', { name: /Никто не выгнан/ })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: /^Ночь 1/ })); await user.click(screen.getByRole('button', { name: /Итог ночи: №7 застрелен/ }))
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Никто не выбыл' }))
+  const dialog = () => within(screen.getByRole('dialog'))
+  expect(dialog().getByRole('button', { name: 'Выбрать игрока №7' })).toHaveAttribute('aria-pressed', 'true')
+  // «Никто не выбыл» снимает отметки; статусы меняет только «Сохранить».
+  await user.click(dialog().getByRole('button', { name: 'Никто не выбыл' }))
+  expect(dialog().getByRole('button', { name: 'Выбрать игрока №7' })).toHaveAttribute('aria-pressed', 'false'); expect(app.getState().game!.players[6]!.status).toBe('out')
+  await user.click(dialog().getByRole('button', { name: 'Сохранить' }))
   expect(app.getState().game!.players[6]!.status).toBe('alive'); expect(screen.getByRole('button', { name: /Итог ночи: никто не выбыл/ })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: /Итог ночи: никто не выбыл/ }))
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Выбрать игрока №9' }))
+  await user.click(dialog().getByRole('button', { name: 'Выбрать игрока №9' })); await user.click(dialog().getByRole('button', { name: 'Сохранить' }))
   expect(app.getState().game!.players[8]).toMatchObject({ status: 'out', cause: 'shot', outPhase: { kind: 'night', n: 1 } })
+})
+test('редактор записи итога ночи правит набор: двое выбывших, повторный клик снимает отметку, отмена возвращает прежний итог', async () => {
+  const { app, user } = renderApp(afterNight)
+  const out = () => app.getState().game!.players.filter((p) => p.status === 'out').map((p) => p.seat)
+  const dialog = () => within(screen.getByRole('dialog'))
+  await user.click(screen.getByRole('button', { name: /^Ночь 1/ })); await user.click(screen.getByRole('button', { name: /Итог ночи: №7 застрелен/ }))
+  for (const n of [9, 2, 5, 5]) await user.click(dialog().getByRole('button', { name: `Выбрать игрока №${n}` }))
+  expect([2, 5, 7, 9].map((n) => dialog().getByRole('button', { name: `Выбрать игрока №${n}` }).getAttribute('aria-pressed'))).toEqual(['true', 'false', 'true', 'true'])
+  expect(out()).toEqual([7])
+  await user.click(dialog().getByRole('button', { name: 'Сохранить' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(out()).toEqual([2, 7, 9])
+  expect(screen.getByRole('button', { name: /Итог ночи: выбыли №2, №7 и №9/ })).toBeInTheDocument(); expect(app.getState().game!.warnings).toEqual([])
+  // Запись снова открывается с теми же отметками; «Отменить» возвращает прежний итог одной пачкой.
+  await user.click(screen.getByRole('button', { name: /Итог ночи: выбыли №2, №7 и №9/ }))
+  expect(dialog().getByRole('button', { name: 'Выбрать игрока №2' })).toHaveAttribute('aria-pressed', 'true')
+  await user.keyboard('{Escape}')
+  act(() => { app.undo() }); expect(out()).toEqual([7])
 })

@@ -23,23 +23,44 @@ function aliveIn(session: Session, store: AppStore, phase: PhaseRef): Seat[] {
 
 /** Сетка номеров: стол на тот момент. Выбывшие тогда — недоступны. */
 export function SeatGrid({ total, allowed, picked, onPick, nobody }: {
-  total: number; allowed: Seat[]; picked?: Seat | null; onPick(seat: Seat | null): void
+  /** picked — выбранный номер (null — «никого») или набор номеров (пустой — «никого»). */
+  total: number; allowed: Seat[]; picked?: Seat | Seat[] | null; onPick(seat: Seat | null): void
   /** Плитка «никого»: true — «Никого», строка — своя подпись. */
   nobody?: boolean | string
 }) {
   const t = useT()
+  const isPicked = (seat: Seat) => (Array.isArray(picked) ? picked.includes(seat) : picked === seat)
+  const nobodyPicked = Array.isArray(picked) ? picked.length === 0 : picked === null
   return (
     <div className="seat-grid">
       {Array.from({ length: total }, (_, i) => i + 1).map((seat) => (
         <button
-          key={seat} type="button" className="seat-btn num" aria-label={t('pick.seat', { n: seat })} aria-pressed={picked === seat}
+          key={seat} type="button" className="seat-btn num" aria-label={t('pick.seat', { n: seat })} aria-pressed={isPicked(seat)}
           disabled={!allowed.includes(seat)} onClick={() => onPick(seat)}
         >
           {seat}
         </button>
       ))}
-      {nobody && <button type="button" className="seat-btn seat-btn-wide" aria-pressed={picked === null} onClick={() => onPick(null)}>{typeof nobody === 'string' ? nobody : t('table.nobody')}</button>}
+      {nobody && <button type="button" className="seat-btn seat-btn-wide" aria-pressed={nobodyPicked} onClick={() => onPick(null)}>{typeof nobody === 'string' ? nobody : t('table.nobody')}</button>}
     </div>
+  )
+}
+
+/**
+ * Правка итога прошлой ночи: набор выбывших. Клик по номеру ставит и снимает отметку, «Никто не выбыл» снимает все;
+ * статусы меняет только «Сохранить» — одной пачкой.
+ */
+function NightResultEditor({ total, allowed, initial, onSave }: { total: number; allowed: Seat[]; initial: Seat[]; onSave(died: Seat[]): void }) {
+  const t = useT()
+  const [died, setDied] = useState<Seat[]>(initial)
+  const toggle = (seat: Seat | null) =>
+    setDied((list) => (seat === null ? [] : list.includes(seat) ? list.filter((s) => s !== seat) : [...list, seat]))
+  return (
+    <>
+      <p className="dialog-text">{t('edit.nightResult')}</p>
+      <SeatGrid total={total} allowed={allowed} picked={died} nobody={t('night.nobody')} onPick={toggle} />
+      <div className="dialog-actions"><Button size="l" variant="primary" onClick={() => onSave(died)}>{t('edit.save')}</Button></div>
+    </>
   )
 }
 
@@ -151,13 +172,10 @@ export const RecordEditor: FC<{ entry: JournalEntry; phase: PhaseRef; onClose():
 
   if (entry.kind === 'night_result' && phase.kind === 'night') {
     body = (
-      <>
-        <p className="dialog-text">{t('edit.nightResult')}</p>
-        <SeatGrid
-          total={total} allowed={aliveIn(session, store, phase)} picked={entry.died[0] ?? null} nobody={t('night.nobody')}
-          onPick={(chosen) => run({ type: 'setNightResult', night: phase.n, died: chosen === null ? [] : [chosen] })}
-        />
-      </>
+      <NightResultEditor
+        total={total} allowed={aliveIn(session, store, phase)} initial={entry.died}
+        onSave={(died) => run({ type: 'setNightResult', night: phase.n, died })}
+      />
     )
   }
 

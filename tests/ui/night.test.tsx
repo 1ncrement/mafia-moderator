@@ -44,16 +44,113 @@ test('серый шаг выбывшей роли', async () => {
   expect(screen.getAllByText(/выбыл · разбудить для вида/).length).toBeGreaterThan(0)
   expect(screen.queryByRole('button', { name: 'Выбрать игрока №2' })).not.toBeInTheDocument()
 })
-test('итог ночи: подсказка, подтверждение одной кнопкой, другой исход', async () => {
-  const seed = (a: AppStore) => { night1(a); a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 6 }); a.dispatch({ type: 'enterStep', step: 'summary' }) }
-  const first = renderApp(seed)
-  expect(screen.getByText('№6 застрелен')).toBeInTheDocument(); expect(screen.getByText(/Не записано:/)).toBeInTheDocument()
-  await first.user.click(screen.getByRole('button', { name: /№6 застрелен · начать День 2/ }))
-  expect(first.app.getState().game!.phase).toEqual({ kind: 'day', n: 2 }); expect(first.app.getState().game!.players[5]!.status).toBe('out')
-  first.unmount()
-  const second = renderApp(seed)
-  await second.user.click(screen.getByRole('button', { name: 'Никто не выбыл' }))
-  expect(second.app.getState().game!.counts.alive).toBe(11)
+// ── Итог ночи: списки «Покидают стол» и «Остаются в игре» ────────────────────
+
+type Rec = [actionId: string, actor: number | null, target: number | null]
+/** Ночь 1 с записями, открыт итог. */
+const summary = (...records: Rec[]) => (a: AppStore) => {
+  night1(a)
+  for (const [actionId, actor, target] of records) a.dispatch({ type: 'recordNightAction', actionId, actor, target })
+  a.dispatch({ type: 'enterStep', step: 'summary' })
+}
+const outSeats = (a: AppStore) => a.getState().game!.players.filter((p) => p.status === 'out').map((p) => p.seat)
+const leaving = () => screen.getByRole('group', { name: 'Покидают стол' })
+const staying = () => screen.queryByRole('group', { name: 'Остаются в игре' })
+const mark = (n: number) => screen.getByRole('checkbox', { name: `№${n} покидает стол` })
+const mainButton = (name: RegExp) => screen.getByRole('button', { name })
+
+test('итог ночи: выбывший — строка с отметкой, номером и причиной; подтверждение одной кнопкой', async () => {
+  const { app, user } = renderApp(summary(['mafia_shot', null, 6]))
+  expect(screen.getByRole('heading', { name: 'Итог Ночи 1' })).toBeInTheDocument()
+  expect(screen.getByText('Подсказка приложения. Сними отметку, если за столом было иначе.')).toBeInTheDocument()
+  expect(mark(6)).toBeChecked()
+  expect(within(leaving()).getByText('№6')).toBeInTheDocument(); expect(within(leaving()).getByText('Застрелен мафией')).toBeInTheDocument()
+  expect(within(leaving()).getByText('никто не лечил')).toBeInTheDocument()
+  expect(staying()).not.toBeInTheDocument(); expect(screen.getByText(/Не записано:/)).toBeInTheDocument()
+  await user.click(mainButton(/№6 выбывает · начать День 2/))
+  expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 2 }); expect(outSeats(app)).toEqual([6])
+})
+test('снятая отметка — игрок остаётся: кнопка «Никто не выбыл», отметку можно вернуть', async () => {
+  const { app, user, env } = renderApp(summary(['mafia_shot', null, 6]))
+  await user.click(mark(6)); expect(mark(6)).not.toBeChecked()
+  expect(mainButton(/Никто не выбыл · начать День 2/)).toBeInTheDocument()
+  await user.click(mark(6)); expect(mainButton(/№6 выбывает · начать День 2/)).toBeInTheDocument()
+  await user.click(mark(6))
+  advance(env, 500); await user.click(mainButton(/Никто не выбыл · начать День 2/))
+  expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 2 }); expect(outSeats(app)).toEqual([])
+  // Ведущий сознательно снял отметку: предложения «итог ночи теперь другой» нет.
+  expect(app.getState().game!.warnings).toEqual([])
+})
+test('«Добавить выбывшего…»: выбор на столе добавляет строку; кнопка считает отмеченных — один, двое, трое', async () => {
+  const { app, user, env } = renderApp(summary(['mafia_shot', null, 6]))
+  const add = async (n: number) => {
+    await user.click(screen.getByRole('button', { name: 'Добавить выбывшего…' }))
+    await user.click(screen.getByRole('button', { name: `Выбрать игрока №${n}` }))
+  }
+  await user.click(screen.getByRole('button', { name: 'Добавить выбывшего…' }))
+  expect(screen.getByText('Кто ещё выбыл этой ночью?')).toBeInTheDocument()
+  // Того, кто уже в списке, выбрать нельзя.
+  expect(screen.queryByRole('button', { name: 'Выбрать игрока №6' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №2' }))
+  expect(mark(2)).toBeChecked(); expect(within(leaving()).getByText('Отмечен ведущим')).toBeInTheDocument()
+  // До подтверждения статусы не меняются и в журнал ничего не пишется.
+  expect(outSeats(app)).toEqual([]); expect(app.getState().game!.phase).toEqual({ kind: 'night', n: 1 })
+  expect(mainButton(/Выбывают двое · начать День 2/)).toBeInTheDocument()
+  await add(9); expect(mainButton(/Выбывают трое · начать День 2/)).toBeInTheDocument()
+  // Строки идут по возрастанию номеров.
+  expect(within(leaving()).getAllByRole('checkbox').map((box) => box.getAttribute('aria-label'))).toEqual(['№2 покидает стол', '№6 покидает стол', '№9 покидает стол'])
+  await user.click(mark(6)); await user.click(mark(9)); expect(mainButton(/№2 выбывает · начать День 2/)).toBeInTheDocument()
+  await user.click(mark(9))
+  advance(env, 500); await user.click(mainButton(/Выбывают двое · начать День 2/))
+  expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 2 }); expect(outSeats(app)).toEqual([2, 9])
+  expect(app.getState().game!.players[1]).toMatchObject({ cause: 'shot', outPhase: { kind: 'night', n: 1 } })
+  // Одна пачка: «Отменить» возвращает и ночь, и обоих выбывших.
+  act(() => { app.undo() })
+  expect(app.getState().game!.phase).toEqual({ kind: 'night', n: 1 }); expect(outSeats(app)).toEqual([])
+})
+test('«Остаются в игре»: вылеченный от выстрела и вылеченный без нападения', () => {
+  const saved = renderApp(summary(['mafia_shot', null, 7], ['doctor_heal', 4, 7]))
+  expect(within(staying()!).getByText('№7')).toBeInTheDocument(); expect(within(staying()!).getByText('Вылечен доктором')).toBeInTheDocument()
+  expect(within(staying()!).getByText('в него стреляла мафия')).toBeInTheDocument()
+  // Выбывших нет: вместо строк — «Никто не покидает стол» с причиной, отметок нет.
+  expect(within(leaving()).getByText('Никто не покидает стол')).toBeInTheDocument(); expect(within(leaving()).getByText('цель вылечена')).toBeInTheDocument()
+  expect(within(leaving()).queryByRole('checkbox')).not.toBeInTheDocument()
+  expect(mainButton(/Никто не выбыл · начать День 2/)).toBeInTheDocument()
+  saved.unmount()
+  renderApp(summary(['mafia_shot', null, 7], ['doctor_heal', 4, 5]))
+  expect(mark(7)).toBeChecked()
+  expect(within(staying()!).getByText('№5')).toBeInTheDocument(); expect(within(staying()!).getByText('в него не стреляли')).toBeInTheDocument()
+})
+test('никто не покидает стол: выстрела не было или стрелявший заблокирован', () => {
+  const none = renderApp(summary())
+  expect(within(leaving()).getByText('Никто не покидает стол')).toBeInTheDocument(); expect(within(leaving()).getByText('этой ночью никто не стрелял')).toBeInTheDocument()
+  none.unmount()
+  renderApp(summary(['mafia_shot', null, 5], ['prostitute_block', 10, 3]))
+  expect(within(leaving()).getByText('стрелявший заблокирован — выстрела не было')).toBeInTheDocument()
+  expect(screen.getByText('Заблокированы: №3 — покажи игроку')).toBeInTheDocument()
+})
+test('итог ночи при скрытых ролях: кто покидает стол — виден и правится, причин и заметок не видно', async () => {
+  const { app, user, env } = renderApp((a) => {
+    summary(['mafia_shot', null, 6], ['doctor_heal', 4, 2], ['prostitute_block', 10, 1])(a); a.setSettings({ rolesHidden: true })
+  })
+  expect(mark(6)).toBeChecked(); expect(leaving().textContent).toBe('Покидают стол№6')
+  expect(screen.queryByText(/Застрелен мафией|никто не лечил|Вылечен|Заблокированы/)).not.toBeInTheDocument(); expect(staying()).not.toBeInTheDocument()
+  expect(screen.getByText(/скрыты вместе с ролями/)).toBeInTheDocument()
+  // Подпись главной кнопки выбывших не называет.
+  expect(mainButton(/Подтвердить итог · начать День 2/)).toBeInTheDocument()
+  // Добавленный ведущим — тоже только номер.
+  await user.click(screen.getByRole('button', { name: 'Добавить выбывшего…' })); await user.click(screen.getByRole('button', { name: 'Выбрать игрока №9' }))
+  expect(leaving().textContent).toBe('Покидают стол№6№9')
+  await user.click(mark(6))
+  advance(env, 500); await user.click(mainButton(/Подтвердить итог · начать День 2/))
+  expect(outSeats(app)).toEqual([9])
+})
+test('игрок выбыл вручную посреди итога: добавленная строка с ним пропадает, остальные отметки на месте', async () => {
+  const { app, user } = renderApp(summary(['mafia_shot', null, 6]))
+  await user.click(screen.getByRole('button', { name: 'Добавить выбывшего…' })); await user.click(screen.getByRole('button', { name: 'Выбрать игрока №2' }))
+  act(() => { app.dispatch({ type: 'setStatus', seat: 2, status: 'out', cause: 'voted' }) })
+  expect(screen.queryByRole('checkbox', { name: '№2 покидает стол' })).not.toBeInTheDocument(); expect(mark(6)).toBeChecked()
+  expect(mainButton(/№6 выбывает · начать День 2/)).toBeInTheDocument()
 })
 
 // Сверх плана
@@ -68,17 +165,18 @@ test('ночь целиком: «Никого», ночные метки на с
   expect(within(screen.getByRole('button', { name: 'Выбрать игрока №7' })).getByText('цель мафии')).toBeInTheDocument()
   advance(env, 500); await user.click(within(screen.getByRole('navigation', { name: 'Шаги ночи' })).getByRole('button', { name: 'Итог ночи' }))
   expect(app.getState().game!.step).toBe('summary')
-  expect(screen.getByText('Никто не выбыл: доктор вылечил №7')).toBeInTheDocument(); expect(screen.getByText('Не записано: Крёстный отец, Шериф')).toBeInTheDocument()
+  expect(within(leaving()).getByText('Никто не покидает стол')).toBeInTheDocument(); expect(within(staying()!).getByText('Вылечен доктором')).toBeInTheDocument()
+  expect(screen.getByText('Не записано: Крёстный отец, Шериф')).toBeInTheDocument()
   expect(within(screen.getByRole('button', { name: 'Игрок №7' })).getByText('вылечен')).toBeInTheDocument()
   advance(env, 500); await user.click(screen.getByRole('button', { name: /Никто не выбыл · начать День 2/ }))
   expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 2 }); expect(app.getState().game!.counts.alive).toBe(11)
   expect(within(screen.getByRole('button', { name: 'Игрок №7' })).queryByText('вылечен')).not.toBeInTheDocument()
 })
-test('блок крёстного отца: «выстрела не было»; выбыл другой', async () => {
-  const { app, user } = renderApp((a) => { night1(a); a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 5 })
-    a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 3 }); a.dispatch({ type: 'enterStep', step: 'summary' }) })
-  expect(screen.getByText('Никто не выбыл: выстрела не было')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Выбыл другой…' })); await user.click(screen.getByRole('button', { name: 'Выбрать игрока №2' }))
+test('блок крёстного отца: никто не покидает стол; ведущий добавляет выбывшего сам', async () => {
+  const { app, user, env } = renderApp(summary(['mafia_shot', null, 5], ['prostitute_block', 10, 3]))
+  expect(within(leaving()).getByText('Никто не покидает стол')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Добавить выбывшего…' })); await user.click(screen.getByRole('button', { name: 'Выбрать игрока №2' }))
+  advance(env, 500); await user.click(mainButton(/№2 выбывает · начать День 2/))
   expect(app.getState().game!.players[1]).toMatchObject({ status: 'out', cause: 'shot', outPhase: { kind: 'night', n: 1 } })
 })
 test('выстрел перешёл к проститутке: вопрос называет её', () => {
