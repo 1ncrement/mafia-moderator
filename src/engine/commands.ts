@@ -280,11 +280,18 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       const step = nightState(session, registry, p.n).steps.find((x) => x.id === stepIdOf(cmd.actionId, cmd.actor))
       // Носителей в игре нет (или шага нет вовсе) — записывать некуда.
       if (!step || step.grey) return no('step_grey')
+      // Ночь отдыха: исполнитель просыпается, но не проверяет — записывать нечего.
+      if (step.resting) return no('step_resting')
       if (cmd.target !== null && !aliveSeats(nightPlayers(session, registry, p.n)).includes(cmd.target)) return no('not_alive')
-      // Жёсткое ограничение действия: кого выбрать нельзя вовсе (себя — защитнику).
+      // Жёсткое ограничение действия: кого выбрать нельзя вовсе (себя — защитнику; уже проверенного — журналисту).
       if (cmd.target !== null && !step.allowed.includes(cmd.target)) return no('target_not_allowed')
-      // Мягкое ограничение: та же цель, что прошлой ночью, — предупреждение, force записывает всё равно.
       const def = registry.nightActions.find((a) => a.id === cmd.actionId)
+      // Действие с двумя целями: записывается пара — двое разных доступных игроков — или «никого».
+      const two = def?.targets === 2
+      const target2 = two ? (cmd.target2 ?? null) : null
+      if (two && (cmd.target === null ? target2 !== null : target2 === null || target2 === cmd.target || !step.allowed.includes(target2))) return no('target_not_allowed')
+      const picked = two ? { target: cmd.target, target2 } : { target: cmd.target }
+      // Мягкое ограничение: та же цель, что прошлой ночью, — предупреждение, force записывает всё равно.
       const repeats = cmd.target !== null && step.lastNight.recorded && step.lastNight.target === cmd.target
       // У действия предупреждение может включаться опцией роли («не ходит к одной жертве две ночи подряд»).
       const warns = def?.noRepeatTarget === true || (def?.repeatOption !== undefined && roleOption(session, registry, def.repeatOption) === true)
@@ -296,11 +303,11 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       const last = previous.at(-1)
       if (!isNow(p) && last) {
         // Правка прошлой ночи: запись остаётся на месте и получает метку «испр.».
-        return ok({ replace: [{ ...last, target: cmd.target }], remove: previous.slice(0, -1).map((e) => e.id) })
+        return ok({ replace: [{ ...last, ...picked }], remove: previous.slice(0, -1).map((e) => e.id) })
       }
       return ok({
         remove: previous.map((e) => e.id),
-        add: [{ type: 'night_action', phase: p, actionId: cmd.actionId, actor: cmd.actor, target: cmd.target }],
+        add: [{ type: 'night_action', phase: p, actionId: cmd.actionId, actor: cmd.actor, ...picked }],
       })
     }
 

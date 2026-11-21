@@ -21,7 +21,8 @@ export function nightMarks(lang: Lang, registry: Registry, night: NightState, ac
   const targeted = new Map<string, Seat>()
   for (const s of night.steps) {
     const text = s.target === null ? null : targetMark(s.actionId, s.effect)
-    if (s.target !== null && text !== null) targeted.set(`${s.target}:${text}`, s.target)
+    // У действия с двумя целями помечены обе.
+    for (const seat of [s.target, s.target2]) if (seat !== null && text !== null) targeted.set(`${seat}:${text}`, seat)
   }
   for (const [key, seat] of targeted) add(seat, key.slice(key.indexOf(':') + 1))
   for (const seat of night.outcome.blocked) add(seat, mark('block'), 'block')

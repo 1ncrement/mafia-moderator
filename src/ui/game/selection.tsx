@@ -9,6 +9,8 @@ export type Selection = {
   question: string
   allowed: Seat[]
   picked: Seat | null
+  /** Ещё выбранные карточки — второй игрок пары у действия с двумя целями. */
+  alsoPicked?: Seat[]
   /** Подписи на карточках: «прошлая ночь», «уже выставлен». */
   marks: Record<Seat, string>
   onPick(seat: Seat | null): void

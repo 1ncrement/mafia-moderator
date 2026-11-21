@@ -47,7 +47,7 @@ function useCards(game: GameState): CardView[] {
       badge: nomination >= 0 ? t('card.nominated', { n: nomination + 1 }) : null,
       marks,
       pick: selection
-        ? { allowed: selection.allowed.includes(seat), picked: selection.picked === seat, mark: selection.marks[seat] ?? null }
+        ? { allowed: selection.allowed.includes(seat), picked: selection.picked === seat || selection.alsoPicked?.includes(seat) === true, mark: selection.marks[seat] ?? null }
         : null,
     }
   })

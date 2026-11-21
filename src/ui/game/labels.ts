@@ -38,7 +38,7 @@ export function statusText(lang: Lang, player: PlayerView, hideCause = false): s
 /** Упоминается ли номер в записи журнала — для панели игрока. */
 export function entryMentions(entry: JournalEntry, seat: Seat): boolean {
   switch (entry.kind) {
-    case 'night_action': return entry.actor === seat || entry.target === seat
+    case 'night_action': return entry.actor === seat || entry.target === seat || entry.target2 === seat
     case 'night_missing': return entry.actor === seat
     case 'night_result': return entry.died.includes(seat)
     case 'circle': return entry.first === seat

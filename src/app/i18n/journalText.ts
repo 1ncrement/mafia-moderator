@@ -27,6 +27,8 @@ export function answerText(lang: Lang, registry: Registry, entry: { actionId: st
   if (!answer) return ''
   if (answer.kind === 'side') return ` — ${translateKey(lang, `side.${answer.side}.one`)}`
   if (answer.kind === 'visit') return ` — ${translate(lang, answer.lethal ? 'journal.visit.again' : 'journal.visit.first')}`
+  if (answer.kind === 'same') return ` — ${translate(lang, answer.same ? 'journal.same' : 'journal.different')}`
+  if (answer.kind === 'rest') return ` — ${translate(lang, 'journal.rest')}`
   const def = registry.nightActions.find((a) => a.id === entry.actionId)
   if (answer.kind === 'blocked') return ` — ${translate(lang, def?.effect === 'find_role' ? 'journal.searchBlocked' : 'journal.checkBlocked')}`
   const role = roleName(lang, registry, def?.findRole ?? '')
@@ -49,6 +51,10 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
       return t('journal.deal', { list: compositionText(lang, registry, entry.counts) })
 
     case 'night_action':
+      // Действие с двумя целями: «Журналист: №1 и №2 — разные стороны».
+      if (entry.target !== null && entry.target2 !== undefined && entry.target2 !== null) {
+        return t('journal.pair', { who: performer(lang, registry, entry), a: seat(lang, entry.target), b: seat(lang, entry.target2) }) + answerText(lang, registry, entry)
+      }
       return `${performer(lang, registry, entry)} → ${entry.target === null ? t('journal.nobody') : seat(lang, entry.target)}${answerText(lang, registry, entry)}`
 
     case 'night_missing':
@@ -115,7 +121,10 @@ export function summaryBody(lang: Lang, group: JournalGroup, registry: Registry)
       // У действия может быть своя фраза («удар мясника по №5»), иначе — общая по виду эффекта.
       const key = hasKey(`action.${e.actionId}.summary`) ? `action.${e.actionId}.summary` : `effect.${effect}.summary`
       // role — название роли исполнителя: нужно записи своей роли («журналист → №9»).
-      const params = { target: seat(lang, e.target), role: roleName(lang, registry, e.performerRole) }
+      const params = {
+        target: seat(lang, e.target), role: roleName(lang, registry, e.performerRole),
+        target2: e.target2 === undefined || e.target2 === null ? '' : seat(lang, e.target2),
+      }
       if (hasKey(key)) did.push(translate(lang, key, params) + answerText(lang, registry, e))
     }
     const result = group.entries.findLast((e) => e.kind === 'night_result')

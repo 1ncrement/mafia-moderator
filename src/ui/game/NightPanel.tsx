@@ -32,7 +32,7 @@ function BlockNotice({ night, step, hidden }: { night: NightState; step: NightSt
   const effectKey = `night.block.${step.effect}.${state}`
   const consequence = hasKey(actionKey) ? translateKey(lang, actionKey) : hasKey(effectKey) ? translateKey(lang, effectKey) : ''
   const many = seats.length > 1 && !hidden
-  const recordKey = step.effect === 'check_side' || step.effect === 'find_role' ? 'night.block.record.answer' : 'night.block.record'
+  const recordKey = step.effect === 'check_side' || step.effect === 'find_role' || step.effect === 'compare_sides' ? 'night.block.record.answer' : 'night.block.record'
   return (
     <>
       <div className="block-box" role="alert">
@@ -65,12 +65,19 @@ export function NightPanel({ game }: { game: GameState }) {
   const step: NightStep | undefined = night?.steps.find((s) => s.id === game.step)
   /** Цель, которую движок отклонил как повтор прошлой ночи. */
   const [repeat, setRepeat] = useState<{ step: string; target: Seat } | null>(null)
+  /** Действие с двумя целями: первый выбранный игрок пары — пока не выбран второй. Живёт, пока открыт этот шаг. */
+  const [first, setFirst] = useState<{ step: string; seat: Seat } | null>(null)
   const def = registry.nightActions.find((a) => a.id === step?.actionId)
   const log = session?.log
 
   const stepId = step?.id
   const grey = step?.grey ?? true
   const target = step?.target ?? null
+  const target2 = step?.target2 ?? null
+  const two = def?.targets === 2
+  const firstSeat = first !== null && first.step === stepId ? first.seat : null
+  const resting = step?.resting ?? false
+  const allowedKey = (step?.allowed ?? []).join()
   const recorded = step?.recorded ?? false
   const lastTarget = step?.lastNight.recorded ? step.lastNight.target : null
   const question = !step || !def ? '' : stepQuestion(lang, registry, def, step.performerRole, step.inherited)
@@ -86,20 +93,39 @@ export function NightPanel({ game }: { game: GameState }) {
       const result = store.dispatch({ type: 'recordNightAction', actionId: current.actionId, actor: current.actor, target: seat, force })
       setRepeat(!result.ok && result.reason === 'repeat_target' && seat !== null ? { step: current.id, target: seat } : null)
     }
+    /** Действие с двумя целями: первый клик выбирает игрока, повторный по нему же — снимает, клик по второму записывает пару. */
+    const pickPair = (seat: Seat | null) => {
+      const now = store.getState().game
+      const current = now?.night?.steps.find((s) => s.id === now.step)
+      if (!current || current.grey) return
+      if (seat === null) {
+        setFirst(null)
+        store.dispatch({ type: 'recordNightAction', actionId: current.actionId, actor: current.actor, target: null, target2: null })
+      } else if (firstSeat === null) setFirst({ step: current.id, seat })
+      else if (firstSeat === seat) setFirst(null)
+      else {
+        setFirst(null)
+        store.dispatch({ type: 'recordNightAction', actionId: current.actionId, actor: current.actor, target: firstSeat, target2: seat })
+      }
+    }
     ask({
       question,
       allowed: step.allowed,
       // Роли скрыты — записанный выбор и цель прошлой ночи на столе не показываем.
-      picked: hidden ? null : target,
-      nobodyPicked: !hidden && recorded && target === null,
-      marks: !hidden && lastTarget !== null ? { [lastTarget]: t('night.mark.last') } : {},
-      onPick: (seat) => record(seat),
+      // Начатая пара: выделен первый выбранный; иначе — записанная пара целиком.
+      picked: hidden ? null : two && firstSeat !== null ? firstSeat : target,
+      ...(two && !hidden && firstSeat === null && target2 !== null ? { alsoPicked: [target2] } : {}),
+      nobodyPicked: !hidden && recorded && target === null && firstSeat === null,
+      // В ночь отдыха записывать нечего: плитки «Никого» нет.
+      nobody: !resting,
+      marks: !hidden && !two && lastTarget !== null ? { [lastTarget]: t('night.mark.last') } : {},
+      onPick: (seat) => (two ? pickPair(seat) : record(seat)),
       onCancel: () => {},
       cancel: false,
     })
     // вопрос пересобирается, когда меняется шаг, запись или журнал
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepId, grey, target, recorded, lastTarget, question, log, ask, hidden, idle])
+  }, [stepId, grey, target, target2, two, firstSeat, resting, allowedKey, recorded, lastTarget, question, log, ask, hidden, idle])
   useEffect(() => clear, [clear, stepId])
 
   useTableMarks(night && step && !hidden ? nightMarks(lang, registry, night, step.actors) : {})
@@ -116,6 +142,16 @@ export function NightPanel({ game }: { game: GameState }) {
   const answer = step.answer
   const pending = repeat && repeat.step === step.id ? repeat.target : null
   const seat = (n: Seat) => t('common.seat', { n })
+  /** «№7» или пара «№1 и №3»; «никого», если цели нет. */
+  const targets = (a: Seat | null, b?: Seat | null) => (a === null ? t('journal.nobody') : seatList(lang, b === null || b === undefined ? [a] : [a, b]))
+  // Кого журналист выбрать не может и почему: уже проверенные, игрок с открытой ролью, он сам.
+  const open = two ? game.players.filter((p) => p.status === 'alive' && p.vest === 'used' && !step.used.includes(p.seat) && p.seat !== step.actor).map((p) => p.seat) : []
+  const usedAlive = two ? step.used.filter((n) => game.players[n - 1]?.status === 'alive' && n !== step.actor) : []
+  const locked = [
+    usedAlive.length > 0 ? t(usedAlive.length > 1 ? 'night.compare.locked.used.many' : 'night.compare.locked.used.one', { seats: seatList(lang, usedAlive) }) : '',
+    open.length > 0 ? t('night.compare.locked.open', { seats: seatList(lang, open) }) : '',
+    two && def.noSelf && step.actor !== null ? t('night.compare.locked.self', { seats: seat(step.actor), role }) : '',
+  ].filter(Boolean)
 
   const pendingBox = pending !== null && (
             <div className="night-repeat" role="alert">
@@ -145,12 +181,29 @@ export function NightPanel({ game }: { game: GameState }) {
             <span>{t('night.wakes', { role, seats: seatList(lang, step.actors) })}</span>
             {step.lastNight.recorded && (
               <span>
-                {t('night.last', { target: step.lastNight.target === null ? t('journal.nobody') : seat(step.lastNight.target) })}
+                {t('night.last', { target: targets(step.lastNight.target, step.lastNight.target2) })}
                 {answerText(lang, registry, { actionId: step.actionId, answer: step.lastNight.answer })}
               </span>
             )}
+            {two && !step.resting && locked.length > 0 && <span>{t('night.compare.locked', { list: locked.join('; ') })}</span>}
           </div>
           <BlockNotice night={night} step={step} hidden={false} />
+          {step.resting && (
+            <div className="night-grey">
+              <span className="night-grey-title">{t('night.compare.rest')}</span>
+              <span className="muted">{t('night.compare.rest.text', { role: cap(role) })}</span>
+            </div>
+          )}
+          {two && !step.resting && step.allowed.length < 2 && <p className="step-warning">{t('night.compare.none')}</p>}
+          {two && firstSeat !== null && <p className="night-lines"><span>{t('night.compare.first', { seat: seat(firstSeat) })}</span></p>}
+          {answer?.kind === 'same' && step.target !== null && step.target2 !== null && (
+            <div className="answer">
+              <span className="answer-cap">{t('night.answer.pair', { step: nightStepLabel(lang, registry, night, step.id), seats: targets(step.target, step.target2) })}</span>
+              <span className="answer-big answer-mid num">{t(answer.same ? 'night.compare.same' : 'night.compare.different')}</span>
+              <span className="answer-cap">{t(answer.same ? 'night.compare.show.same' : 'night.compare.show.different')}</span>
+            </div>
+          )}
+          {step.restNext && <span className="night-rest-next">{t('night.compare.restNext', { n: night.n + 1, role })}</span>}
           {pending !== null && pendingBox}
           {answer && (answer.kind === 'side' || answer.kind === 'found') && step.target !== null && (
             <div className="answer">

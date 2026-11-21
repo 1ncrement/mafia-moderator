@@ -89,6 +89,8 @@ export const RecordEditor: FC<{ entry: JournalEntry; phase: PhaseRef; onClose():
   const lang = useLang()
   const { notice, attempt } = useRejection()
   const [repeat, setRepeat] = useState<Seat | null>(null)
+  /** Действие с двумя целями: первый выбранный игрок новой пары. */
+  const [first, setFirst] = useState<Seat | null>(null)
   if (!session) return null
   const total = session.config.playerCount
   const run = (...cmds: Command[]) => {
@@ -108,10 +110,21 @@ export const RecordEditor: FC<{ entry: JournalEntry; phase: PhaseRef; onClose():
     // Те же цели, что на шаге той ночи: кого действие выбрать не даёт (себя — охраннику), того нет и здесь.
     const step = phase.kind === 'night' ? nightState(session, store.registry, phase.n).steps.find((s) => s.id === stepIdOf(entry.actionId, entry.actor)) : undefined
     const nightTargets = step ? step.allowed : aliveIn(session, store, phase)
+    const two = store.registry.nightActions.find((a) => a.id === entry.actionId)?.targets === 2
+    /** Пара: первый клик выбирает игрока, повторный по нему же — снимает, клик по второму записывает пару. */
+    const pickPair = (seat: Seat | null) => {
+      if (seat === null || (first !== null && first !== seat)) {
+        const result = store.dispatch({ type: 'recordNightAction', actionId: entry.actionId, actor: entry.actor, target: seat === null ? null : first, target2: seat, phase })
+        if (attempt(result)) onClose()
+      } else setFirst(first === seat ? null : seat)
+    }
+    const pair = entry.kind === 'night_action' && entry.target !== null && entry.target2 !== undefined && entry.target2 !== null ? [entry.target, entry.target2] : []
     body = (
       <>
-        <p className="dialog-text">{t('edit.night')}</p>
-        <SeatGrid total={total} allowed={nightTargets} picked={entry.kind === 'night_action' ? entry.target : undefined} nobody onPick={(seat) => record(seat)} />
+        <p className="dialog-text">{t(two ? 'edit.night.pair' : 'edit.night')}</p>
+        {two
+          ? <SeatGrid total={total} allowed={nightTargets} picked={first !== null ? [first] : entry.kind === 'night_action' ? pair : undefined} nobody onPick={pickPair} />
+          : <SeatGrid total={total} allowed={nightTargets} picked={entry.kind === 'night_action' ? entry.target : undefined} nobody onPick={(seat) => record(seat)} />}
         {repeat !== null && (
           <div className="night-repeat" role="alert">
             <span>{hasKey(`action.${entry.actionId}.repeat`) ? translateKey(lang, `action.${entry.actionId}.repeat`) : t('night.repeat')}</span>

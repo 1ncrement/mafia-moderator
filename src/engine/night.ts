@@ -93,7 +93,8 @@ function nightBase(session: Session, registry: Registry, n: number): NightBase {
       step: {
         id: stepIdOf(def.id, actor), actionId: def.id, effect: def.effect, actor, actors, performerRole, inherited, grey, blocked: false, blockedActors: [],
         allowed: grey ? [] : alive.filter((seat) => !(def.noSelf && seat === actor)),
-        recorded: record !== null, target: record?.target ?? null, eventId: record?.id ?? null, edited: record?.edited === true,
+        recorded: record !== null, target: record?.target ?? null, target2: isSeat(session, record?.target2) ? record.target2 : null,
+        used: [], resting: false, restNext: false, eventId: record?.id ?? null, edited: record?.edited === true,
       },
     })
   }
@@ -137,6 +138,39 @@ function nightBase(session: Session, registry: Registry, n: number): NightBase {
   return { drafts, views, alive, roles, blocked, targetOf, isBlocked }
 }
 
+/** Пара записи действия с двумя целями: оба названы, разные и в игре этой ночью; иначе пары нет. */
+function pairOf(base: NightBase, d: Draft): [Seat, Seat] | null {
+  const { target, target2 } = d.step
+  return target !== null && target2 !== null && target !== target2 && base.alive.includes(target) && base.alive.includes(target2) ? [target, target2] : null
+}
+
+/**
+ * Сравнения прошлых ночей (1…n − 1) по шагам: кого исполнитель уже проверил и состоялась ли его проверка прошлой ночью.
+ * Проверка состоялась — записана пара, исполнитель не заблокирован и не отдыхал. Заблокированная проверка и запись
+ * в ночь отдыха никого не «расходуют» и отдыха не требуют.
+ */
+function compareHistory(session: Session, registry: Registry, n: number): { used: Map<string, Seat[]>; doneLast: Set<string> } {
+  const used = new Map<string, Seat[]>()
+  let doneLast = new Set<string>()
+  for (let k = 1; k < n; k++) {
+    const base = nightBase(session, registry, k)
+    const done = new Set<string>()
+    for (const d of base.drafts) {
+      if (d.def.effect !== 'compare_sides') continue
+      const pair = pairOf(base, d)
+      if (pair === null || base.isBlocked(d) || (restsAfter(session, registry, d.def) && doneLast.has(d.step.id))) continue
+      done.add(d.step.id)
+      used.set(d.step.id, [...(used.get(d.step.id) ?? []), ...pair])
+    }
+    doneLast = done
+  }
+  return { used, doneLast }
+}
+
+/** После состоявшейся проверки исполнитель следующую ночь отдыхает — если так задано опцией роли. */
+const restsAfter = (session: Session, registry: Registry, def: NightActionDef): boolean =>
+  def.restAfter !== undefined && roleOption(session, registry, def.restAfter.option) === def.restAfter.value
+
 /** Состоявшиеся визиты ночи n: к кому приходили (исполнитель не заблокирован, цель в игре). */
 export function visitsAt(session: Session, registry: Registry, n: number): Seat[] {
   const { drafts, targetOf, isBlocked } = nightBase(session, registry, n)
@@ -162,7 +196,8 @@ export function hauntCount(session: Session, registry: Registry, n: number, seat
 }
 
 function computeNight(session: Session, registry: Registry, n: number): { steps: BareStep[]; outcome: NightOutcome } {
-  const { drafts, views, roles, blocked, targetOf, isBlocked } = nightBase(session, registry, n)
+  const base = nightBase(session, registry, n)
+  const { drafts, views, roles, blocked, targetOf, isBlocked } = base
   const healed = unique(drafts.flatMap((d) =>
     d.def.effect === 'heal' && targetOf(d) !== null && !isBlocked(d) ? [targetOf(d) as Seat] : []))
 
@@ -223,6 +258,23 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
   ].sort((a, b) => a.seat - b.seat || a.kind.localeCompare(b.kind))
   const outcome: NightOutcome = { deaths, notes, blocked, healed, noAttack: attempts.length === 0 ? 'none' : landed.length === 0 ? 'blocked' : null }
 
+  // Сравнение сторон: что исполнитель уже проверял и отдыхает ли он этой ночью. Сторона-одиночка не совпадает ни с чем.
+  const history = drafts.some((d) => d.def.effect === 'compare_sides') ? compareHistory(session, registry, n) : null
+  const sideOf = new Map(registry.roles.map((r) => [r.id, r.side]))
+  const soloSides = new Set(registry.sides.filter((side) => side.solo).map((side) => side.id))
+  const compareOf = (d: Draft): Pick<NightStep, 'allowed' | 'used' | 'resting' | 'restNext'> & { answer?: CheckAnswer } => {
+    const used = unique(history?.used.get(d.step.id) ?? []).sort((a, b) => a - b)
+    const resting = restsAfter(session, registry, d.def) && history?.doneLast.has(d.step.id) === true
+    // Выбрать нельзя: уже проверенного и игрока, чья роль открыта столу (жилет снят). Себя — по noSelf, как у любого действия.
+    const allowed = resting ? [] : d.step.allowed.filter((seat) => !used.includes(seat) && views[seat - 1]?.vest !== 'used')
+    const pair = pairOf(base, d)
+    if (pair === null) return { allowed, used, resting, restNext: false }
+    if (resting) return { allowed, used, resting, restNext: false, answer: { kind: 'rest' } }
+    if (isBlocked(d)) return { allowed, used, resting, restNext: false, answer: { kind: 'blocked' } }
+    const [a, b] = pair.map((seat) => sideOf.get(roles[seat - 1] ?? '') ?? '') as [string, string]
+    return { allowed, used, resting, restNext: restsAfter(session, registry, d.def), answer: { kind: 'same', same: a === b && !soloSides.has(a) } }
+  }
+
   const seenAs = new Map(registry.roles.map((r) => [r.id, r.seenBySheriffAs]))
   const answerOf = (d: Draft): CheckAnswer | undefined => {
     const target = targetOf(d)
@@ -237,8 +289,9 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
   }
 
   const steps = drafts.map((d) => {
-    const answer = answerOf(d)
     const step = { ...d.step, blocked: !d.step.grey && isBlocked(d), blockedActors: d.step.actors.filter((seat) => blocked.includes(seat)) }
+    if (d.def.effect === 'compare_sides' && !d.step.grey) return { ...step, ...compareOf(d) }
+    const answer = answerOf(d)
     return answer ? { ...step, answer } : step
   })
   return { steps, outcome }
@@ -252,14 +305,14 @@ export function nightState(session: Session, registry: Registry, n: number): Nig
   const steps: NightStep[] = bare.map((step) => {
     const prev = before.find((x) => x.id === step.id)
     const lastNight: NightStep['lastNight'] = prev
-      ? (prev.answer ? { recorded: prev.recorded, target: prev.target, answer: prev.answer } : { recorded: prev.recorded, target: prev.target })
+      ? { recorded: prev.recorded, target: prev.target, ...(prev.target2 !== null ? { target2: prev.target2 } : {}), ...(prev.answer ? { answer: prev.answer } : {}) }
       : { recorded: false, target: null }
     return { ...step, lastNight }
   })
   const confirmed = lastOf(eventsOf(session.log, phase), 'night_confirmed')
   return {
     n, steps, outcome,
-    complete: steps.every((s) => s.grey || s.recorded),
+    complete: steps.every((s) => s.grey || s.resting || s.recorded),
     confirmed: confirmed ? { hinted: seatsOf(session, confirmed.hinted), chosen: seatsOf(session, confirmed.chosen) } : null,
   }
 }

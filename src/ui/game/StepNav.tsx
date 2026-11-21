@@ -1,4 +1,4 @@
-import { phaseLabel, translateKey } from '../../app/i18n'
+import { phaseLabel, seatList, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { balaganInDay, SUMMARY_STEP } from '../../engine'
 import type { DayState, DayStep, GameState, NightStep, Rules, StepId } from '../../engine'
@@ -57,7 +57,9 @@ export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
 
   if (game.night) {
     const night = game.night
-    const seat = (n: number | null) => (n === null ? t('journal.nobody') : t('common.seat', { n }))
+    /** «№7», пара «№1 и №3» или «никого». */
+    const seat = (n: number | null, second?: number | null) =>
+      (n === null ? t('journal.nobody') : second === null || second === undefined ? t('common.seat', { n }) : seatList(lang, [n, second]))
     const isCustom = (roleId: string) => store.registry.roles.find((r) => r.id === roleId)?.custom === true
     return (
       <nav aria-label={t('steps.night')}>
@@ -79,8 +81,12 @@ export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
                     <>
                       {/* Пометка видна и при скрытых ролях: она называет шаг, а не игрока. */}
                       {isBlockedStep(s) && <span className="night-step-blocked">{t('night.nav.blocked')}</span>}
-                      {s.recorded && !settings.rolesHidden && <span className="night-step-pick">→ {seat(s.target)}</span>}
-                      {s.lastNight.recorded && !settings.rolesHidden && <span className="night-step-last">{t('night.nav.last', { target: seat(s.lastNight.target) })}</span>}
+                      {/* Ночь отдыха: исполнитель просыпается, но не проверяет. */}
+                      {s.resting && !settings.rolesHidden && <span className="night-step-last">{t('night.nav.rest')}</span>}
+                      {s.recorded && !settings.rolesHidden && <span className="night-step-pick">→ {seat(s.target, s.target2)}</span>}
+                      {s.lastNight.recorded && !settings.rolesHidden && (
+                        <span className="night-step-last">{t('night.nav.last', { target: seat(s.lastNight.target, s.lastNight.target2) })}</span>
+                      )}
                     </>
                   )}
                 </span>

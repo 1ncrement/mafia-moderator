@@ -64,7 +64,8 @@ export function NightSummary({ game }: { game: GameState }) {
   } : null)
 
   if (!night || !session) return null
-  const missing = night.steps.filter((s) => !s.grey && !s.recorded)
+  // Шаг в ночь отдыха записи не ждёт.
+  const missing = night.steps.filter((s) => !s.grey && !s.resting && !s.recorded)
   // Кому показать блок: заблокированные исполнители ночных шагов. Нужна, когда блокирующая роль ходит после них.
   const blocked = [...new Set(night.steps.flatMap(blockedPerformers))].sort((a, b) => a - b)
   const quiet = quietNight(night.outcome)

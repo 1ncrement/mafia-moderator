@@ -80,6 +80,8 @@ export type NightActionDef = {
   noRepeatTarget?: true
   /** Предупреждение о повторе цели действует, только пока включена эта опция роли (выключатель). */
   repeatOption?: string
+  /** Для compare_sides: при этом значении опции роли после состоявшейся проверки следующую ночь исполнитель не проверяет. */
+  restAfter?: { option: string; value: string }
   /** Для haunt: опции-выключатели «жертва не выставляет» и «жертва не голосует». */
   victim?: { noNominate: string; noVote: string }
   /** Сколько игроков выбирает исполнитель; без поля — одного. */
@@ -128,7 +130,8 @@ export type GameEvent =
   | Ev<'roles_swapped', { a: Seat; b: Seat }>
   | Ev<'phase_started', object>
   | Ev<'step_entered', { step: StepId }>
-  | Ev<'night_action', { actionId: string; actor: Seat | null; target: Seat | null }>
+  /** target2 — вторая цель действия с двумя целями (сравнение); у остальных действий и в прежних сохранениях поля нет. */
+  | Ev<'night_action', { actionId: string; actor: Seat | null; target: Seat | null; target2?: Seat | null }>
   /**
    * Подтверждение итога ночи: hinted — кто выбывал по подсказке, chosen — кого отметил ведущий.
    * В сохранениях до обновления оба поля — один номер или null: читать только через seatsOf.
@@ -252,8 +255,8 @@ export type Command =
   /** Повторное подтверждение заменяет прежний исход тура вместе с его статусами. phase — правка прошлого дня. */
   | { type: 'resolveVote'; ballot: 1 | 2; outcome: 'eliminated' | 'tie' | 'nobody'; seats: Seat[]; phase?: PhaseRef }
   // ночь
-  /** force — записать, несмотря на предупреждение о повторе цели. */
-  | { type: 'recordNightAction'; actionId: string; actor: Seat | null; target: Seat | null; phase?: PhaseRef; force?: true }
+  /** force — записать, несмотря на предупреждение о повторе цели. target2 — вторая цель действия с двумя целями. */
+  | { type: 'recordNightAction'; actionId: string; actor: Seat | null; target: Seat | null; target2?: Seat | null; phase?: PhaseRef; force?: true }
   /** died — все, кого ведущий отметил выбывшими этой ночью: статусы ставятся одной пачкой с началом дня. */
   | { type: 'confirmNight'; died: Seat[] }
   /** Ответ на «итог ночи теперь другой»: apply — исправить статусы, иначе оставить как есть. */
@@ -267,7 +270,7 @@ export type Command =
 
 export type RejectCode =
   | 'redeal_closed' | 'wrong_phase' | 'not_alive' | 'unknown_event' | 'nominations_closed'
-  | 'already_nominated' | 'votes_exceed' | 'step_grey' | 'repeat_target' | 'target_not_allowed'
+  | 'already_nominated' | 'votes_exceed' | 'step_grey' | 'repeat_target' | 'target_not_allowed' | 'step_resting'
 export type StateWarning =
   /** expected — кто должен выбыть по пересчитанной подсказке; пусто — никто. */
   | { code: 'night_outcome_changed'; night: number; expected: Seat[] }
@@ -366,8 +369,13 @@ export type DayState = {
 
 // ── Ночь ────────────────────────────────────────────────────────────────────
 
-/** visit — состоявшийся визит: lethal — повторный, то есть нападение. */
-export type CheckAnswer = { kind: 'side'; side: SideId } | { kind: 'found'; found: boolean } | { kind: 'blocked' } | { kind: 'visit'; lethal: boolean }
+/**
+ * visit — состоявшийся визит: lethal — повторный, то есть нападение. same — сравнение двух игроков: одна сторона или разные.
+ * rest — запись пришлась на ночь отдыха исполнителя: проверки не было.
+ */
+export type CheckAnswer =
+  | { kind: 'side'; side: SideId } | { kind: 'found'; found: boolean } | { kind: 'blocked' } | { kind: 'visit'; lethal: boolean }
+  | { kind: 'same'; same: boolean } | { kind: 'rest' }
 export type NightStep = {
   /** actionId для командного и серого шага, иначе `${actionId}:${actor}`. */
   id: string
@@ -388,15 +396,26 @@ export type NightStep = {
    * (рядовая мафия при живом лидере, опция «что отменяет блок лидера»), но показать игроку, что он заблокирован, надо.
    */
   blockedActors: Seat[]
-  /** Кого можно выбрать на этом шаге: игроки в игре, кроме тех, кого действие выбрать не даёт (себя — при noSelf). У серого шага пусто. */
+  /**
+   * Кого можно выбрать на этом шаге: игроки в игре, кроме тех, кого действие выбрать не даёт (себя — при noSelf;
+   * у сравнения — ещё уже проверенных и игроков с открытой ролью). У серого шага и в ночь отдыха пусто.
+   */
   allowed: Seat[]
   recorded: boolean
   target: Seat | null
+  /** Вторая цель действия с двумя целями; у остальных — null. */
+  target2: Seat | null
+  /** Сравнение: кто уже был в состоявшейся проверке этого исполнителя — второй раз их не выбирают. */
+  used: Seat[]
+  /** Ночь отдыха: исполнитель просыпается, но не проверяет — записать нельзя. */
+  resting: boolean
+  /** Проверка этой ночью состоялась, и по опции роли следующую ночь исполнитель отдыхает. */
+  restNext: boolean
   answer?: CheckAnswer
   /** Событие записи — для правки в журнале. */
   eventId: string | null
   edited: boolean
-  lastNight: { recorded: boolean; target: Seat | null; answer?: CheckAnswer }
+  lastNight: { recorded: boolean; target: Seat | null; target2?: Seat | null; answer?: CheckAnswer }
 }
 /** Выбывает этой ночью по подсказке. guarded — кого закрыл собой погибший (причина «защита»). */
 export type NightDeath = { seat: Seat; cause: OutCause; guarded?: Seat }
@@ -423,7 +442,7 @@ export type NightState = {
   n: number
   steps: NightStep[]
   outcome: NightOutcome
-  /** У каждого несерого шага есть запись. */
+  /** У каждого несерого шага есть запись (шаг в ночь отдыха записи не ждёт). */
   complete: boolean
   /** Подтверждение итога: наборы номеров по возрастанию (старая запись с одним номером читается как набор из одного). */
   confirmed: { hinted: Seat[]; chosen: Seat[] } | null
@@ -434,7 +453,7 @@ export type NightState = {
 export type JournalEntry = { eventId: string | null; edited: boolean; manual: boolean } & (
   | { kind: 'deal'; counts: Record<RoleId, number> }
   /** numbered — у действия этой ночью несколько исполнителей, в подписи нужен номер. */
-  | { kind: 'night_action'; actionId: string; performerRole: RoleId; actor: Seat | null; target: Seat | null; answer?: CheckAnswer; numbered?: true }
+  | { kind: 'night_action'; actionId: string; performerRole: RoleId; actor: Seat | null; target: Seat | null; target2?: Seat | null; answer?: CheckAnswer; numbered?: true }
   /** Шаг прошлой ночи без записи. */
   | { kind: 'night_missing'; actionId: string; actor: Seat | null; numbered?: true }
   /**

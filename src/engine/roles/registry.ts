@@ -86,6 +86,11 @@ export const DEFAULT_REGISTRY: Registry = {
       stepKey: 'action.sheriff_check.step', questionKey: 'action.sheriff_check.question',
     },
     {
+      id: 'journalist_compare', order: 35, effect: 'compare_sides', performers: ['journalist'], scope: 'each',
+      targets: 2, noSelf: true, restAfter: { option: 'journalist_pace', value: 'alternate' },
+      stepKey: 'action.journalist_compare.step', questionKey: 'action.journalist_compare.question',
+    },
+    {
       id: 'doctor_heal', order: 40, effect: 'heal', performers: ['doctor'], scope: 'each',
       noRepeatTarget: true,
       stepKey: 'action.doctor_heal.step', questionKey: 'action.doctor_heal.question',

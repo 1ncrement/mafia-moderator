@@ -92,9 +92,10 @@ function nightEntries(session: Session, registry: Registry, n: number, events: G
     if (step.recorded) {
       out.push({
         eventId: step.eventId, edited: step.edited, manual: false, kind: 'night_action', ...base,
-        performerRole: step.performerRole, target: step.target, ...(step.answer ? { answer: step.answer } : {}),
+        performerRole: step.performerRole, target: step.target, ...(step.target2 !== null ? { target2: step.target2 } : {}),
+        ...(step.answer ? { answer: step.answer } : {}),
       })
-    } else if (!step.grey && !current) {
+    } else if (!step.grey && !step.resting && !current) {
       out.push({ eventId: null, edited: false, manual: false, kind: 'night_missing', ...base })
     }
   }
