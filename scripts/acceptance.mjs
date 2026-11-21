@@ -1,5 +1,5 @@
 // Приёмочный сценарий из раздела 8 спецификации, раздела 8 дополнения «Свои роли» (шаг 12)
-// и этапов 1 и 2 дополнения «Механики партии и новые роли» (шаги 13 и 14) на собранном dist/index.html, открытом с диска (file://).
+// и трёх этапов дополнения «Механики партии и новые роли» (шаги 13, 14 и 15) на собранном dist/index.html, открытом с диска (file://).
 // Запуск: npm run build && npm run acceptance
 // Управляет установленным Chrome без окна через протокол DevTools: настоящие клики мыши и клавиши.
 // Зависимостей нет. Раздача случайная, поэтому сценарий читает роли со стола и подбирает номера сам.
@@ -377,67 +377,67 @@ async function run() {
   const customRows = () => texts('.role-row-custom')
   const summaryRows = () => texts('.summary-table tbody tr')
 
-  // 8.1: добавить «Журналист», красные, ходит ночью.
+  // 8.1: добавить «Адвокат», красные, ходит ночью.
   await click('Новая игра')
-  await click('Добавить свою роль'); await type('Журналист'); await click('Красные'); await click('Добавить роль')
+  await click('Добавить свою роль'); await type('Адвокат'); await click('Красные'); await click('Добавить роль')
   const rows1 = await customRows()
-  check(12, 'роль «Журналист» в перечне: пометка «своя роль», красные, ходит ночью, количество 1',
-    rows1.length === 1 && rows1[0].startsWith('Журналист своя роль красные · ходит ночью, выбор записывается') && rows1[0].endsWith(' 1'), rows1.join(' | '))
+  check(12, 'роль «Адвокат» в перечне: пометка «своя роль», красные, ходит ночью, количество 1',
+    rows1.length === 1 && rows1[0].startsWith('Адвокат своя роль красные · ходит ночью, выбор записывается') && rows1[0].endsWith(' 1'), rows1.join(' | '))
   const order1 = await texts('.night-order li')
   check(12, 'роль в колоде и последней в блоке «Ночью просыпаются»',
-    (await texts('.setup-total .chips li')).includes('журналист') && order1.length === 6 && order1.at(-1) === '6 · журналист', order1.join(', '))
+    (await texts('.setup-total .chips li')).includes('адвокат') && order1.length === 6 && order1.at(-1) === '6 · адвокат', order1.join(', '))
 
-  // 8.2: занятое название; «Маньяк», чёрные, ночью спит.
+  // 8.2: занятое название; «Оборотень», чёрные, ночью спит.
   await click('Добавить свою роль'); await type('шериф'); await enterInField()
   check(12, 'название «шериф» занято: ошибка под полем, Enter карты не раздал',
     (await has('Роль с таким названием уже есть.')) && (await txt('.page-step')) === 'Состав' && (await customRows()).length === 1)
-  await js(`document.querySelector('.role-form-input').select()`); await type('Маньяк')
+  await js(`document.querySelector('.role-form-input').select()`); await type('Оборотень')
   await click('Чёрные'); await clickEl(`document.querySelector('.role-form [role=switch]')`); await click('Добавить роль')
   const rows2 = await customRows()
-  check(12, '«Маньяк», чёрные, ночью спит: счётчик чёрных вырос на 1, шагов ночи по-прежнему шесть',
-    rows2.length === 2 && rows2[1].startsWith('Маньяк своя роль чёрные · ночью спит') && (await has('чёрных 4')) && (await has('красных 7')) && (await texts('.night-order li')).length === 6, rows2.join(' | '))
+  check(12, '«Оборотень», чёрные, ночью спит: счётчик чёрных вырос на 1, шагов ночи по-прежнему шесть',
+    rows2.length === 2 && rows2[1].startsWith('Оборотень своя роль чёрные · ночью спит') && (await has('чёрных 4')) && (await has('красных 7')) && (await texts('.night-order li')).length === 6, rows2.join(' | '))
 
   // 8.3: уйти на главную и вернуться.
   await click('На главную'); await click('Новая игра')
   const rows3 = await customRows()
   check(12, 'после ухода на главную обе роли в перечне и в составе',
-    rows3.length === 2 && rows3.every((r) => r.endsWith(' 1')) && (await has('чёрных 4')) && (await texts('.setup-total .chips li')).includes('маньяк'), rows3.join(' | '))
+    rows3.length === 2 && rows3.every((r) => r.endsWith(' 1')) && (await has('чёрных 4')) && (await texts('.setup-total .chips li')).includes('оборотень'), rows3.join(' | '))
 
   // 8.4: раздать.
   await click('Раздать роли')
   const dealt12 = await dealt()
   check(12, 'распределение называет обе роли, состав сошёлся',
-    dealt12.length === 11 && count(dealt12, 'журналист') === 1 && count(dealt12, 'маньяк') === 1 && (await has('журналист 1, маньяк 1, мирных 4')), dealt12.join(', '))
+    dealt12.length === 11 && count(dealt12, 'адвокат') === 1 && count(dealt12, 'оборотень') === 1 && (await has('адвокат 1, оборотень 1, мирных 4')), dealt12.join(', '))
   await main('Город просыпается: День 1')
   await click('Выбрать другого…'); await click('Выбрать игрока №1')
   await main('Дать слово №1'); for (let i = 0; i < 10; i++) await enter()
   await click('Пропустить доп. минуту'); await click('Пропустить доп. минуту')
   await main('Город засыпает: Ночь 1')
 
-  // 8.5: Ночь 1 — шаг журналиста после доктора, запись, журнал, подсказка итога без изменений.
+  // 8.5: Ночь 1 — шаг адвоката после доктора, запись, журнал, подсказка итога без изменений.
   const t12 = await table()
   const seat12 = (role) => t12.find((p) => p.role === role).seat
-  const J = seat12('журналист'), X = seat12('маньяк'), S12 = seat12('шериф'), P12 = seat12('проститутка')
+  const J = seat12('адвокат'), X = seat12('оборотень'), S12 = seat12('шериф'), P12 = seat12('проститутка')
   const C12 = t12.filter((p) => p.role === 'мирный житель').map((p) => p.seat)
-  console.log(`   стол: журналист №${J}, маньяк №${X}, шериф №${S12}, проститутка №${P12}, мирные ${C12.join(', ')}`)
+  console.log(`   стол: адвокат №${J}, оборотень №${X}, шериф №${S12}, проститутка №${P12}, мирные ${C12.join(', ')}`)
   const nav12 = await texts('.night-step .night-step-name')
-  check(12, 'Ночь 1: шаг «Журналист» идёт после доктора и помечен «своя роль»',
-    nav12.join(' · ') === 'Проститутка · Мафия · Крёстный отец · Шериф · Доктор · Журналист своя роль · Итог ночи', nav12.join(' · '))
+  check(12, 'Ночь 1: шаг «Адвокат» идёт после доктора и помечен «своя роль»',
+    nav12.join(' · ') === 'Проститутка · Мафия · Крёстный отец · Шериф · Доктор · Адвокат своя роль · Итог ночи', nav12.join(' · '))
   await stepNav('Мафия'); await sleep(200); await click(`Выбрать игрока №${C12[0]}`)   // выстрел мафии
   await stepNav('Итог ночи'); await sleep(200)
   const hint12 = await txt('.result-group')
-  await stepNav('Журналист'); await sleep(200)
-  check(12, 'стол спрашивает: «Кого выбирает журналист?»', (await txt('.table-question')) === 'Кого выбирает журналист?', await txt('.table-question'))
+  await stepNav('Адвокат'); await sleep(200)
+  check(12, 'стол спрашивает: «Кого выбирает адвокат?»', (await txt('.table-question')) === 'Кого выбирает адвокат?', await txt('.table-question'))
   await click(`Выбрать игрока №${X}`)
   check(12, 'выбор записан: блок «Записано», метка на карточке, запись в журнале',
-    (await has('Записано · Журналист')) && (await txt('.answer-big')) === `→ №${X}` && (await has('Приложение только записывает выбор'))
-    && (await has('выбор: журналист')) && (await has(`Журналист → №${X}`)), await txt('.answer-big'))
+    (await has('Записано · Адвокат')) && (await txt('.answer-big')) === `→ №${X}` && (await has('Приложение только записывает выбор'))
+    && (await has('выбор: адвокат')) && (await has(`Адвокат → №${X}`)), await txt('.answer-big'))
   await stepNav('Итог ночи'); await sleep(200)
   check(12, 'подсказка итога ночи та же, что без записи своей роли',
     hint12 === `Покидают стол№${C12[0]}Застрелен мафиейникто не лечил` && (await txt('.result-group')) === hint12, `${hint12} → ${await txt('.result-group')}`)
   await cdp('Page.reload'); await sleep(900); await js(HELPERS)
   check(12, 'после обновления страницы роль и запись на месте',
-    (await where()) === 'Ночь 1 · Итог ночи' && (await has(`Журналист → №${X}`)) && (await table()).find((p) => p.seat === J).role === 'журналист', await where())
+    (await where()) === 'Ночь 1 · Итог ночи' && (await has(`Адвокат → №${X}`)) && (await table()).find((p) => p.seat === J).role === 'адвокат', await where())
   await main(`№${C12[0]} выбывает · начать День 2`)
   await announce()
   await click('Пропустить балаган'); await click(`Выбрать игрока №${J}`)
@@ -445,49 +445,49 @@ async function run() {
   await main('Дать слово'); for (let i = 1; i < alive12; i++) await enter()
   await main('Никто не выставлен → Ночь 2')
 
-  // 8.6: Ночь 2 — блок журналиста, проверка маньяка.
+  // 8.6: Ночь 2 — блок адвоката, проверка оборотеньа.
   await stepNav('Проститутка'); await sleep(200); await click(`Выбрать игрока №${J}`)
-  await stepNav('Журналист'); await sleep(200)
-  check(12, 'Ночь 2: журналист заблокирован — красный блок; виден выбор прошлой ночи',
+  await stepNav('Адвокат'); await sleep(200)
+  check(12, 'Ночь 2: адвокат заблокирован — красный блок; виден выбор прошлой ночи',
     (await txt('.block-box-big')) === `№${J} заблокирован` && (await has('Действие этой ночью не состоится.')) && (await has(`Прошлой ночью: №${X}`)), await txt('.block-box'))
   await click(`Выбрать игрока №${C12[1]}`)
-  check(12, 'записать выбор заблокированной роли всё равно можно', (await txt('.answer-big')) === `→ №${C12[1]}` && (await has(`Журналист → №${C12[1]}`)), await txt('.answer-big'))
+  check(12, 'записать выбор заблокированной роли всё равно можно', (await txt('.answer-big')) === `→ №${C12[1]}` && (await has(`Адвокат → №${C12[1]}`)), await txt('.answer-big'))
   await stepNav('Шериф'); await sleep(200); await click(`Выбрать игрока №${X}`)
-  check(12, 'шериф проверяет маньяка — «чёрный»', (await txt('.answer-big')) === `№${X} — чёрный`, await txt('.answer-big'))
+  check(12, 'шериф проверяет оборотеньа — «чёрный»', (await txt('.answer-big')) === `№${X} — чёрный`, await txt('.answer-big'))
 
   // 8.7: язык и скрытие ролей.
   await click('Меню'); await click('Українська')
   const uk12 = await table()
   check(12, 'украинский: названия своих ролей те же, остальной текст переведён',
-    uk12.find((p) => p.seat === J).role === 'журналист' && uk12.find((p) => p.seat === X).role === 'маньяк' && uk12.find((p) => p.seat === S12).role === 'шериф'
-    && (await txt('.game-phase .page-name')) === 'Ніч 2' && (await has('мирний житель')) && (await has('вибір: журналист')), await txt('.game-phase .page-name'))
+    uk12.find((p) => p.seat === J).role === 'адвокат' && uk12.find((p) => p.seat === X).role === 'оборотень' && uk12.find((p) => p.seat === S12).role === 'шериф'
+    && (await txt('.game-phase .page-name')) === 'Ніч 2' && (await has('мирний житель')) && (await has('вибір: адвокат')), await txt('.game-phase .page-name'))
   await click('Меню'); await click('Русский')
   await click('Скрыть роли')
   check(12, 'скрытые роли: названий, пометок и записей своих ролей не видно',
-    (await has('роль скрыта')) && !(await has('маньяк')) && !(await has('Маньяк')) && !(await has('своя роль')) && !(await has('выбор: журналист')) && !(await has('Журналист →'))
+    (await has('роль скрыта')) && !(await has('оборотень')) && !(await has('Оборотень')) && !(await has('своя роль')) && !(await has('выбор: адвокат')) && !(await has('Адвокат →'))
     && !(await js(`!!document.querySelector('.card-role, .answer, .card-mark-night, .night-step-tag')`)))
   await click('Показать роли')
 
   // 8.8: остановить игру.
   await click('Меню'); await click('Остановить игру')
   const sides12 = await texts('.stop-option')
-  check(12, 'окно остановки: «маньяк» в списке чёрных, «журналист» — красных',
-    sides12.find((x) => x.startsWith('Чёрные')).includes('маньяк') && sides12.find((x) => x.startsWith('Красные')).includes('журналист'), sides12.join(' | '))
+  check(12, 'окно остановки: «оборотень» в списке чёрных, «адвокат» — красных',
+    sides12.find((x) => x.startsWith('Чёрные')).includes('оборотень') && sides12.find((x) => x.startsWith('Красные')).includes('адвокат'), sides12.join(' | '))
   await click('Красные'); await click('Завершить: победа красных')
   const sum12 = await summaryRows()
   check(12, 'итоги называют свои роли, журнал хранит запись своей роли',
-    (await txt('.summary-winner')) === 'Победа красных' && sum12.some((r) => r.startsWith(`${J} журналист`)) && sum12.some((r) => r.startsWith(`${X} маньяк`)) && (await has(`Журналист → №${X}`)), sum12.join(' | '))
+    (await txt('.summary-winner')) === 'Победа красных' && sum12.some((r) => r.startsWith(`${J} адвокат`)) && sum12.some((r) => r.startsWith(`${X} оборотень`)) && (await has(`Адвокат → №${X}`)), sum12.join(' | '))
 
   // 8.9: удалить роль из перечня; завершённая игра её помнит; «с тем же составом» возвращает.
-  await click('Новая игра'); await click('Удалить роль «Журналист»')
+  await click('Новая игра'); await click('Удалить роль «Адвокат»')
   const rows9 = await customRows()
   await click('На главную'); await click('Открыть')                 // первая в списке — только что завершённая
   check(12, 'роль удалена из перечня, а завершённая игра открывается и называет её',
-    rows9.length === 1 && rows9[0].startsWith('Маньяк') && (await txt('.summary-winner')) === 'Победа красных' && (await summaryRows()).some((r) => r.startsWith(`${J} журналист`)), rows9.join(' | '))
+    rows9.length === 1 && rows9[0].startsWith('Оборотень') && (await txt('.summary-winner')) === 'Победа красных' && (await summaryRows()).some((r) => r.startsWith(`${J} адвокат`)), rows9.join(' | '))
   await click('Новая игра с тем же составом')
   const rows10 = await customRows()
   check(12, '«Новая игра с тем же составом» возвращает роль в перечень и в состав',
-    rows10.length === 2 && rows10.some((r) => r.startsWith('Журналист своя роль') && r.endsWith(' 1')) && (await texts('.setup-total .chips li')).includes('журналист'), rows10.join(' | '))
+    rows10.length === 2 && rows10.some((r) => r.startsWith('Адвокат своя роль') && r.endsWith(' 1')) && (await texts('.setup-total .chips li')).includes('адвокат'), rows10.join(' | '))
   await click('На главную')
 
   // 8.10: игра, сохранённая до обновления, — в её настройках нет поля customRoles.
@@ -737,6 +737,141 @@ async function run() {
     old14 === `${other14},null` && shown14.includes('Город просыпается в полном составе') && (await where()) === 'День 3 · Балаган'
     && (await outNow14()) === String(other14) && (await has(`Выстрел в №${other14} → №${other14} застрелен`)) && !(await has('теперь другой')), `${old14} · ${await outNow14()}`)
   await click('Меню'); await click('На главную')
+
+  // ── Шаг 15: пять новых ролей (этап 3 дополнения): состав и опции, две ночи, день жертвы маньяка, победа одиночки ──
+  const NEW15 = ['Охранник', 'Журналист', 'Мясник', 'Маньяк', 'Бронежилет']
+  /** Карточка стола: метки, классы и подпись статуса. */
+  const card15 = (seat) => js(`(() => {
+    const c = [...document.querySelectorAll('.table-grid .card')].find((x) => Number(x.querySelector('.card-num').innerText) === ${seat})
+    return c ? { marks: [...c.querySelectorAll('.card-mark')].map((m) => m.textContent), cls: c.className, status: c.querySelector('.card-status')?.textContent ?? '',
+      role: (c.querySelector('.card-role')?.innerText ?? '').trim() } : null
+  })()`)
+  /** Можно ли сейчас выбрать карточку с этим номером (точное имя: «№1» не должен находить «№10»). */
+  const canPick = (seat) => js(`[...document.querySelectorAll('.table-grid button')].some((b) => __label(b) === 'Выбрать игрока №${seat}')`)
+
+  await click('Новая игра'); await click('Сбросить к стандарту'); await click('Мафия: больше')
+  await click('Больше игроков'); await click('Больше игроков')
+  const off15 = []
+  for (const name of NEW15) off15.push(await switchOn(`${name} участвует в игре`))
+  const tags15 = await js(`[...document.querySelectorAll('.role-row[data-off]')].filter((r) => r.querySelector('.role-tag')?.textContent === 'новая').length`)
+  check(15, 'пять новых ролей в перечне: выключены, строки серые, с пометкой «новая»; счётчика «сам за себя» нет',
+    off15.every((on) => on === false) && tags15 === 5 && !(await has('сам за себя 1')), `включены: ${off15.join()} · серых с пометкой: ${tags15}`)
+  for (const name of NEW15) await click(`${name} участвует в игре`)
+  check(15, 'мясника и маньяка не больше одного: «больше» у них недоступно; одиночки считаются вместе — «сам за себя 2»',
+    !(await exists('Мясник: больше')) && !(await exists('Маньяк: больше')) && (await exists('Охранник: больше')) && (await has('сам за себя 2'))
+    && (await has('чёрных 3')) && (await has('красных 8')), await txt('.setup-total-line'))
+  await click('Через ночь'); await click('Жертва не голосует')
+  check(15, 'опции под включёнными ролями: журналист «через ночь», маньяк «жертва не голосует»; порядок ночи — по дополнению',
+    (await radioOn('Через ночь')) && (await switchOn('Жертва не голосует')) && (await switchOn('Не ходит к одной жертве две ночи подряд'))
+    && (await nightOrderChips()).join(', ') === '1 · проститутка, 2 · мафия, 3 · крёстный отец, 4 · мясник, 5 · маньяк, 6 · шериф, 7 · журналист, 8 · доктор, 9 · охранник',
+    (await nightOrderChips()).join(', '))
+  await click('Раздать роли')
+  await main('Город просыпается: День 1')
+  const opener15 = Number(/круг начал №(\d+)/.exec(await txt('.steps-note'))?.[1] ?? 0)
+  await main(`Дать слово №${opener15}`); for (let i = 0; i < 12; i++) await enter()
+  await click('Пропустить доп. минуту'); await click('Пропустить доп. минуту')
+  await main('Город засыпает: Ночь 1')
+
+  // Ночь 1: мафия стреляет в мирного под защитой охранника, мясник бьёт бронежилет, маньяк приходит к мирному, журналист сравнивает.
+  const t15 = await table()
+  const seat15 = (role) => t15.find((p) => p.role === role)?.seat ?? 0
+  const C15 = t15.filter((p) => p.role === 'мирный житель').map((p) => p.seat)
+  const [A15, B15, N15] = C15
+  const G15 = seat15('охранник'), V15 = seat15('бронежилет'), X15 = seat15('мясник'), Z15 = seat15('маньяк'), S15 = seat15('шериф'), J15 = seat15('журналист')
+  console.log(`   стол: охранник №${G15}, бронежилет №${V15}, мясник №${X15}, маньяк №${Z15}, шериф №${S15}, журналист №${J15}, мирные ${C15.join(', ')}`)
+  check(15, 'Ночь 1: шаги новых ролей на местах, охранник последний; в шапке «сам за себя 2»; на карточках одиночек метка',
+    (await navNames()).join(' · ') === 'Проститутка · Мафия · Крёстный отец · Мясник · Маньяк · Шериф · Журналист · Доктор · Охранник · Итог ночи'
+    && (await txt('.game-counts')).includes('сам за себя 2') && (await card15(X15)).marks.includes('сам за себя') && (await card15(Z15)).marks.includes('сам за себя'),
+    (await navNames()).join(' · '))
+  await click('Никого')
+  await stepNav('Мафия'); await sleep(200); await click(`Выбрать игрока №${A15}`)
+  await stepNav('Мясник'); await sleep(200); await click(`Выбрать игрока №${V15}`)
+  await stepNav('Маньяк'); await sleep(200); await click(`Выбрать игрока №${B15}`)
+  check(15, 'маньяк: первый визит — жертва завтра молчит', (await txt('.answer-big')) === 'Первый визит' && (await has(`№${B15} завтра молчит`)), await txt('.answer'))
+  await stepNav('Журналист'); await sleep(200)
+  const self15 = await canPick(J15)
+  await click(`Выбрать игрока №${S15}`)
+  const first15 = (await has(`Выбран №${S15}. Выбери второго игрока`)) && !(await js(`!!document.querySelector('.answer')`))
+  await click(`Выбрать игрока №${X15}`)
+  check(15, 'журналист: себя выбрать нельзя; первый клик выбирает, второй записывает пару — «Разные стороны» (шериф и мясник)',
+    !self15 && first15 && (await txt('.answer-big')) === 'Разные стороны' && (await has('Покажи игроку: разные'))
+    && (await has(`Журналист: №${S15} и №${X15} — разные стороны`)) && (await has('Следующая проверка — через ночь')), await txt('.answer'))
+  await stepNav('Доктор'); await sleep(200); await click('Никого')
+  await stepNav('Охранник'); await sleep(200)
+  const guardSelf15 = await canPick(G15)
+  await click(`Выбрать игрока №${A15}`)
+  check(15, 'охранник: себя выбрать нельзя; на его карточке «защищает №…»', !guardSelf15 && (await card15(G15)).marks.includes(`защищает №${A15}`), (await card15(G15)).marks.join(' | '))
+  await stepNav('Итог ночи'); await sleep(200)
+  const out15 = await leavingRows(), stay15 = await stayingRows()
+  check(15, 'итог ночи: охранник закрыл собой и погиб; бронежилет и жертва маньяка — в «Остаются в игре»',
+    out15.length === 1 && out15[0].seat === G15 && out15[0].text === `Охранник закрыл собой №${A15}` && out15[0].note === 'погиб вместо него · прощается 30 с'
+    && stay15.some((r) => r.seat === V15 && r.text === 'Был в бронежилете' && r.note === 'на него напал мясник · жилет снят, роль открыта')
+    && stay15.some((r) => r.seat === B15 && r.text === 'Жертва маньяка' && r.note === 'первый визит · днём молчит'), JSON.stringify([out15, stay15]))
+  // Замечание заказчика: на окне 1440×900 главная кнопка не должна закрывать «Добавить выбывшего…» и «Назад к шагам ночи».
+  const fit15 = await js(`(() => {
+    scrollTo(0, 0)
+    const rect = (e) => (e ? e.getBoundingClientRect() : null)
+    const add = rect(__find('Добавить выбывшего…')), back = rect(__find('Назад к шагам ночи')), main = rect(document.querySelector('.main-button'))
+    if (!add || !back || !main) return { ok: false }
+    const hit = (a) => !(a.bottom <= main.top || a.top >= main.bottom)
+    const seen = (a) => a.top >= 0 && a.bottom <= innerHeight
+    return { ok: !hit(add) && !hit(back) && seen(add) && seen(back) && seen(main), add: [Math.round(add.top), Math.round(add.bottom)], main: [Math.round(main.top), Math.round(main.bottom)], vh: innerHeight }
+  })()`)
+  check(15, 'окно 1440×900: кнопки «Добавить выбывшего…» и «Назад к шагам ночи» видны и главной кнопкой не закрыты', fit15.ok, JSON.stringify(fit15))
+  await main(`№${G15} выбывает · начать День 2`)
+  const morning15 = (await morning()) ?? '', lines15 = await morningLines()
+  check(15, 'утро: охранник покидает стол и прощается (правило выключено), бронежилет остаётся, жертва маньяка молчит и не голосует; ролей нет',
+    morning15.includes(`Стол покидает игрок №${G15}`) && !/охранник|мясник|маньяк|бронежилет /i.test(morning15.replace('был в бронежилете', ''))
+    && lines15.join(' | ') === [`№${G15} прощается со столом — 30 с`, `№${V15} был в бронежилете — остаётся в игре`, `№${B15} сегодня молчит, не голосует`].join(' | '), lines15.join(' | '))
+  await announce()
+
+  // День 2: роли скрыты; метки «молчит» и «жилет снят · открыт» видны, причины смерти — нет.
+  const b15 = await card15(B15), v15 = await card15(V15), g15 = await card15(G15)
+  check(15, 'День 2 начинается прощанием охранника; при скрытых ролях видны «молчит» и «жилет снят · открыт», причина смерти — нет',
+    (await where()) === 'День 2 · Прощание' && (await has('роль скрыта')) && b15.marks.join() === 'молчит' && b15.cls.includes('card-silenced')
+    && v15.marks.join() === 'жилет снят · открыт' && g15.status === 'выбыл · Ночь 1' && b15.role === '', `${b15.marks.join()} · ${v15.marks.join()} · ${g15.status}`)
+  await main(`Прощание №${G15} · 30 с`)
+  await main('Дальше: балаган'); await main('Запустить балаган · 60 с'); await main('Выбрать, кто начинает круг')
+  await click(`Выбрать игрока №${B15}`)
+  await main(`№${B15} молчит · ход без речи`)
+  check(15, 'очередь жертвы в круге — без таймера; в свой ход она может выставить',
+    (await has(`№${B15} сегодня молчит`)) && !(await js(`!!document.querySelector('[role=timer]')`)) && (await exists(`№${B15} выставляет…`)), await txt('.speech'))
+  await click(`№${B15} выставляет…`); await click(`Выбрать игрока №${V15}`)
+  await click('Добавить вручную'); await click(`Выбрать игрока №${N15}`)
+  await stepNav('Голосование'); await sleep(200)
+  check(15, 'опция «жертва не голосует»: голосуют 11 из 12 в игре, строка называет жертву',
+    (await has('голосуют 11 · осталось 11')) && (await has(`№${B15} сегодня не голосует`)) && (await txt('.game-counts')).includes('12 из 13'), await txt('.vote-ask-head'))
+  await click('Никто не выгнан → Ночь 2')
+
+  // Ночь 2: журналист отдыхает; повторный визит маньяка — предупреждение и нападение.
+  await stepNav('Журналист'); await sleep(200)
+  check(15, 'Ночь 2: у журналиста ночь отдыха — выбрать никого нельзя',
+    (await where()) === 'Ночь 2 · Журналист' && (await has('Ночь отдыха')) && !(await canPick(S15)) && !(await canPick(A15)) && !(await exists('Никого')), await where())
+  await stepNav('Маньяк'); await sleep(200); await click(`Выбрать игрока №${B15}`)
+  const warned15 = (await has('К этому игроку маньяк приходил прошлой ночью')) && !(await js(`!!document.querySelector('.answer')`))
+  await click('Записать всё равно')
+  check(15, 'маньяк второй раз подряд к той же жертве: предупреждение, «Записать всё равно», визит назван повторным',
+    warned15 && (await txt('.answer-big')) === 'Повторный визит' && (await has(`№${B15} выбывает, если его не спасут`)), await txt('.answer'))
+  await stepNav('Итог ночи'); await sleep(200)
+  await cdp('Page.reload'); await sleep(900); await js(HELPERS)
+  const out15b = await leavingRows()
+  check(15, 'после обновления страницы итог ночи на месте: жертва убита повторным визитом',
+    (await where()) === 'Ночь 2 · Итог ночи' && out15b.length === 1 && out15b[0].seat === B15 && out15b[0].text === 'Убит маньяком' && out15b[0].note.startsWith('повторный визит'),
+    JSON.stringify(out15b))
+  await main(`№${B15} выбывает · начать День 3`)
+  await announce()
+
+  // Остановить игру победой одиночки.
+  await click('Меню'); await click('Остановить игру')
+  const sides15 = await js(`[...document.querySelectorAll('[role=dialog] [role=radio]')].map((b) => b.querySelector('.stop-option-title').textContent)`)
+  await click('Маньяк'); await click('Завершить: победа маньяка')
+  const sum15 = await summaryRows()
+  check(15, 'окно остановки предлагает победителем каждого одиночку; итоги: «Победа маньяка», причины смертей названы',
+    sides15.join(' | ') === 'Чёрные | Красные | Мясник | Маньяк | Без победителя' && (await txt('.summary-winner')) === 'Победа маньяка'
+    && sum15.some((r) => r === `${G15} охранник закрыл собой игрока · Ночь 1`) && sum15.some((r) => r === `${B15} мирный житель убит маньяком · Ночь 2`)
+    && sum15.some((r) => r === `${V15} бронежилет в игре`), `${sides15.join(' | ')} · ${await txt('.summary-winner')}`)
+  await click('На главную')
+  check(15, 'завершённая игра с победой одиночки — в списке на главной', await has('Победа маньяка'))
 
   check('—', 'за весь сценарий нет ошибок в консоли и исключений', problems.length === 0, problems.slice(0, 3).join(' | '))
   check('—', 'страница не сделала ни одного сетевого запроса', network.length === 0, network.slice(0, 3).join(' | '))
