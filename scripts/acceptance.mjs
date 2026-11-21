@@ -1,5 +1,5 @@
-// Приёмочный сценарий из раздела 8 спецификации и раздела 8 дополнения «Свои роли» (шаг 12)
-// на собранном dist/index.html, открытом с диска (file://).
+// Приёмочный сценарий из раздела 8 спецификации, раздела 8 дополнения «Свои роли» (шаг 12)
+// и этапа 1 дополнения «Механики партии и новые роли» (шаг 13) на собранном dist/index.html, открытом с диска (file://).
 // Запуск: npm run build && npm run acceptance
 // Управляет установленным Chrome без окна через протокол DevTools: настоящие клики мыши и клавиши.
 // Зависимостей нет. Раздача случайная, поэтому сценарий читает роли со стола и подбирает номера сам.
@@ -151,12 +151,15 @@ async function run() {
   const after = await dealt()
   check(1, `роли №1 и №${other} поменялись`, after[0] === before[other - 1] && after[other - 1] === before[0], `№1: ${before[0]} → ${after[0]}`)
   await main('Город просыпается: День 1')
-  await click('Выбрать, кто начинает'); await click('Выбрать игрока №5')
+  // Начинающего первый круг выбрало приложение; сценарию нужен №5 — ведущий выбирает другого.
+  await click('Выбрать другого…'); await click('Выбрать игрока №5')
   await main('Дать слово №5')
   check(1, 'День 1 начат с №5, таймер речи идёт', (await where()) === 'День 1 · Круг речей' && (await txt('.timer-label')) === 'Речь №5' && (await has('говорит сейчас')))
   check(1, 'в День 1 нет кнопки «выставляет…»', !(await js(`[...document.querySelectorAll('button')].some((b) => b.innerText.includes('выставляет'))`)))
   for (let i = 0; i < 10; i++) await enter()                      // остальные десять речей — клавишей Enter
-  check(1, 'круг пройден клавишей Enter, главная кнопка ведёт в ночь', await exists('Город засыпает: Ночь 1'), await txt('.facts'))
+  check(1, 'круг пройден клавишей Enter, первые двое получают доп. минуту', (await exists('Доп. минута №5')) && (await has('Круг закрывают первые двое')), await txt('.facts'))
+  await enter(); await enter()                                    // доп. минуты №5 и №6 — тоже клавишей Enter
+  check(1, 'после доп. минут главная кнопка ведёт в ночь', await exists('Город засыпает: Ночь 1'), await txt('.facts'))
   await main('Город засыпает: Ночь 1')
 
   const t0 = await table()
@@ -167,10 +170,11 @@ async function run() {
   const healed = D === 4 ? 4 : C[2]                                 // в сценарии доктор лечит №4; если №4 не подходит — мирного
 
   // ── Шаг 2: Ночь 1 ──
-  await click(`Выбрать игрока №${C[0]}`)                            // выстрел не в того
+  check(2, 'ночь начинается с проститутки', (await where()) === 'Ночь 1 · Проститутка', await where())
+  await click('Никого')                                             // проститутка никого не блокирует
+  await main('Дальше: Мафия'); await click(`Выбрать игрока №${C[0]}`)   // выстрел не в того
   await main('Дальше: Крёстный отец'); await click(`Выбрать игрока №${C[1]}`)
   check(2, 'крёстный отец ищет шерифа — ответ «не шериф»', (await txt('.answer-big')) === `№${C[1]} — не шериф`, await txt('.answer-big'))
-  await main('Дальше: Проститутка'); await click('Никого')
   await main('Дальше: Шериф'); await click(`Выбрать игрока №${M}`)
   check(2, 'шериф проверил мафию — «чёрный»', (await txt('.answer-big')) === `№${M} — чёрный`)
   await main('Дальше: Доктор'); await click(`Выбрать игрока №${healed}`)
@@ -178,7 +182,8 @@ async function run() {
   check(2, 'итог ночи: подсказка «застрелен»', (await txt('.answer-big')) === `№${C[0]} застрелен`, await txt('.answer-big'))
   await main(`№${C[0]} застрелен · начать День 2`)
   check(2, 'День 2 начат, застреленный выбыл', (await where()) === 'День 2 · Балаган' && (await table()).find((p) => p.seat === C[0]).out)
-  // Утром исправляем запись выстрела в журнале.
+  // Утром роли и журнал скрыты: чтобы исправить запись выстрела, ведущий открывает роли кнопкой.
+  await click('Показать роли')
   await click('Ночь 1'); await click(`Мафия → №${C[0]}`); await click(`Выбрать игрока №${C[3]}`)
   check(2, 'после правки записи статусы не поменялись сами, есть предложение пересчитать',
     (await has(`Итог Ночи 1 теперь другой: выбыть должен №${C[3]}`)) && (await table()).find((p) => p.seat === C[0]).out && (await has('испр.')))
@@ -246,7 +251,7 @@ async function run() {
   await main(`Прощание №${nominees[3]}`); await main('Город засыпает: Ночь 2')
 
   // ── Шаг 6: Ночь 2 ──
-  await click(`Выбрать игрока №${C[4]}`)
+  await stepNav('Мафия'); await sleep(200); await click(`Выбрать игрока №${C[4]}`)
   await stepNav('Доктор'); await sleep(200)
   check(6, 'на шаге доктора видно решение прошлой ночи', await has(`Прошлой ночью: №${healed}`))
   await click(`Выбрать игрока №${healed}`)
@@ -254,7 +259,8 @@ async function run() {
   await click(`Выбрать игрока №${C[4]}`)
   await stepNav('Проститутка'); await sleep(200); await click(`Выбрать игрока №${S}`)
   await stepNav('Шериф'); await sleep(200)
-  check(6, 'шериф заблокирован: плашка «заблокирован — проверка не состоялась»', await has('заблокирован — проверка не состоялась'))
+  check(6, 'шериф заблокирован: красный блок с номером и «Проверка этой ночью не состоится»',
+    (await txt('.block-box-big')) === `№${S} заблокирован` && (await has('Проверка этой ночью не состоится.')), await txt('.block-box'))
   await click(`Выбрать игрока №${G}`)
   check(6, 'заблокированному шерифу ответ не показан', !(await js(`!!document.querySelector('.answer')`)))
   await stepNav('Итог ночи'); await sleep(200)
@@ -275,7 +281,7 @@ async function run() {
 
   // ── Шаг 8: Ночь 3 и День 4 ──
   check(8, 'шаг шерифа серый: «выбыл · разбудить для вида»', await js(`[...document.querySelectorAll('.night-step')].some((b) => b.innerText.includes('Шериф') && b.innerText.includes('выбыл · разбудить для вида'))`))
-  await click(`Выбрать игрока №${C[4]}`)
+  await stepNav('Мафия'); await sleep(200); await click(`Выбрать игрока №${C[4]}`)
   await stepNav('Проститутка'); await sleep(200); await click(`Выбрать игрока №${G}`)
   await stepNav('Итог ночи'); await sleep(200)
   check(8, 'блок крёстного отца: «Никто не выбыл: выстрела не было»', (await txt('.answer-big')) === 'Никто не выбыл: выстрела не было', await txt('.answer-big'))
@@ -303,7 +309,7 @@ async function run() {
   // ── Шаг 10: скрыть роли, пауза, язык ──
   await click('Скрыть роли')
   check(10, 'роли, счётчик сторон, ночные записи и журнал скрыты', (await has('роль скрыта')) && (await has('Журнал скрыт вместе с ролями')) && !(await has('чёрных'))
-    && !(await js(`!!document.querySelector('.card-role, .answer, .card-picked, .card-mark-night')`)) && !(await has('Просыпается мафия —')) && (await has('Просыпается мафия')))
+    && !(await js(`!!document.querySelector('.card-role, .answer, .card-picked, .card-mark-night, .card-mark-block')`)) && !(await has('Просыпается проститутка —')) && (await has('Просыпается проститутка')))
   await click('Показать роли')
   await click('Пауза игры')
   check(10, 'пауза: шторка без стола', (await has('Игра на паузе')) && !(await js(`!!document.querySelector('.table-grid')`)))
@@ -376,8 +382,9 @@ async function run() {
   check(12, 'распределение называет обе роли, состав сошёлся',
     dealt12.length === 11 && count(dealt12, 'журналист') === 1 && count(dealt12, 'маньяк') === 1 && (await has('журналист 1, маньяк 1, мирных 4')), dealt12.join(', '))
   await main('Город просыпается: День 1')
-  await click('Выбрать, кто начинает'); await click('Выбрать игрока №1')
+  await click('Выбрать другого…'); await click('Выбрать игрока №1')
   await main('Дать слово №1'); for (let i = 0; i < 10; i++) await enter()
+  await click('Пропустить доп. минуту'); await click('Пропустить доп. минуту')
   await main('Город засыпает: Ночь 1')
 
   // 8.5: Ночь 1 — шаг журналиста после доктора, запись, журнал, подсказка итога без изменений.
@@ -388,8 +395,8 @@ async function run() {
   console.log(`   стол: журналист №${J}, маньяк №${X}, шериф №${S12}, проститутка №${P12}, мирные ${C12.join(', ')}`)
   const nav12 = await texts('.night-step .night-step-name')
   check(12, 'Ночь 1: шаг «Журналист» идёт после доктора и помечен «своя роль»',
-    nav12.join(' · ') === 'Мафия · Крёстный отец · Проститутка · Шериф · Доктор · Журналист своя роль · Итог ночи', nav12.join(' · '))
-  await click(`Выбрать игрока №${C12[0]}`)                          // выстрел мафии
+    nav12.join(' · ') === 'Проститутка · Мафия · Крёстный отец · Шериф · Доктор · Журналист своя роль · Итог ночи', nav12.join(' · '))
+  await stepNav('Мафия'); await sleep(200); await click(`Выбрать игрока №${C12[0]}`)   // выстрел мафии
   await stepNav('Итог ночи'); await sleep(200)
   const hint12 = await txt('.answer-big')
   await stepNav('Журналист'); await sleep(200)
@@ -412,8 +419,8 @@ async function run() {
   // 8.6: Ночь 2 — блок журналиста, проверка маньяка.
   await stepNav('Проститутка'); await sleep(200); await click(`Выбрать игрока №${J}`)
   await stepNav('Журналист'); await sleep(200)
-  check(12, 'Ночь 2: журналист заблокирован — плашка; виден выбор прошлой ночи',
-    (await has('заблокирован — действие не состоялось')) && (await has(`Прошлой ночью: №${X}`)))
+  check(12, 'Ночь 2: журналист заблокирован — красный блок; виден выбор прошлой ночи',
+    (await txt('.block-box-big')) === `№${J} заблокирован` && (await has('Действие этой ночью не состоится.')) && (await has(`Прошлой ночью: №${X}`)), await txt('.block-box'))
   await click(`Выбрать игрока №${C12[1]}`)
   check(12, 'записать выбор заблокированной роли всё равно можно', (await txt('.answer-big')) === `→ №${C12[1]}` && (await has(`Журналист → №${C12[1]}`)), await txt('.answer-big'))
   await stepNav('Шериф'); await sleep(200); await click(`Выбрать игрока №${X}`)
@@ -468,6 +475,114 @@ async function run() {
   check(12, 'игра, сохранённая до обновления, открывается как раньше',
     stripped && (await txt('.summary-winner')) === 'Победа чёрных' && (await summaryRows()).length === 11 && (await has('Игра остановлена: победа чёрных')) && !(await has('своя роль')))
   await click('На главную')
+
+  // ── Шаг 13: правила партии и ход дня (дополнение «Механики партии и новые роли», этап 1) ──
+  const switchOn = (label) => js(`document.querySelector('[role=switch][aria-label=${JSON.stringify(label)}]')?.getAttribute('aria-checked') === 'true'`)
+  const radioOn = (label) => js(`__find(${JSON.stringify(label)})?.getAttribute('aria-checked') === 'true'`)
+  const nightOrderChips = () => texts('.night-order li')
+  const noSeatInPanel = () => js(`!/№\\s*\\d/.test(document.querySelector('.step-panel').textContent)`)
+  const navNames = () => texts('.night-step .night-step-name')
+  const LATE = 'ответ на поиск к этому моменту уже показан'
+
+  await click('Новая игра'); await click('Сбросить к стандарту'); await click('Мафия: больше')
+  check(13, 'правила партии по умолчанию: балаган и прощание после голосования включены, после ночи — нет, проститутка первой',
+    (await switchOn('Балаган перед кругом речей')) && (await switchOn('Прощание после голосования')) && !(await switchOn('Прощание после ночной смерти'))
+    && (await radioOn('Первой')) && (await nightOrderChips())[0] === '1 · проститутка' && (await radioOn('Выстрел')), (await nightOrderChips()).join(', '))
+  await click('Балаган перед кругом речей'); await click('Прощание после голосования')
+  await click('После мафии'); await click('Выстрел и поиск')
+  check(13, 'проститутка «после мафии» и отмена поиска: порядок ночи изменился, под опцией предупреждение',
+    (await nightOrderChips()).join(', ').startsWith('1 · мафия, 2 · крёстный отец, 3 · проститутка') && (await has(LATE)), (await nightOrderChips()).join(', '))
+  await click('Первой')
+  check(13, 'проститутка «первой»: предупреждение ушло, она снова первая', !(await has(LATE)) && (await nightOrderChips())[0] === '1 · проститутка'
+    && !(await switchOn('Балаган перед кругом речей')) && !(await switchOn('Прощание после голосования')) && (await radioOn('Выстрел и поиск')))
+  await click('Раздать роли')
+
+  // День 1: случайный начинающий, роли скрыты, доп. минуты первых двоих.
+  await main('Город просыпается: День 1')
+  const note13 = await txt('.steps-note')
+  const opener13 = Number(/^День 1 · круг начал №(\d+), выбран случайно$/.exec(note13)?.[1] ?? 0)
+  const second13 = opener13 % 11 + 1
+  check(13, 'День 1: начинающего выбрало приложение, есть «Выбрать другого…»',
+    opener13 >= 1 && opener13 <= 11 && (await exists(`Дать слово №${opener13}`)) && (await exists('Выбрать другого…')) && !(await exists('Выбрать, кто начинает')), note13)
+  check(13, 'утром роли скрыты сами', (await has('роль скрыта')) && (await has('Журнал скрыт вместе с ролями')) && !(await js(`!!document.querySelector('.card-role')`)))
+  await main(`Дать слово №${opener13}`); for (let i = 0; i < 10; i++) await enter()
+  check(13, 'конец первого круга: доп. минута начинавшему и следующему за ним',
+    (await exists(`Доп. минута №${opener13}`)) && (await has(`№${opener13} и №${second13} говорили первыми и получают ещё по минуте`)), await txt('.closing-note'))
+  await main(`Доп. минута №${opener13}`)
+  check(13, 'доп. минута идёт: таймер 60 с, следующая — второму', (await txt('.timer-label')) === `Доп. минута №${opener13}` && (await txt('.timer-state')).startsWith('идёт')
+    && (await exists(`Доп. минута №${second13}`)), await txt('.timer-label'))
+  await click('Пропустить доп. минуту')
+  check(13, '«Пропустить доп. минуту»: главная кнопка ведёт в ночь', (await exists('Город засыпает: Ночь 1')) && !(await exists('Пропустить доп. минуту')))
+  await main('Город засыпает: Ночь 1')
+
+  // Ночь 1: роли открыты, проститутка первой, блок шерифа виден на его шаге и при скрытых ролях.
+  const t13 = await table()
+  const seat13 = (role) => t13.find((p) => p.role === role).seat
+  const S13 = seat13('шериф'), G13 = seat13('мафия · глава')
+  const C13 = t13.filter((p) => p.role === 'мирный житель').map((p) => p.seat)
+  console.log(`   стол: шериф №${S13}, глава №${G13}, мирные ${C13.join(', ')}`)
+  check(13, 'ночью роли открыты сами, первый шаг — проститутка',
+    !(await has('роль скрыта')) && t13.every((p) => p.role !== '') && (await where()) === 'Ночь 1 · Проститутка' && (await navNames())[0] === 'Проститутка', (await navNames()).join(' · '))
+  await click(`Выбрать игрока №${S13}`)                             // проститутка блокирует шерифа
+  await click('Скрыть роли'); await stepNav('Шериф'); await sleep(200)
+  check(13, 'роли скрыты: блок шерифа виден на его шаге, но номер и карточку не выдаёт',
+    (await txt('.block-box-big')) === 'Исполнитель заблокирован' && (await has('Проверка этой ночью не состоится.'))
+    && (await js(`document.querySelector('.night-step[aria-current=step]').hasAttribute('data-blocked')`)) && (await noSeatInPanel())
+    && !(await js(`!!document.querySelector('.card-blocked, .card-mark-block, .card-role')`)), await txt('.block-box'))
+  await click('Показать роли')
+  check(13, 'роли открыты: блок называет номер, карточка шерифа с красной меткой «заблокирован»',
+    (await txt('.block-box-big')) === `№${S13} заблокирован` && (await has('Блок проститутки'))
+    && (await js(`document.querySelectorAll('.table-grid .card')[${S13 - 1}].classList.contains('card-blocked')`)) && (await txt('.card-mark-block')) === 'заблокирован', await txt('.block-box'))
+  await stepNav('Мафия'); await sleep(200); await click(`Выбрать игрока №${C13[0]}`)
+  await stepNav('Итог ночи'); await sleep(200)
+  check(13, 'итог ночи: строка «Заблокированы: … — покажи игроку»', await has(`Заблокированы: №${S13} — покажи игроку`), await txt('.block-line'))
+  await main(`№${C13[0]} застрелен · начать День 2`)
+
+  // День 2: балагана нет, роли снова скрыты, выгнанный уходит без прощания.
+  const steps13 = await texts('.steps .step')
+  check(13, 'День 2 без балагана: сразу круг речей, начинающего выбирает ведущий, роли снова скрыты',
+    (await where()) === 'День 2 · Круг речей' && !steps13.includes('Балаган') && (await exists('Выбрать, кто начинает')) && (await has('роль скрыта')), steps13.join(' · '))
+  const alive13 = (await table()).filter((p) => !p.out).map((p) => p.seat)
+  const first13 = firstFrom5(alive13)
+  await main('Выбрать, кто начинает'); await click(`Выбрать игрока №${first13}`)
+  await main('Дать слово'); await click(`№${first13} выставляет…`); await click(`Выбрать игрока №${C13[1]}`)
+  await stepNav('Оправдания'); await sleep(200)
+  await main(`Оправдание №${C13[1]}`)
+  check(13, 'прощание выключено: главная кнопка «выгнан → Ночь 2», про прощание ни слова',
+    (await exists(`№${C13[1]} выгнан → Ночь 2`)) && !(await js(`[...document.querySelectorAll('button')].some((b) => /рощани/.test(b.innerText))`)))
+  await main(`№${C13[1]} выгнан → Ночь 2`)
+  check(13, 'выгнанный выбыл, сразу Ночь 2, роли открыты', (await where()) === 'Ночь 2 · Проститутка' && (await table()).find((p) => p.seat === C13[1]).out
+    && (await has('выгнан · День 2')) && !(await has('роль скрыта')), await where())
+
+  // Ночь 2: блок крёстного отца по опции «выстрел и поиск».
+  await click(`Выбрать игрока №${G13}`)
+  await stepNav('Мафия'); await sleep(200)
+  const shotBlocked = (await txt('.block-box-big')) === `№${G13} заблокирован` && (await has('Выстрела этой ночью не будет.'))
+  await click(`Выбрать игрока №${C13[2]}`)
+  await stepNav('Крёстный отец'); await sleep(200); await click(`Выбрать игрока №${S13}`)
+  check(13, 'блок крёстного отца при опции «выстрел и поиск»: выстрела не будет, поиск не состоится, ответа нет',
+    shotBlocked && (await has('Поиск шерифа этой ночью не состоится.')) && !(await js(`!!document.querySelector('.answer')`)), await txt('.block-box'))
+
+  // Та же игра, как будто её сохранили до обновления: правил партии и опций ролей в ней нет.
+  const legacy = await js(`(() => {
+    const key = 'mafia:session:' + localStorage.getItem('mafia:active')
+    const session = JSON.parse(localStorage.getItem(key))
+    session.config.rules = { nominationsFromDay: session.config.rules.nominationsFromDay, balaganFromDay: session.config.rules.balaganFromDay }
+    delete session.config.roleOptions
+    localStorage.setItem(key, JSON.stringify(session))
+    return Object.keys(JSON.parse(localStorage.getItem(key)).config.rules).length === 2
+  })()`)
+  await cdp('Page.reload'); await sleep(900); await js(HELPERS)
+  const navOld = await navNames()
+  await stepNav('Крёстный отец'); await sleep(200)
+  check(13, 'игра без новых правил открывается по-старому: проститутка после мафии, блок крёстного отца поиск не отменяет',
+    legacy && (await where()).startsWith('Ночь 2') && navOld.join(' · ') === 'Мафия · Крёстный отец · Проститутка · Шериф · Доктор · Итог ночи'
+    && (await txt('.answer-big')) === `№${S13} — шериф` && (await has('На поиск шерифа это не влияет.')), navOld.join(' · '))
+  await stepNav('Итог ночи'); await sleep(200)
+  check(13, 'по старым правилам блок крёстного отца отменяет выстрел', (await txt('.answer-big')) === 'Никто не выбыл: выстрела не было', await txt('.answer-big'))
+  await main('Никто не выбыл · начать День 3')
+  check(13, 'по старым правилам день открывается балаганом', (await where()) === 'День 3 · Балаган', await where())
+  await click('Меню'); await click('На главную')
 
   check('—', 'за весь сценарий нет ошибок в консоли и исключений', problems.length === 0, problems.slice(0, 3).join(' | '))
   check('—', 'страница не сделала ни одного сетевого запроса', network.length === 0, network.slice(0, 3).join(' | '))

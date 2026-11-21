@@ -217,3 +217,19 @@ test('проститутка после мафии: блок появляетс�
   expect(navStep('mafia_shot')).toHaveAttribute('data-blocked')
   await user.click(navStep('mafia_shot')); expect(within(blockBox()!).getByText('№3 заблокирован')).toBeInTheDocument()
 })
+
+test('две проститутки заблокировали крёстного отца и мафию: блок называет обоих во множественном числе', () => {
+  // №9 и №10 — проститутки: первая блокирует №3 (крёстный отец), вторая — №8 (мафия).
+  renderApp((a) => { seedGame(a, 'S c G D c c c M P P c', 1); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
+    a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 9, target: 3 })
+    a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 8 }); a.dispatch({ type: 'enterStep', step: 'mafia_shot' }) })
+  expect(within(blockBox()!).getByText('№3 и №8 заблокированы')).toBeInTheDocument()
+  expect(within(blockBox()!).getByText('Покажи игрокам, что они заблокированы. Выстрела этой ночью не будет.')).toBeInTheDocument()
+  expect(card(3)).toHaveClass('card-blocked'); expect(card(8)).toHaveClass('card-blocked')
+})
+test('итог ночи называет всех заблокированных исполнителей по возрастанию номеров', () => {
+  renderApp((a) => { seedGame(a, 'S c G D c c c M P P c', 1); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
+    a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 9, target: 4 })
+    a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 1 }); a.dispatch({ type: 'enterStep', step: 'summary' }) })
+  expect(screen.getByText('Заблокированы: №1 и №4 — покажи игрокам')).toBeInTheDocument()
+})
