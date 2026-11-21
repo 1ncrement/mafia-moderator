@@ -173,7 +173,8 @@ export const RecordEditor: FC<{ entry: JournalEntry; phase: PhaseRef; onClose():
   if (entry.kind === 'night_result' && phase.kind === 'night') {
     body = (
       <NightResultEditor
-        total={total} allowed={aliveIn(session, store, phase)} initial={entry.died}
+        // Отмеченный итогом остаётся доступным, даже если к подтверждению ночи он уже выбыл вручную: отметку можно снять.
+        total={total} allowed={[...new Set([...aliveIn(session, store, phase), ...entry.died])]} initial={entry.died}
         onSave={(died) => run({ type: 'setNightResult', night: phase.n, died })}
       />
     )

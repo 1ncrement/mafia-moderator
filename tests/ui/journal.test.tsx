@@ -105,3 +105,16 @@ test('редактор записи итога ночи правит набор:
   await user.keyboard('{Escape}')
   act(() => { app.undo() }); expect(out()).toEqual([7])
 })
+test('в редакторе итога отметку можно снять и с того, кто к подтверждению ночи уже выбыл вручную', async () => {
+  // Ночью ведущий записал выстрел в №7 и сам же отметил его застреленным из панели игрока, потом подтвердил итог.
+  const { app, user } = renderApp((a) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
+    a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 }); a.dispatch({ type: 'setStatus', seat: 7, status: 'out', cause: 'shot' })
+    a.dispatch({ type: 'confirmNight', died: [7] }); a.dispatch({ type: 'announceMorning' }); showRoles(a) })
+  await user.click(screen.getByRole('button', { name: /^Ночь 1/ })); await user.click(screen.getByRole('button', { name: /Итог ночи: №7 застрелен/ }))
+  const seven = within(screen.getByRole('dialog')).getByRole('button', { name: 'Выбрать игрока №7' })
+  expect(seven).toHaveAttribute('aria-pressed', 'true'); expect(seven).toBeEnabled()
+  await user.click(seven); await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Сохранить' }))
+  expect(screen.getByRole('button', { name: /Итог ночи: никто не выбыл/ })).toBeInTheDocument()
+  // Ручная отметка — отдельная запись журнала: правка итога её не трогает.
+  expect(app.getState().game!.players[6]!.status).toBe('out')
+})

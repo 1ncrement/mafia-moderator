@@ -1,5 +1,5 @@
 import { entryText } from '../../src/app/i18n'
-import { applyUndo, checkComposition, DEFAULT_REGISTRY, DEFAULT_RULES, journal, nightOrder, nightState, registryFor, roleOption } from '../../src/engine'
+import { applyUndo, checkComposition, DEFAULT_REGISTRY, DEFAULT_RULES, deriveState, journal, nightOrder, nightState, registryFor, roleOption } from '../../src/engine'
 import type { Command, GameEvent, Registry, Session } from '../../src/engine'
 import { act, attempt, customNight, game, gameWith, JOURNALIST, n1, play, playWith, st, TABLE_11, toDay } from '../helpers'
 
@@ -127,6 +127,30 @@ test('запись подтверждения из сохранения до о�
   expect(nightState(fixed, DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: [9], chosen: [9] })
   const kept = play(edited, { type: 'acknowledgeNight', night: 1, apply: false })
   expect(nightState(kept, DEFAULT_REGISTRY, 1).confirmed).toEqual({ hinted: [9], chosen: [7] }); expect(st(kept).warnings).toEqual([])
+})
+test('несколько нападений за ночь (вымышленная вторая стреляющая роль): двое выбывших, одна цель — одна смерть, лечение и блок считаются по каждому нападению', () => {
+  // №1 крёстный отец, №2 охотник (стреляет сам), №5 доктор, №6 проститутка.
+  const reg: Registry = { ...DEFAULT_REGISTRY,
+    roles: [...DEFAULT_REGISTRY.roles, { id: 'hunter', nameKey: 'role.hunter', side: 'red', defaultCount: 0, seenBySheriffAs: 'red' }],
+    nightActions: [...DEFAULT_REGISTRY.nightActions, { id: 'hunter_shot', order: 45, effect: 'kill', performers: ['hunter'], scope: 'each', stepKey: 'k', questionKey: 'q' }] }
+  const N1 = { kind: 'night', n: 1 } as const
+  const start = playWith(reg, gameWith(reg, ['godfather', 'hunter', 'civilian', 'civilian', 'doctor', 'prostitute']),
+    { type: 'startPhase', phase: { kind: 'day', n: 1 } }, { type: 'startPhase', phase: N1 })
+  const night = (...cmds: Command[]) => nightState(playWith(reg, start, ...cmds), reg, 1).outcome
+  expect(night(act('mafia_shot', null, 4), act('hunter_shot', 2, 3))).toMatchObject({ deaths: [{ seat: 3, cause: 'shot' }, { seat: 4, cause: 'shot' }], noAttack: null })
+  expect(night(act('mafia_shot', null, 4), act('hunter_shot', 2, 4)).deaths).toEqual([{ seat: 4, cause: 'shot' }])
+  // Лечение отменяет все нападения на вылеченного; блок одного нападавшего чужое нападение не отменяет.
+  expect(night(act('mafia_shot', null, 4), act('hunter_shot', 2, 4), act('doctor_heal', 5, 4)))
+    .toMatchObject({ deaths: [], notes: [{ seat: 4, kind: 'healed', cause: 'shot' }], noAttack: null })
+  expect(night(act('mafia_shot', null, 4), act('hunter_shot', 2, 3), act('prostitute_block', 6, 2))).toMatchObject({ deaths: [{ seat: 4, cause: 'shot' }], noAttack: null })
+  expect(night(act('hunter_shot', 2, 3), act('prostitute_block', 6, 2))).toMatchObject({ deaths: [], noAttack: 'blocked' })
+  // Подсказка из двоих: подтверждение помнит оба номера; правка задним числом предлагает новый набор, «Исправить» ставит его целиком.
+  let s = playWith(reg, start, act('mafia_shot', null, 4), act('hunter_shot', 2, 3), { type: 'confirmNight', died: [3, 4] })
+  expect(nightState(s, reg, 1).confirmed).toEqual({ hinted: [3, 4], chosen: [3, 4] }); expect(deriveState(s, reg).warnings).toEqual([])
+  s = playWith(reg, s, { type: 'recordNightAction', actionId: 'hunter_shot', actor: 2, target: 5, phase: N1 })
+  expect(deriveState(s, reg).warnings).toEqual([{ code: 'night_outcome_changed', night: 1, expected: [4, 5] }])
+  const fixed = deriveState(playWith(reg, s, { type: 'acknowledgeNight', night: 1, apply: true }), reg)
+  expect([3, 4, 5].map((seat) => fixed.players[seat - 1]!.status)).toEqual(['alive', 'out', 'out']); expect(fixed.warnings).toEqual([])
 })
 test('вымышленная роль с существующим эффектом работает без правок движка', () => {
   const reg: Registry = { ...DEFAULT_REGISTRY,
