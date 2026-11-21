@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import type { AppStore } from '../../src/app/store'
 import { TABLE_11 } from '../helpers'
 import { advance, renderApp, seedGame, sleep } from './helpers'
@@ -90,4 +90,22 @@ test('после «Отменить» пробел запускает тайме
   expect(screen.getByText('Речь №5')).toBeInTheDocument()
   await user.keyboard(' ')
   expect(app.getState().game!.day!.speaking).toMatchObject({ seat: 5 }); expect(app.getState().session!.timer).toMatchObject({ seat: 5, status: 'running' })
+})
+
+// ── Видимость ролей по фазе ─────────────────────────────────────────────────
+
+test('«Город просыпается: День 1» скрывает роли на столе; кнопка и H открывают их до конца дня; ночью роли открыты', async () => {
+  const { app, user, env } = renderApp((a) => { a.newGame(); a.dealDraft() })
+  expect(screen.queryByText('роль скрыта')).not.toBeInTheDocument()
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /Город просыпается: День 1/ }))
+  expect(app.getState().settings.rolesHidden).toBe(true)
+  expect(screen.getAllByText('роль скрыта')).toHaveLength(10)
+  await user.click(screen.getByRole('button', { name: 'Показать роли' }))
+  expect(screen.queryByText('роль скрыта')).not.toBeInTheDocument()
+  await user.keyboard('h'); expect(screen.getAllByText('роль скрыта')).toHaveLength(10)
+  await user.keyboard('h'); expect(app.getState().settings.rolesHidden).toBe(false)
+  // Внутри дня открытые роли остаются открытыми.
+  act(() => { app.dispatch({ type: 'openCircle', first: 1 }) }); expect(app.getState().settings.rolesHidden).toBe(false)
+  await user.keyboard('h'); act(() => { app.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }) })
+  expect(app.getState().settings.rolesHidden).toBe(false); expect(screen.queryByText('роль скрыта')).not.toBeInTheDocument()
 })

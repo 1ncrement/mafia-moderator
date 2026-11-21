@@ -1,6 +1,7 @@
 import {
   applyPatch, applyUndo, checkComposition, dealRoles, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES,
-  defaultComposition, deriveState, execute, journal, MAX_CUSTOM_ROLES, newSession, newTimer, registryFor, sanitizeCustomRoles, timerReduce,
+  defaultComposition, deriveState, execute, journal, MAX_CUSTOM_ROLES, newSession, newTimer, registryFor, samePhase, sanitizeCustomRoles,
+  timerReduce,
 } from '../engine'
 import type {
   Command, CommandResult, CustomRole, GameEvent, GameState, RandomInt, Registry, RoleId, Seat, Session, SessionConfig, SpeechKind,
@@ -190,6 +191,18 @@ export function createAppStore(env: Env): AppStore {
     }
   }
 
+  /**
+   * Видимость ролей по фазе: в начале дня роли скрываются, в начале ночи открываются — и при отмене перехода тоже,
+   * по фазе, в которую вернулись. Внутри фазы видимостью управляет ведущий. Распределение правило не трогает:
+   * сами роли там не открываются. null — фаза не сменилась, настройку не трогаем.
+   */
+  const hiddenAfter = (session: Session, game: GameState): boolean | null => {
+    const before = state.session?.id === session.id ? state.game?.phase : null
+    const after = game.phase
+    if (!before || !after || samePhase(before, after) || after.kind === 'deal') return null
+    return after.kind === 'day'
+  }
+
   /** Принять новое состояние сессии: вывести стол, сохранить, сообщить подписчикам. */
   const commit = (session: Session, timer: 'sync' | 'keep' = 'sync') => {
     const game = deriveState(session, regOf(session))
@@ -197,7 +210,10 @@ export function createAppStore(env: Env): AppStore {
     const saved = storage.save(next, metaOf(next, base))
     if (saved) unsaved.delete(next.id)
     else unsaved.set(next.id, next)
-    set({ session: next, game, screen: screenOf(game), storageError: !saved })
+    const rolesHidden = hiddenAfter(session, game)
+    const settings = rolesHidden === null || rolesHidden === state.settings.rolesHidden ? state.settings : { ...state.settings, rolesHidden }
+    if (settings !== state.settings) storage.saveSettings(settings)
+    set({ session: next, game, screen: screenOf(game), storageError: !saved, settings })
   }
 
   const leaveSession = (patch: Partial<AppState>) => {

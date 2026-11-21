@@ -17,6 +17,8 @@ const seed = (a: AppStore) => {
   a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 })
   a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 3 })
   a.dispatch({ type: 'confirmNight', chosen: null })
+  // Утром роли скрыты (видимость по фазе), а предложение — часть журнала: ведущий открывает роли кнопкой.
+  a.setSettings({ rolesHidden: false })
 }
 
 /** Днём ведущий меняет роли №3 и №8: глава мафии на самом деле №8, значит блок №3 выстрел не отменял. */

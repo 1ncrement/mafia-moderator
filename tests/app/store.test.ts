@@ -117,3 +117,67 @@ test('хранилище недоступно: игра не теряется п
   expect(app.getState().sessions.find((m) => m.id === id)).toMatchObject({ status: 'running', phase: { kind: 'day', n: 1 } })
   app.openSession(id); expect(app.getState()).toMatchObject({ screen: 'game', game: { phase: { kind: 'day', n: 1 } } })
 })
+
+// ── Видимость ролей по фазе ─────────────────────────────────────────────────
+
+const day1 = (env = testEnv()) => { const app = seeded(env); app.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } }); return { app, env } }
+const hidden = (app: ReturnType<typeof seeded>) => app.getState().settings.rolesHidden
+const toNight1 = { type: 'startPhase', phase: { kind: 'night', n: 1 } } as const
+
+test('День 1 начался — роли скрыты; началась ночь — открыты; утром снова скрыты', () => {
+  const { app } = day1()
+  expect(hidden(app)).toBe(true)
+  app.dispatch(toNight1); expect(hidden(app)).toBe(false)
+  app.dispatch({ type: 'confirmNight', chosen: null }); expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 2 }); expect(hidden(app)).toBe(true)
+})
+test('ведущий открыл роли днём — до конца дня они открыты, следующий день снова скрыт', () => {
+  const { app } = day1()
+  app.setSettings({ rolesHidden: false })
+  app.dispatch({ type: 'openCircle', first: 5 }); app.speak('speech', 5); app.dispatch({ type: 'endSpeech' })
+  expect(hidden(app)).toBe(false)
+  app.dispatch(toNight1); app.dispatch({ type: 'confirmNight', chosen: null })
+  expect(hidden(app)).toBe(true)
+})
+test('ведущий скрыл роли ночью — до конца ночи они скрыты, шаги ночи видимость не трогают', () => {
+  const { app } = day1(); app.dispatch(toNight1)
+  app.setSettings({ rolesHidden: true })
+  app.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 }); app.dispatch({ type: 'enterStep', step: 'summary' })
+  expect(hidden(app)).toBe(true)
+})
+test('«Отменить» переход фазы ставит видимость по фазе, в которую вернулись', () => {
+  const { app } = day1()
+  app.setSettings({ rolesHidden: false }); app.dispatch(toNight1)
+  app.undo()
+  expect(app.getState().game!.phase).toEqual({ kind: 'day', n: 1 }); expect(hidden(app)).toBe(true)
+  app.dispatch(toNight1); app.dispatch({ type: 'confirmNight', chosen: null }); expect(hidden(app)).toBe(true)
+  app.undo()
+  expect(app.getState().game!.phase).toEqual({ kind: 'night', n: 1 }); expect(hidden(app)).toBe(false)
+})
+test('«Отменить» внутри фазы видимость не меняет', () => {
+  const { app } = day1(); app.setSettings({ rolesHidden: false })
+  app.dispatch({ type: 'openCircle', first: 5 }); app.undo()
+  expect(hidden(app)).toBe(false)
+})
+test('перезагрузка страницы посреди фазы видимость не меняет', () => {
+  const day = day1(); day.app.setSettings({ rolesHidden: false })
+  const reloadedDay = createAppStore(day.env)
+  expect(reloadedDay.getState().game!.phase).toEqual({ kind: 'day', n: 1 }); expect(hidden(reloadedDay)).toBe(false)
+  const night = day1(); night.app.dispatch(toNight1); night.app.setSettings({ rolesHidden: true })
+  const reloadedNight = createAppStore(night.env)
+  expect(reloadedNight.getState().game!.phase).toEqual({ kind: 'night', n: 1 }); expect(hidden(reloadedNight)).toBe(true)
+  // Скрытие в начале дня тоже сохранено: после перезагрузки роли не открываются сами.
+  expect(hidden(createAppStore(day1().env))).toBe(true)
+})
+test('распределение и итоги правило не трогает; открытие игры из списка — тоже', () => {
+  const env = testEnv(); const app = seeded(env)
+  expect(hidden(app)).toBe(false)
+  app.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } }); app.undo()
+  // Вернулись на распределение: правило молчит, роли остаются как были в момент отмены — сами не открываются.
+  expect(app.getState().screen).toBe('deal'); expect(hidden(app)).toBe(true)
+  app.setSettings({ rolesHidden: false }); app.dispatch({ type: 'swapRoles', a: 1, b: 2 }); expect(hidden(app)).toBe(false)
+  app.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } }); app.setSettings({ rolesHidden: false })
+  app.dispatch({ type: 'finishGame', winner: null }); expect(hidden(app)).toBe(false)
+  app.dispatch({ type: 'resumeGame' }); expect(hidden(app)).toBe(false)
+  const id = app.getState().session!.id
+  app.goHome(); app.openSession(id); expect(hidden(app)).toBe(false)
+})
