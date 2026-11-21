@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { phaseLabel, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
+import { soloCount } from '../../engine'
 import type { GameState } from '../../engine'
 import { Button } from '../common/Button'
 import { Eye, EyeOff, Menu, Moon, Pause, SoundOff, SoundOn, Sun, Undo } from '../common/icons'
@@ -19,6 +20,7 @@ export function Header({ game, onModal }: { game: GameState; onModal(modal: Game
   const menu = useRef<HTMLDivElement>(null)
   const hidden = settings.rolesHidden
   const phase = game.phase ?? { kind: 'deal' as const }
+  const soloSide = store.registry.sides.find((side) => side.solo && game.players.some((p) => p.side === side.id))
 
   useEffect(() => {
     if (!menuOpen) return
@@ -43,12 +45,19 @@ export function Header({ game, onModal }: { game: GameState; onModal(modal: Game
         </div>
         <div className="game-counts">
           <span>{t('game.alive')} <strong>{t('game.aliveOf', { alive: game.counts.alive, total: game.counts.total })}</strong></span>
-          {!hidden && store.registry.sides.map((side) => (
+          {!hidden && store.registry.sides.filter((side) => !side.solo).map((side) => (
             <span key={side.id} className="game-count">
               <SideDot registry={store.registry} side={side.id} />
               {translateKey(lang, `${side.nameKey}.gen`)} <strong>{game.counts.bySide[side.id] ?? 0}</strong>
             </span>
           ))}
+          {/* Одиночки считаются вместе. Счётчик есть, только если одиночка был роздан, — и остаётся, когда он выбыл. */}
+          {!hidden && soloSide && (
+            <span className="game-count">
+              <SideDot registry={store.registry} side={soloSide.id} />
+              {t('side.solo.gen')} <strong>{soloCount(store.registry, game.counts.bySide)}</strong>
+            </span>
+          )}
           {!hidden && game.endHint && <span className="game-hint">{t(`hint.${game.endHint}`)}</span>}
         </div>
         <div className="game-tools">

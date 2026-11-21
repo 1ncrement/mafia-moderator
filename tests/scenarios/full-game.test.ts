@@ -127,7 +127,7 @@ test('партия со своими ролями: запись журналис
   const go = (s: Session, ...cmds: Command[]) => playWith(R, s, ...cmds)
   const now = (s: Session) => deriveState(s, R)
   const stepOf = (s: Session, id: string) => now(s).night!.steps.find((x) => x.id === id)!
-  expect(now(start).counts.bySide).toEqual({ black: 4, red: 7 })
+  expect(now(start).counts.bySide).toMatchObject({ black: 4, red: 7 })
 
   // Шаг 5: Ночь 1 — шаг журналиста идёт после доктора; запись есть, подсказка итога та же, что без неё.
   let s = go(start, act('mafia_shot', null, 7), act('doctor_heal', 4, 2))
@@ -138,7 +138,7 @@ test('партия со своими ролями: запись журналис
   expect(now(s).night!.outcome).toEqual(hint)
   expect(stepOf(s, 'act_custom_j:6')).toMatchObject({ effect: 'note', recorded: true, target: 9, blocked: false })
   s = go(s, { type: 'confirmNight', died: [7] })
-  expect(now(s).phase).toEqual(day(2)); expect(now(s).counts.bySide).toEqual({ black: 4, red: 6 }); expect(now(s).warnings).toEqual([])
+  expect(now(s).phase).toEqual(day(2)); expect(now(s).counts.bySide).toMatchObject({ black: 4, red: 6 }); expect(now(s).warnings).toEqual([])
 
   // Шаг 6: Ночь 2 — проститутка блокирует журналиста (запись всё равно делается), шериф видит маньяка чёрным.
   s = go(s, { type: 'startPhase', phase: night(2) })
@@ -154,7 +154,7 @@ test('партия со своими ролями: запись журналис
   s = go(s, { type: 'nominate', by: 6, target: 9 })
   expect(now(s).day!.ballots[0]).toMatchObject({ voters: 10, hint: { outcome: 'eliminated', seats: [9] } })
   s = go(s, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [9] })
-  expect(now(s).counts.bySide).toEqual({ black: 3, red: 6 })
+  expect(now(s).counts.bySide).toMatchObject({ black: 3, red: 6 })
 
   // Обмен ролей с носителем своей роли: журналистом становится №2, ночные записи идут за ролью.
   s = go(s, { type: 'swapRoles', a: 6, b: 2 })

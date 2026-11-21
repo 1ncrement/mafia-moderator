@@ -3,7 +3,7 @@ import { currentPhase, lastOf, samePhase } from './log'
 import { actionOfStepId, deathSeats, nightState, permanentMarks } from './night'
 import { leftAtNight, playersNow } from './players'
 import { endHintFor } from './roles/rules'
-import { balaganInDay } from './setup'
+import { balaganInDay, soloCount } from './setup'
 import type { GameState, Morning, NightState, PhaseRef, Registry, Session, SideId, StateWarning, StepId } from './types'
 
 // Вывод состояния стола из журнала. Проход по журналу никогда не бросает исключений:
@@ -71,7 +71,8 @@ export function deriveState(session: Session, registry: Registry): GameState {
     step,
     players: views,
     counts: { total: views.length, alive, bySide },
-    endHint: endHintFor(bySide),
+    // Пока в игре одиночка, «чёрных не осталось» ещё не конец игры: подсказка молчит.
+    endHint: soloCount(registry, bySide) > 0 ? null : endHintFor(bySide),
     finished: finished ? { winner: finished.winner } : null,
     warnings,
     day,

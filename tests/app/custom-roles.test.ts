@@ -2,13 +2,13 @@ import { createAppStore } from '../../src/app/store'
 import { DEFAULT_REGISTRY } from '../../src/engine'
 import { seeded, testEnv } from '../helpers'
 
-const input = { name: '  Журналист ', side: 'red', night: true }
+const input = { name: '  Адвокат ', side: 'red', night: true }
 
 test('добавленная роль в перечне, в составе с количеством 1 и в справочнике экрана состава', () => {
   const env = testEnv(); const app = createAppStore(env); app.newGame()
   expect(app.addCustomRole(input)).toBeNull()
   const [role] = app.getState().settings.customRoles
-  expect(role).toMatchObject({ name: 'Журналист', side: 'red', night: true }); expect(role!.id).toMatch(/^custom_/)
+  expect(role).toMatchObject({ name: 'Адвокат', side: 'red', night: true }); expect(role!.id).toMatch(/^custom_/)
   expect(app.getState().draft.composition[role!.id]).toBe(1)
   expect(app.registry.roles.at(-1)).toMatchObject({ id: role!.id, custom: true })
   // перечень пережил перезапуск, хотя игру не раздавали
@@ -21,7 +21,7 @@ test('название проверяется: пустое, длинное, з�
   expect(app.addCustomRole({ ...input, name: 'лікар' })).toBe('duplicate')
   expect(app.addCustomRole({ ...input, name: 'я'.repeat(40) })).toBeNull()
   expect(app.getState().settings.customRoles[0]!.name).toBe('я'.repeat(24))
-  expect(app.addCustomRole(input)).toBeNull(); expect(app.addCustomRole({ ...input, name: 'журналист' })).toBe('duplicate')
+  expect(app.addCustomRole(input)).toBeNull(); expect(app.addCustomRole({ ...input, name: 'адвокат' })).toBe('duplicate')
 })
 test('не больше восьми своих ролей', () => {
   const app = createAppStore(testEnv()); app.newGame()
@@ -40,7 +40,7 @@ test('правка и удаление', () => {
 })
 test('игра хранит копию участвующих ролей и открывается после удаления роли из перечня', () => {
   const env = testEnv(); const app = createAppStore(env); app.newGame()
-  app.addCustomRole(input); app.addCustomRole({ name: 'Маньяк', side: 'black', night: false })
+  app.addCustomRole(input); app.addCustomRole({ name: 'Оборотень', side: 'black', night: false })
   const [j, m] = app.getState().settings.customRoles
   app.editDraft({ playerCount: 11, composition: { ...app.getState().draft.composition, [m!.id]: 0 } })
   app.dealDraft()
@@ -49,7 +49,7 @@ test('игра хранит копию участвующих ролей и от
   app.goHome(); app.removeCustomRole(j!.id)
   const again = createAppStore(testEnv(env.kv)); again.openSession(app.getState().sessions[0]!.id)
   expect(again.getState().brokenSession).toBeNull()
-  expect(again.registry.roles.find((r) => r.id === j!.id)).toMatchObject({ name: 'Журналист' })
+  expect(again.registry.roles.find((r) => r.id === j!.id)).toMatchObject({ name: 'Адвокат' })
   again.rematch()
   expect(again.getState().settings.customRoles.map((r) => r.id)).toContain(j!.id)
 })
@@ -77,7 +77,7 @@ test('название встроенной роли занято во всех 
   expect(app.addCustomRole({ ...input, name: 'мирні' })).toBe('duplicate')
   expect(app.addCustomRole({ ...input, name: 'Крёстный отец' })).toBe('duplicate')
 })
-/** Приложение с завершённой раздачей, в которой участвует «Журналист», уже удалённый из перечня. */
+/** Приложение с завершённой раздачей, в которой участвует «Адвокат», уже удалённый из перечня. */
 function playedAndRemoved() {
   const env = testEnv(); const app = createAppStore(env); app.newGame(); app.addCustomRole(input)
   const old = app.getState().settings.customRoles[0]!
@@ -88,7 +88,7 @@ function playedAndRemoved() {
 }
 test('«с тем же составом»: в перечне уже есть роль с таким названием — двойник не создаётся, количество переходит к ней', () => {
   const { app, old, sessionId } = playedAndRemoved()
-  app.newGame(); app.addCustomRole({ name: 'журналист', side: 'black', night: false })
+  app.newGame(); app.addCustomRole({ name: 'адвокат', side: 'black', night: false })
   const fresh = app.getState().settings.customRoles[0]!
   app.openSession(sessionId); app.rematch()
   expect(app.getState().settings.customRoles).toEqual([fresh])
@@ -167,9 +167,9 @@ test('состав, розданный без роли, остаётся ста�
   const app = createAppStore(testEnv())
   app.newGame(); app.editDraft({ playerCount: 11 }); app.dealDraft()      // игра А без своих ролей
   const oldId = app.getState().session!.id; app.goHome()
-  app.newGame(); app.addCustomRole({ name: 'Маньяк', side: 'black', night: false })
+  app.newGame(); app.addCustomRole({ name: 'Оборотень', side: 'black', night: false })
   const maniac = app.getState().settings.customRoles[0]!.id
-  app.dealDraft(); app.goHome()                                            // игра Б с маньяком
+  app.dealDraft(); app.goHome()                                            // игра Б с оборотеньом
   app.openSession(oldId); app.rematch(); app.dealDraft(); app.goHome()     // «с тем же составом» игры А
   app.newGame()
   expect(app.getState().draft.composition[maniac]).toBe(0)
@@ -181,7 +181,7 @@ test('роль переименовали после раздачи: игра п
   const sessionId = app.getState().session!.id; app.goHome()
   expect(app.updateCustomRole(id, { name: 'Репортёр', side: 'black', night: false })).toBeNull()
   app.openSession(sessionId)
-  expect(app.registry.roles.find((r) => r.id === id)).toMatchObject({ name: 'Журналист', side: 'red' })
+  expect(app.registry.roles.find((r) => r.id === id)).toMatchObject({ name: 'Адвокат', side: 'red' })
   expect(app.registry.nightActions.some((a) => a.performers.includes(id))).toBe(true)
   app.goHome(); app.newGame()
   expect(app.registry.roles.find((r) => r.id === id)).toMatchObject({ name: 'Репортёр', side: 'black' })

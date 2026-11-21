@@ -3,11 +3,18 @@
 export type Seat = number
 export type RoleId = string
 export type SideId = string
-/** note — запись выбора своей роли: шаг и запись есть, в расчёте итога ночи не участвует. */
-export type EffectId = 'kill' | 'heal' | 'block' | 'check_side' | 'find_role' | 'note'
+/**
+ * note — запись выбора своей роли: шаг и запись есть, в расчёте итога ночи не участвует.
+ * guard — защита: нападение на подзащитного переходит на исполнителя; compare_sides — сравнение сторон двух игроков;
+ * haunt — визит: жертва на следующий день молчит, второй и следующий визит к ней — нападение.
+ */
+export type EffectId = 'kill' | 'heal' | 'block' | 'check_side' | 'find_role' | 'note' | 'guard' | 'compare_sides' | 'haunt'
 
-/** colorVar — переменная CSS для точки стороны; ring — светлое кольцо вокруг точки. */
-export type SideDef = { id: SideId; nameKey: string; colorVar: string; ring?: true }
+/**
+ * colorVar — переменная CSS для точки стороны; ring — светлое кольцо вокруг точки.
+ * solo — сторона одиночки («сам за себя»): в счётчиках одиночки считаются вместе, точка стороны — ромбом.
+ */
+export type SideDef = { id: SideId; nameKey: string; colorVar: string; ring?: true; solo?: true }
 
 /** Роль, которую создал ведущий. night — у роли есть ночной шаг, выбор которого только записывается. */
 export type CustomRole = { id: RoleId; name: string; side: SideId; night: boolean }
@@ -20,7 +27,8 @@ export type RoleOptionChoice = { value: string; labelKey: string; lateBlockKey?:
  */
 export type RoleOptionDef =
   | { id: string; kind: 'toggle'; default: boolean; labelKey: string }
-  | { id: string; kind: 'choice'; default: string; choices: RoleOptionChoice[]; labelKey: string }
+  /** hintKey — пояснение под вариантами. */
+  | { id: string; kind: 'choice'; default: string; choices: RoleOptionChoice[]; labelKey: string; hintKey?: string }
 
 export type RoleDef = {
   id: RoleId
@@ -44,6 +52,12 @@ export type RoleDef = {
   seenBySheriffAs: SideId
   /** Опции роли: экран состава рисует их под строкой включённой роли. */
   options?: RoleOptionDef[]
+  /** Больше стольких в одной игре быть не может: счётчик на экране состава выше не поднимается. */
+  maxCount?: number
+  /** Вторая жизнь (жилет): первая смерть — ночная или изгнание голосованием — не срабатывает, роль открывается столу. */
+  extraLife?: true
+  /** Ключ пометки рядом с названием на экране состава («новая»). */
+  tagKey?: string
 }
 
 export type NightActionDef = {
@@ -64,6 +78,15 @@ export type NightActionDef = {
   /** Для find_role: какую роль ищут. */
   findRole?: RoleId
   noRepeatTarget?: true
+  /** Сколько игроков выбирает исполнитель; без поля — одного. */
+  targets?: 2
+  /** Себя выбрать нельзя. */
+  noSelf?: true
+  /**
+   * Причина выбытия, которую даёт действие: у нападения — жертве, у защиты — исполнителю, погибшему вместо подзащитного.
+   * Без поля — «застрелен».
+   */
+  cause?: OutCause
   stepKey: string
   questionKey: string
 }
@@ -79,7 +102,8 @@ export type DayStep = 'night_farewell' | 'balagan' | 'speeches' | 'defense' | 'v
 export type StepId = string
 /** closing — доп. речь первых двоих в конце первого круга: идёт внутри шага «Круг речей», длится как обычная речь. */
 export type SpeechKind = 'balagan' | 'speech' | 'closing' | 'defense' | 'tiebreak' | 'farewell'
-export type OutCause = 'shot' | 'voted'
+/** shot — застрелен, voted — выгнан голосованием, slain — убит ударом, haunted — убит визитом, guard — погиб вместо подзащитного. */
+export type OutCause = 'shot' | 'voted' | 'slain' | 'haunted' | 'guard'
 
 type Ev<T extends string, P> = {
   id: string

@@ -14,7 +14,9 @@ function useCards(game: GameState): CardView[] {
   const lang = useLang()
   const { selection } = useSelection()
   const extra = useTableMarksValue()
+  const store = useStore()
   const day = game.day
+  const soloSides = new Set(store.registry.sides.filter((side) => side.solo).map((side) => side.id))
 
   return game.players.map((player) => {
     const seat = player.seat
@@ -28,6 +30,8 @@ function useCards(game: GameState): CardView[] {
       if (day?.skipped.includes(seat)) parts.push(t('card.skipped'))
       if (parts.length > 0) marks.push({ text: parts.join(' · '), tone: 'plain' })
     }
+    // Одиночка помечен на карточке: его сторона — он сам. Метка скрывается вместе с ролями.
+    if (soloSides.has(player.side)) marks.push({ text: t('side.solo'), tone: 'solo' })
     marks.push(...(extra.marks[seat] ?? []))
     // Постоянные метки: кого проверял шериф и кого искал глава мафии.
     for (const m of game.permanentMarks) if (m.seat === seat) marks.push({ text: translateKey(lang, `action.${m.actionId}.mark`), tone: 'night' })

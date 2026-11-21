@@ -38,7 +38,8 @@ export function checkComposition(
   // Колода ровно по составу: вложенные роли забирают свою долю из счётчика родителя.
   const deck: RoleId[] = []
   for (const role of configurableRoles(registry)) {
-    let left = wholeCount(composition[role.id])
+    // Роли с пределом (одиночки) больше предела в колоду не попадает, что бы ни лежало в составе.
+    let left = Math.min(wholeCount(composition[role.id]), role.maxCount ?? Infinity)
     for (const nested of nestedRoles(registry, role.id)) {
       const take = Math.min(nested.exactCount ?? 0, left)
       for (let i = 0; i < take; i++) deck.push(nested.id)
@@ -59,11 +60,17 @@ export function checkComposition(
     if (side !== undefined) bySide[side] = (bySide[side] ?? 0) + 1
   }
 
-  const killers = new Set(registry.nightActions.filter((a) => a.effect === 'kill').flatMap((a) => a.performers))
+  // «Нет мафии» — нет команды, которая стреляет ночью: убийца-одиночка её не заменяет.
+  const killers = new Set(registry.nightActions.filter((a) => a.effect === 'kill' && a.scope === 'team').flatMap((a) => a.performers))
   if (!deck.some((card) => killers.has(card))) warnings.push('no_killer')
   if (blackNotLess(bySide)) warnings.push('black_not_less_than_red')
 
   return { errors, warnings, deck, civilians, bySide }
+}
+
+/** Сколько одиночек («сам за себя») в счётчике сторон: стороны-одиночки считаются вместе. */
+export function soloCount(registry: Registry, bySide: Record<SideId, number>): number {
+  return registry.sides.reduce((sum, side) => (side.solo ? sum + (bySide[side.id] ?? 0) : sum), 0)
 }
 
 /**

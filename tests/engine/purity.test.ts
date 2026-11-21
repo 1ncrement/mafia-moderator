@@ -10,8 +10,8 @@ function sourceFiles(dir: string): string[] {
 }
 const read = (file: string) => readFileSync(file, 'utf8')
 
-test('идентификаторы ролей и сторон не встречаются вне src/engine/roles', () => {
+test('идентификаторы ролей, сторон и опций не встречаются вне src/engine/roles', () => {
   const offenders = sourceFiles('src').filter((f) => !f.includes('src/engine/roles/'))
-    .filter((f) => /['"`](civilian|mafia|godfather|prostitute|sheriff|doctor|red|black)['"`]/.test(read(f)))
+    .filter((f) => /['"`](civilian|mafia|godfather|prostitute|sheriff|doctor|red|black|bodyguard|journalist|butcher|maniac|bulletproof|solo_butcher|solo_maniac|leader_block|journalist_pace|maniac_no_repeat|maniac_no_nominate|maniac_no_vote)['"`]/.test(read(f)))
   expect(offenders).toEqual([])
 })

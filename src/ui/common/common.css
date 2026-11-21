@@ -86,6 +86,11 @@
 .dot-hollow {
   border: 2px solid var(--text-2);
 }
+/* Одиночка («сам за себя»): ромб своего цвета. */
+.dot-solo {
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
 
 /* Счётчик */
 .stepper {

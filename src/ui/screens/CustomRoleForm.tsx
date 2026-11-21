@@ -21,7 +21,8 @@ export function CustomRoleForm({ title, submitLabel, initial, onSubmit, onCancel
   const store = useStore()
   const t = useT()
   const lang = useLang()
-  const sides = store.registry.sides
+  // Своя роль играет за чёрных или за красных: сторон-одиночек в выборе нет.
+  const sides = store.registry.sides.filter((s) => !s.solo)
   const nameId = useId()
   const sideId = useId()
   const nightId = useId()

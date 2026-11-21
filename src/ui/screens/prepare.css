@@ -201,6 +201,11 @@
   width: 12px;
   height: 12px;
 }
+/* Выключенная роль: название и счётчик серые. */
+.role-row[data-off] .role-row-name,
+.role-row[data-off] .stepper-value {
+  color: var(--text-2);
+}
 .role-row-text {
   flex: 1 1 240px;
   display: flex;

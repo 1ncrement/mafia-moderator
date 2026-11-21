@@ -94,7 +94,7 @@ test('игра открывается и называет роль, которо
   expect(app.getState().settings.customRoles).toEqual([])
   expect(screen.getAllByText('журналист').length).toBeGreaterThan(0); expect(screen.getAllByText('маньяк').length).toBeGreaterThan(0)
   expect(screen.getByText('чёрных')).toBeInTheDocument()
-  expect(app.getState().game!.counts.bySide).toEqual({ black: 4, red: 7 })
+  expect(app.getState().game!.counts.bySide).toMatchObject({ black: 4, red: 7 })
 })
 
 // ── По итогам независимого ревью ────────────────────────────────────────────

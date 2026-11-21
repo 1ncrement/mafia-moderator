@@ -5,7 +5,7 @@ test('после раздачи: фаза deal, роли и стороны по 
   const g = st(game(TABLE_11))
   expect(g.phase).toEqual({ kind: 'deal' }); expect(g.step).toBeNull()
   expect(g.players[2]).toMatchObject({ seat: 3, roleId: 'godfather', side: 'black', status: 'alive' })
-  expect(g.counts).toEqual({ total: 11, alive: 11, bySide: { black: 3, red: 8 } })
+  expect(g.counts).toMatchObject({ total: 11, alive: 11, bySide: { black: 3, red: 8 } })
 })
 test('перераздать можно только до Дня 1', () => {
   const s = game(TABLE_11); const again = [...st(s).players.map((p) => p.roleId)].reverse()

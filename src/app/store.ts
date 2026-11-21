@@ -465,8 +465,12 @@ export function createAppStore(env: Env): AppStore {
 
     updateCustomRole(id, input) {
       const list = state.settings.customRoles
-      if (!list.some((r) => r.id === id)) return null
-      const issue = checkRoleName(input.name, takenNames(base, list, id))
+      const current = list.find((r) => r.id === id)
+      if (!current) return null
+      // Роль, заведённая раньше, может носить название, которое потом заняла встроенная («Журналист»):
+      // пока название не меняют, правка разрешена.
+      const sameName = cleanRoleName(input.name).toLowerCase() === current.name.toLowerCase()
+      const issue = sameName ? null : checkRoleName(input.name, takenNames(base, list, id))
       if (issue) return issue
       saveRoles(list.map((r) => (r.id === id ? { id, name: cleanRoleName(input.name), side: input.side, night: input.night } : r)))
       return null

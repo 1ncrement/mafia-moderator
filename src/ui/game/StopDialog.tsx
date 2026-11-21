@@ -49,11 +49,12 @@ export function StopDialog({ game, change, onClose }: { game: GameState; change?
         {t('stop.sub', { phase: game.phase ? phaseLabel(lang, game.phase) : '', alive: game.counts.alive, total: game.counts.total })}
       </p>
       <div role="radiogroup" aria-label={t('stop.group')} className="stop-options">
-        {store.registry.sides.map((side) => option(
-          side.id, cap(translateKey(lang, side.nameKey)),
+        {/* Одиночка предлагается победителем, только если его роль есть в игре. */}
+        {store.registry.sides.filter((side) => !side.solo || game.players.some((p) => p.side === side.id)).map((side) => {
+          const who = side.solo ? t('side.solo') : sideRoles(side.id)
           // Счётчик сторон скрывается вместе с ролями.
-          settings.rolesHidden ? sideRoles(side.id) : `${sideRoles(side.id)} · ${t('stop.alive', { n: game.counts.bySide[side.id] ?? 0 })}`,
-        ))}
+          return option(side.id, cap(translateKey(lang, side.nameKey)), settings.rolesHidden ? who : `${who} · ${t('stop.alive', { n: game.counts.bySide[side.id] ?? 0 })}`)
+        })}
         {option(null, t('stop.none'), t('stop.none.sub'))}
       </div>
       <div className="dialog-actions stop-actions">

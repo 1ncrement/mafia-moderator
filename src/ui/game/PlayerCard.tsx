@@ -29,7 +29,7 @@ export function PlayerCard({ view, registry, rolesHidden, onOpen, onPick }: Prop
   const out = player.status === 'out'
   const status = statusText(lang, player)
   const selectable = pick?.allowed === true
-  const marks = rolesHidden ? view.marks.filter((m) => m.tone !== 'night' && m.tone !== 'block') : view.marks
+  const marks = rolesHidden ? view.marks.filter((m) => m.tone !== 'night' && m.tone !== 'block' && m.tone !== 'solo') : view.marks
   const className = cx(
     'card',
     out && 'card-out',

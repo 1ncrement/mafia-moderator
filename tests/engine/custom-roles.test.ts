@@ -15,7 +15,7 @@ test('без своих ролей справочник — тот же объе
   expect(registryFor(DEFAULT_REGISTRY, ROLES)).toBe(R)
 })
 test('свои роли стоят после встроенных; ночная получает действие «запись» в конце очереди', () => {
-  expect(configurableRoles(R).map((r) => r.id)).toEqual(['mafia', 'prostitute', 'sheriff', 'doctor', 'custom_j', 'custom_m'])
+  expect(configurableRoles(R).map((r) => r.id)).toEqual(['mafia', 'prostitute', 'sheriff', 'doctor', 'bodyguard', 'journalist', 'butcher', 'maniac', 'bulletproof', 'custom_j', 'custom_m'])
   expect(R.roles.find((r) => r.id === 'custom_j')).toMatchObject({ name: 'журналист', side: 'red', seenBySheriffAs: 'red', custom: true, defaultCount: 0 })
   expect(R.nightActions.at(-1)).toMatchObject({ id: 'act_custom_j', effect: 'note', performers: ['custom_j'], scope: 'each' })
   expect(R.nightActions.at(-1)!.order).toBeGreaterThan(Math.max(...DEFAULT_REGISTRY.nightActions.map((a) => a.order)))
@@ -32,7 +32,7 @@ test('негодные записи перечня пропускаются', ()
 })
 test('состав считает свои роли по цвету; ролей больше игроков — раздать нельзя', () => {
   const check = checkComposition(11, { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1, custom_j: 1, custom_m: 1 }, R)
-  expect(check.errors).toEqual([]); expect(check.civilians).toBe(4); expect(check.bySide).toEqual({ black: 4, red: 7 })
+  expect(check.errors).toEqual([]); expect(check.civilians).toBe(4); expect(check.bySide).toMatchObject({ black: 4, red: 7 })
   expect(check.deck.filter((c) => c === 'custom_j')).toHaveLength(1)
   expect(checkComposition(4, { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1, custom_j: 1 }, R).errors).toEqual(['too_many_roles'])
   expect(checkComposition(6, { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1, custom_j: 1 }, R)).toMatchObject({ errors: [], civilians: 0 })

@@ -269,6 +269,14 @@
   border-color: var(--block);
   background: var(--block-card);
 }
+/* Одиночка: метка «сам за себя» своего цвета. */
+.card-mark-solo {
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--solo-tint);
+  color: var(--solo-ink);
+}
 .card-mark-block {
   align-self: flex-start;
   padding: 3px 9px;

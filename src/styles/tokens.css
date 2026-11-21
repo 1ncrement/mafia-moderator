@@ -26,6 +26,10 @@
   --block-ink: #ffc2c4;
   --block-pill: #8f1d22;
   --block-card: #2a1416;
+  /* Одиночки («сам за себя»): точка стороны, подложка и текст метки. */
+  --solo: #b79cff;
+  --solo-tint: #2a2140;
+  --solo-ink: #d9ccff;
 
   --font-ui: 'Golos Text', system-ui, sans-serif;
   --font-num: 'Oswald', 'Golos Text', sans-serif;

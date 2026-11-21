@@ -3,7 +3,7 @@ import { cap, hasKey, plural, roleName, roleText, roleTitle, stepName, translate
 import { useApp, useStore, useT } from '../../app/StoreContext'
 import {
   checkComposition, configurableRoles, DEFAULT_DURATIONS, DEFAULT_RULES, defaultComposition, MAX_CUSTOM_ROLES, MAX_PLAYERS, MIN_PLAYERS,
-  nestedRoles, nightOrder, optionValue,
+  nestedRoles, nightOrder, optionValue, soloCount,
 } from '../../engine'
 import type { Durations, RoleDef, RoleId, Rules, SessionConfig } from '../../engine'
 import { Button } from '../common/Button'
@@ -117,6 +117,7 @@ function RoleOptions({ role, values, blockFirst, onChange }: {
                 </button>
               ))}
             </div>
+            {def.hintKey && <span className="small muted">{translateKey(lang, def.hintKey)}</span>}
             {warning && <span className="role-option-warning" role="status">{translateKey(lang, warning)}</span>}
           </fieldset>
         )
@@ -159,7 +160,12 @@ export function SetupScreen() {
 
   const check = checkComposition(draft.playerCount, draft.composition, registry)
   const filler = registry.roles.find((r) => r.filler)
-  const sideName = (role: RoleDef) => translateKey(lang, registry.sides.find((s) => s.id === role.side)?.nameKey ?? role.side)
+  // Одиночка подписан «сам за себя», а не названием своей стороны: оно совпадает с названием роли.
+  const sideName = (role: RoleDef) => {
+    const side = registry.sides.find((s) => s.id === role.side)
+    return side?.solo ? t('side.solo') : translateKey(lang, side?.nameKey ?? role.side)
+  }
+  const solo = soloCount(registry, check.bySide)
   const actsAtNight = (role: RoleDef) => registry.nightActions.some((a) => a.performers.includes(role.id))
   const about = (role: RoleDef) => {
     if (role.custom) return t(actsAtNight(role) ? 'role.custom.about.night' : 'role.custom.about.passive')
@@ -243,7 +249,7 @@ export function SetupScreen() {
               )
             }
             return (
-              <div key={role.id} className={role.custom ? 'role-row role-row-custom' : 'role-row'}>
+              <div key={role.id} className={role.custom ? 'role-row role-row-custom' : 'role-row'} data-off={count > 0 ? undefined : ''}>
                 <button
                   type="button" role="switch" aria-checked={count > 0} aria-label={t('setup.role.on', { role: name })} className="switch"
                   onClick={() => setCount(role.id, count > 0 ? 0 : Math.max(1, role.defaultCount))}
@@ -255,6 +261,7 @@ export function SetupScreen() {
                   <span className="role-row-head">
                     <span className="role-row-name">{name}</span>
                     {role.custom && <span className="role-tag">{t('role.custom.tag')}</span>}
+                    {role.tagKey && <span className="role-tag">{translateKey(lang, role.tagKey)}</span>}
                   </span>
                   <span className="muted">{sub(role)}</span>
                   {nested.map((x) => (
@@ -274,7 +281,7 @@ export function SetupScreen() {
                   </div>
                 )}
                 <Stepper
-                  value={count} min={0} max={MAX_PLAYERS}
+                  value={count} min={0} max={role.maxCount ?? MAX_PLAYERS}
                   lessLabel={t('stepper.less', { name })} moreLabel={t('stepper.more', { name })}
                   onChange={(n) => setCount(role.id, n)}
                 />
@@ -325,12 +332,19 @@ export function SetupScreen() {
           <div className="panel setup-total">
             <div className="setup-total-line">
               <span className="setup-total-players">{plural(lang, draft.playerCount, 'players')}</span>
-              {registry.sides.map((side) => (
+              {registry.sides.filter((side) => !side.solo).map((side) => (
                 <span key={side.id} className="setup-total-side">
                   <SideDot registry={registry} side={side.id} />
                   {translateKey(lang, `${side.nameKey}.gen`)} {check.bySide[side.id] ?? 0}
                 </span>
               ))}
+              {/* Одиночки считаются вместе; пока их в составе нет, счётчика нет. */}
+              {solo > 0 && (
+                <span className="setup-total-side">
+                  <SideDot registry={registry} side={registry.sides.find((side) => side.solo)?.id ?? null} />
+                  {`${t('side.solo.gen')} ${solo}`}
+                </span>
+              )}
             </div>
             <span className="small muted">{t('setup.deck')}</span>
             <ul className="chips" aria-label={t('setup.deck.aria')}>

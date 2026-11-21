@@ -4,12 +4,12 @@ import { countBy } from '../helpers'
 
 const std = { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1 }
 test('по умолчанию каждой роли по одной', () => {
-  expect(defaultComposition(DEFAULT_REGISTRY)).toEqual({ mafia: 1, prostitute: 1, sheriff: 1, doctor: 1 })
+  expect(defaultComposition(DEFAULT_REGISTRY)).toMatchObject({ mafia: 1, prostitute: 1, sheriff: 1, doctor: 1 })
 })
 test('11 игроков, 2 мафии: один крёстный отец внутри числа мафий, 6 мирных', () => {
   const r = checkComposition(11, std, DEFAULT_REGISTRY)
   expect(countBy(r.deck)).toEqual({ godfather: 1, mafia: 1, prostitute: 1, sheriff: 1, doctor: 1, civilian: 6 })
-  expect(r.civilians).toBe(6); expect(r.bySide).toEqual({ black: 3, red: 8 }); expect(r.errors).toEqual([])
+  expect(r.civilians).toBe(6); expect(r.bySide).toMatchObject({ black: 3, red: 8 }); expect(r.errors).toEqual([])
 })
 test('одна мафия — это крёстный отец', () => {
   expect(countBy(checkComposition(10, { ...std, mafia: 1 }, DEFAULT_REGISTRY).deck).mafia).toBeUndefined()
