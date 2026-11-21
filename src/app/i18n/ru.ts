@@ -65,6 +65,7 @@ export const ru = {
   'step.tiebreak': 'Речи при ничьей',
   'step.revote': 'Переголосование',
   'step.farewell': 'Прощание',
+  'step.night_farewell': 'Прощание',
   'step.summary': 'Итог ночи',
 
   // ── Общее ──
@@ -306,6 +307,9 @@ export const ru = {
   'day.toRevote': 'К переголосованию',
   'day.farewell': 'Прощание №{n} · {sec}',
   'day.farewell.title': '{seats}: выгнан · прощание',
+  'day.nightFarewell.title.one': '{seats}: выбыл ночью · прощание',
+  'day.nightFarewell.title.many': '{seats}: выбыли ночью · прощание',
+  'day.toBalagan': 'Дальше: балаган',
   'day.notSpoken': 'Не говорили: {list}',
   'day.nominates': '№{n} выставляет…',
   'day.nominate.question': 'Кого выставляет №{n}?',

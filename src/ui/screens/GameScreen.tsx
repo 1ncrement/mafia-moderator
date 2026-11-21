@@ -36,7 +36,7 @@ import '../game/game.css'
 /** Панель шага. Следующие задачи добавляют панели в карту «шаг → компонент». */
 export type StepPanel = FC<{ game: GameState; flash?: boolean }>
 
-const SPEECH_STEPS = ['balagan', 'speeches', 'defense', 'tiebreak', 'farewell']
+const SPEECH_STEPS = ['night_farewell', 'balagan', 'speeches', 'defense', 'tiebreak', 'farewell']
 
 function panelFor(game: GameState): StepPanel | null {
   if (game.day && game.step !== null && SPEECH_STEPS.includes(game.step)) return SpeechPanel
@@ -106,7 +106,7 @@ function Game({ game }: { game: GameState }) {
   // Ведущий ушёл дальше через полосу шагов, а круг не закончен или не начат вовсе — предупреждение, не запрет.
   const day = game.day
   const morning = game.morning
-  const notSpoken = day && game.step !== 'balagan' && game.step !== 'speeches' ? day.waiting : []
+  const notSpoken = day && game.step !== 'night_farewell' && game.step !== 'balagan' && game.step !== 'speeches' ? day.waiting : []
 
   // Итог прошлой ночи разошёлся с отметкой — предложение исправить. Живёт в журнале,
   // а при свёрнутом журнале переезжает в панель шага: ведущий должен его увидеть.

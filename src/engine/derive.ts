@@ -1,4 +1,4 @@
-import { dayState } from './day'
+import { dayState, nightFarewellSeats } from './day'
 import { currentPhase, lastOf, samePhase } from './log'
 import { actionOfStepId, deathSeats, nightState, permanentMarks } from './night'
 import { leftAtNight, playersNow } from './players'
@@ -11,8 +11,9 @@ import type { GameState, Morning, NightState, PhaseRef, Registry, Session, SideI
 
 export const SUMMARY_STEP: StepId = 'summary'
 
-function defaultStep(session: Session, phase: PhaseRef, night: NightState | null): StepId | null {
-  if (phase.kind === 'day') return balaganInDay(session.config.rules, phase.n) ? 'balagan' : 'speeches'
+function defaultStep(session: Session, phase: PhaseRef, night: NightState | null, nightFarewell: boolean): StepId | null {
+  // День открывается прощанием выбывших ночью, когда есть кому прощаться; иначе — балаганом или кругом речей.
+  if (phase.kind === 'day') return nightFarewell ? 'night_farewell' : balaganInDay(session.config.rules, phase.n) ? 'balagan' : 'speeches'
   if (phase.kind === 'night') return night?.steps[0]?.id ?? SUMMARY_STEP
   return null
 }
@@ -37,10 +38,12 @@ export function deriveState(session: Session, registry: Registry): GameState {
 
   // Носитель шага сменился (выбыл, вернулся, поменял роль) — ведущий остаётся на шаге того же действия.
   // На первый шаг сбрасываемся, только если такого действия в ночи больше нет.
-  let step = entered?.step ?? defaultStep(session, phase, night)
+  // Список прощающихся — по статусам, а не по очереди: говорящий сейчас из очереди уже вышел, а шаг остаётся.
+  const farewell = day ? nightFarewellSeats(session, views, day.n) : []
+  let step = entered?.step ?? defaultStep(session, phase, night, farewell.length > 0)
   if (night && step !== null && step !== SUMMARY_STEP && !night.steps.some((x) => x.id === step)) {
     const actionId = actionOfStepId(step)
-    step = night.steps.find((x) => x.actionId === actionId)?.id ?? defaultStep(session, phase, night)
+    step = night.steps.find((x) => x.actionId === actionId)?.id ?? defaultStep(session, phase, night, false)
   }
 
   const warnings: StateWarning[] = []
@@ -59,7 +62,7 @@ export function deriveState(session: Session, registry: Registry): GameState {
 
   // Утро выводится из статусов после прошлой ночи: ручная правка статуса и правка итога сразу меняют объявление.
   const morning: Morning | null = day && day.n >= 2 ? {
-    deaths: leftAtNight(views, day.n - 1), farewell: [], spared: [], silenced: [],
+    deaths: leftAtNight(views, day.n - 1), farewell, spared: [], silenced: [],
     announced: session.log.some((e) => e.type === 'morning_announced' && samePhase(e.phase, phase)),
   } : null
 

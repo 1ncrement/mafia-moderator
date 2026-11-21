@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { seatList } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
+import { balaganInDay } from '../../engine'
 import type { Command, GameState, RejectCode, Seat } from '../../engine'
 import { Button } from '../common/Button'
 import { afterExpelled, aliveOf } from './dayFlow'
@@ -19,7 +20,7 @@ export function useNominationNotice() {
 }
 
 /**
- * Панель дневных шагов с таймером: балаган, круг речей, оправдания, речи при ничьей, прощание.
+ * Панель дневных шагов с таймером: прощание после ночной смерти, балаган, круг речей, оправдания, речи при ничьей, прощание выгнанного.
  * Главная кнопка называет результат: «Следующий: №6 · 60 с».
  */
 export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean }) {
@@ -54,13 +55,13 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
     const skipIn = (kind: 'closing' | 'defense' | 'tiebreak' | 'farewell', seat: Seat) =>
       store.dispatchAll([{ type: 'startSpeech', kind, seat }, { type: 'endSpeech' }])
     const active = day.nominations.filter((x) => x.active)
+    const toCircle = () => {
+      go('speeches')
+      askOpener()
+    }
 
     if (step === 'balagan') {
       const running = speaking?.kind === 'balagan'
-      const toCircle = () => {
-        go('speeches')
-        askOpener()
-      }
       main = running
         ? { label: t('day.pickOpener.afterBalagan'), onPress: toCircle }
         : { label: t('day.balagan.start', { sec: sec('balagan') }), onPress: () => store.speak('balagan', null) }
@@ -138,10 +139,12 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
       )
     }
 
-    if (step === 'defense' || step === 'tiebreak' || step === 'farewell') {
-      const queue = day[step]
+    if (step === 'night_farewell' || step === 'defense' || step === 'tiebreak' || step === 'farewell') {
+      // Ночное прощание говорится тем же видом речи, что и прощание выгнанного: тот же таймер и та же длительность.
+      const kind = step === 'night_farewell' ? 'farewell' : step
+      const queue = step === 'night_farewell' ? day.nightFarewell : day[step]
       const next = queue.waiting[0]
-      const current = speaking?.kind === step ? speaking.seat : null
+      const current = speaking?.kind === kind ? speaking.seat : null
       const order = [...queue.done, ...(current !== null ? [current] : []), ...queue.waiting]
       const going = queue.done.length > 0 || current !== null
 
@@ -167,6 +170,13 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
           ? { label: t('day.tiebreak', { n: next, sec: sec('tiebreak') }), onPress: () => store.speak('tiebreak', next) }
           : { label: t('day.toRevote'), onPress: () => go('revote') }
       }
+      if (step === 'night_farewell') {
+        // После прощаний день идёт своим чередом: балаган, а если его нет — выбор начинающего круг.
+        main = next !== undefined
+          ? { label: t('day.farewell', { n: next, sec: sec('farewell') }), onPress: () => store.speak('farewell', next) }
+          : balaganInDay(rules, day.n) ? { label: t('day.toBalagan'), onPress: () => go('balagan') }
+          : { label: t('day.pickOpener.afterBalagan'), onPress: toCircle }
+      }
       if (step === 'farewell') {
         main = next !== undefined
           ? { label: t('day.farewell', { n: next, sec: sec('farewell') }), onPress: () => store.speak('farewell', next) }
@@ -174,6 +184,7 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
       }
 
       const title = step === 'farewell' && order.length > 0 ? t('day.farewell.title', { seats: seatList(lang, order) })
+        : step === 'night_farewell' && order.length > 0 ? t(order.length > 1 ? 'day.nightFarewell.title.many' : 'day.nightFarewell.title.one', { seats: seatList(lang, order) })
         : step === 'tiebreak' && order.length > 0 ? t('day.tie.title', { seats: seatList(lang, order) })
         : null
       body = (
@@ -191,7 +202,7 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
         </>
       )
       if (next !== undefined && !secondary) {
-        secondary = <Button variant="outline" size="l" onClick={() => skipIn(step, next)}>{t('day.skipNext', { n: next })}</Button>
+        secondary = <Button variant="outline" size="l" onClick={() => skipIn(kind, next)}>{t('day.skipNext', { n: next })}</Button>
       }
     }
   }

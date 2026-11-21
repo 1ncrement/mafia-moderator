@@ -5,11 +5,13 @@ import type { DayState, DayStep, GameState, NightStep, Rules, StepId } from '../
 import { nightStepLabel } from './labels'
 
 /**
- * Какие шаги есть у дня: в День 1 только круг; балаган — если он включён правилами партии;
+ * Какие шаги есть у дня: в День 1 только круг; прощание после ночной смерти и балаган — если они включены правилами партии;
  * шаги ничьей и прощания появляются, когда наступают.
  */
 export function daySteps(day: DayState, step: StepId | null, rules: Rules): DayStep[] {
   const steps: DayStep[] = []
+  // Прощание выбывших ночью — первый шаг дня; пройденный остаётся в полосе.
+  if (day.nightFarewell.done.length + day.nightFarewell.waiting.length > 0 || step === 'night_farewell') steps.push('night_farewell')
   if (balaganInDay(rules, day.n)) steps.push('balagan')
   steps.push('speeches')
   if (day.nominationsOpen) steps.push('defense', 'vote')

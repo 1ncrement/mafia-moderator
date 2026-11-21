@@ -22,6 +22,7 @@ export function expectedSpeech(game: GameState): Expected {
   if (!day) return null
   const first = (seats: Seat[], kind: SpeechKind): Expected => (seats[0] === undefined ? null : { kind, seat: seats[0] })
   switch (game.step) {
+    case 'night_farewell': return first(day.nightFarewell.waiting, 'farewell')
     case 'balagan': return { kind: 'balagan', seat: null }
     // Круг пройден — в День 1 очередь продолжают доп. речи первых двоих.
     case 'speeches': return day.opener === null ? null : first(day.waiting, 'speech') ?? first(day.closing.waiting, 'closing')

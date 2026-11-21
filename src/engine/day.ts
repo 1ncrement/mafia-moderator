@@ -1,6 +1,6 @@
 import { currentPhase, eventsOf, lastOf, nextPhase, samePhase } from './log'
-import { aliveSeats, isSeat, playersAt, playersBefore, playersNow } from './players'
-import type { DayState, EventOf, Nomination, PhaseRef, Registry, Seat, Session, SpeechKind, SpeechQueue } from './types'
+import { aliveSeats, isSeat, leftAtNight, playersAt, playersBefore, playersNow } from './players'
+import type { DayState, EventOf, Nomination, PhaseRef, PlayerView, Registry, Seat, Session, SpeechKind, SpeechQueue } from './types'
 import { buildBallots } from './vote'
 
 /** Круг: по возрастанию номеров от начинающего, после последнего — первый; выбывшие пропускаются. */
@@ -29,6 +29,14 @@ export function nominationsOf(session: Session, phase: PhaseRef, alive: Readonly
     out.push({ target: e.target, by: isSeat(session, e.by) ? e.by : null, order: e.order, eventId: e.id, active: alive.has(e.target) })
   }
   return out
+}
+
+/**
+ * Кто прощается со столом утром Дня n: выбывшие прошлой ночью по возрастанию номеров — если так задано правилами партии.
+ * Возвращённый в игру из списка пропадает.
+ */
+export function nightFarewellSeats(session: Session, players: readonly PlayerView[], n: number): Seat[] {
+  return n > 1 && session.config.rules.farewellAfterNight ? leftAtNight(players, n - 1) : []
 }
 
 /** Состояние дня n: круг речей, выставленные, туры голосования, очереди оправданий и прощаний. */
@@ -123,5 +131,7 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
     tiebreak: queue(byNomination(tie.filter((s) => alive.has(s))), 'tiebreak'),
     // Прощание после голосования выключено правилами — очереди нет: выгнанный уходит без слова.
     farewell: queue(session.config.rules.farewellAfterVote ? byNomination(expelled.filter((s) => isSeat(session, s) && !alive.has(s))) : [], 'farewell'),
+    // Вид речи тот же, очереди различаются местами: выбывший ночью не может быть выгнан тем же днём.
+    nightFarewell: queue(nightFarewellSeats(session, now, n), 'farewell'),
   }
 }

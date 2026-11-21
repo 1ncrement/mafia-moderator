@@ -1,5 +1,5 @@
 import { entryText } from '../../src/app/i18n'
-import { circleOrder, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES, journal, speechSeconds } from '../../src/engine'
+import { circleOrder, dayState, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES, journal, speechSeconds } from '../../src/engine'
 import type { Command } from '../../src/engine'
 import { attempt, game, play, st, TABLE_11, toDay } from '../helpers'
 
@@ -132,4 +132,55 @@ test('ведущий выбрал другого до первой речи — 
   expect(replaced.log.filter((e) => e.type === 'circle_opened')).toHaveLength(1)
   const restarted = play(d1(), { type: 'openCircle', first: 5, random: true }, speak(5), { type: 'openCircle', first: 3 })
   expect(circles(restarted).map((e) => e.kind === 'circle' && [e.first, e.random === true])).toEqual([[5, true], [3, false]])
+})
+
+// ── Прощание после ночной смерти ────────────────────────────────────────────
+
+const WITH_NIGHT_FAREWELL = { rules: { ...DEFAULT_RULES, farewellAfterNight: true } }
+/** Начало Дня 2 после ночи, в которую выбыли died. */
+const afterNight = (died: number[], config = WITH_NIGHT_FAREWELL) =>
+  play(toDay(game(TABLE_11, config), 1), { type: 'startPhase', phase: { kind: 'night', n: 1 } }, { type: 'confirmNight', died })
+const farewell = (seat: number): Command => ({ type: 'startSpeech', kind: 'farewell', seat })
+const EMPTY = { done: [], waiting: [] }
+
+test('правило «прощание после ночной смерти» выключено: очереди нет, день открывается балаганом', () => {
+  const s = afterNight([7, 3], { rules: DEFAULT_RULES })
+  expect(st(s).day!.nightFarewell).toEqual(EMPTY); expect(st(s).step).toBe('balagan'); expect(st(s).morning).toMatchObject({ deaths: [3, 7], farewell: [] })
+})
+test('правило включено, двое выбыли ночью: шаг прощания первый, две речи по возрастанию номеров, затем балаган', () => {
+  let s = afterNight([7, 3])
+  expect(st(s).step).toBe('night_farewell')
+  expect(st(s).day!.nightFarewell).toEqual({ done: [], waiting: [3, 7] }); expect(st(s).morning).toMatchObject({ deaths: [3, 7], farewell: [3, 7] })
+  // Выбывший говорит, хотя его нет в игре, и слово с него не снимается.
+  expect(st(s).players[2]!.status).toBe('out')
+  s = play(s, farewell(3))
+  expect(st(s).day).toMatchObject({ speaking: { kind: 'farewell', seat: 3 }, nightFarewell: { done: [], waiting: [7] } }); expect(st(s).step).toBe('night_farewell')
+  s = play(s, farewell(7))
+  expect(st(s).day).toMatchObject({ speaking: { kind: 'farewell', seat: 7 }, nightFarewell: { done: [3], waiting: [] } }); expect(st(s).step).toBe('night_farewell')
+  s = play(s, { type: 'endSpeech' })
+  expect(st(s).day!.nightFarewell).toEqual({ done: [3, 7], waiting: [] })
+  // Сам шаг не меняется: дальше ведёт команда ведущего. Объявление по-прежнему называет обоих.
+  expect(st(s).step).toBe('night_farewell'); expect(st(s).morning!.farewell).toEqual([3, 7])
+  expect(st(play(s, { type: 'enterStep', step: 'balagan' })).step).toBe('balagan')
+})
+test('ночное прощание: тихая ночь и День 1 — шага нет; балаган выключен — шаг всё равно первый', () => {
+  expect(st(afterNight([])).step).toBe('balagan'); expect(st(afterNight([])).day!.nightFarewell).toEqual(EMPTY)
+  const day1 = play(game(TABLE_11, WITH_NIGHT_FAREWELL), { type: 'startPhase', phase: { kind: 'day', n: 1 } })
+  expect(st(day1).day!.nightFarewell).toEqual(EMPTY); expect(st(day1).step).toBe('speeches')
+  const noBalagan = afterNight([7], { rules: { ...DEFAULT_RULES, farewellAfterNight: true, balagan: false } })
+  expect(st(noBalagan).step).toBe('night_farewell'); expect(st(play(noBalagan, farewell(7), { type: 'endSpeech' })).day!.nightFarewell.done).toEqual([7])
+})
+test('ночное прощание следует за статусами и не смешивается с прощанием выгнанного', () => {
+  // Возвращённый в игру из очереди пропадает; ушёл последний — день открывается обычным шагом.
+  let s = play(afterNight([7, 3]), { type: 'setStatus', seat: 3, status: 'alive' })
+  expect(st(s).day!.nightFarewell.waiting).toEqual([7]); expect(st(s).step).toBe('night_farewell')
+  expect(st(play(s, { type: 'setStatus', seat: 7, status: 'alive' })).step).toBe('balagan')
+  // Тем же днём выгнан №5: его прощание — отдельная очередь.
+  s = play(afterNight([7]), farewell(7), { type: 'endSpeech' }, { type: 'nominate', by: 1, target: 5 }, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [5] })
+  expect(st(s).day).toMatchObject({ nightFarewell: { done: [7], waiting: [] }, farewell: { done: [], waiting: [5] } })
+  s = play(s, farewell(5))
+  expect(st(s).day).toMatchObject({ nightFarewell: { done: [7], waiting: [] }, farewell: EMPTY, speaking: { seat: 5 } })
+  // Прошедший день помнит свою очередь прощаний и после перехода в ночь.
+  const later = play(s, { type: 'startPhase', phase: { kind: 'night', n: 2 } })
+  expect(dayState(later, DEFAULT_REGISTRY, 2).nightFarewell).toEqual({ done: [7], waiting: [] })
 })

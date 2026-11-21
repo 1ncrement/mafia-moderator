@@ -73,7 +73,8 @@ export type Registry = { sides: SideDef[]; roles: RoleDef[]; nightActions: Night
 // ── Журнал событий ──────────────────────────────────────────────────────────
 
 export type PhaseRef = { kind: 'deal' } | { kind: 'day'; n: number } | { kind: 'night'; n: number }
-export type DayStep = 'balagan' | 'speeches' | 'defense' | 'vote' | 'tiebreak' | 'revote' | 'farewell'
+/** night_farewell — прощание выбывших прошлой ночью: первый шаг дня, когда есть кому прощаться. */
+export type DayStep = 'night_farewell' | 'balagan' | 'speeches' | 'defense' | 'vote' | 'tiebreak' | 'revote' | 'farewell'
 /** DayStep, id ночного шага или 'summary'. */
 export type StepId = string
 /** closing — доп. речь первых двоих в конце первого круга: идёт внутри шага «Круг речей», длится как обычная речь. */
@@ -310,6 +311,8 @@ export type DayState = {
   defense: SpeechQueue
   tiebreak: SpeechQueue
   farewell: SpeechQueue
+  /** Прощание выбывших прошлой ночью — по возрастанию номеров. Говорится тем же видом речи, что и прощание выгнанного. */
+  nightFarewell: SpeechQueue
 }
 
 // ── Ночь ────────────────────────────────────────────────────────────────────

@@ -66,6 +66,7 @@ export const uk: Dict = {
   'step.tiebreak': 'Промови при нічиїй',
   'step.revote': 'Переголосування',
   'step.farewell': 'Прощання',
+  'step.night_farewell': 'Прощання',
   'step.summary': 'Підсумок ночі',
 
   // ── Загальне ──
@@ -307,6 +308,9 @@ export const uk: Dict = {
   'day.toRevote': 'До переголосування',
   'day.farewell': 'Прощання №{n} · {sec}',
   'day.farewell.title': '{seats}: вигнаний · прощання',
+  'day.nightFarewell.title.one': '{seats}: вибув уночі · прощання',
+  'day.nightFarewell.title.many': '{seats}: вибули вночі · прощання',
+  'day.toBalagan': 'Далі: балаган',
   'day.notSpoken': 'Не говорили: {list}',
   'day.nominates': '№{n} виставляє…',
   'day.nominate.question': 'Кого виставляє №{n}?',

@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { DEFAULT_RULES } from '../../src/engine'
 import { TABLE_11 } from '../helpers'
+import type { AppStore } from '../../src/app/store'
 import { advance, renderApp, seedGame } from './helpers'
 
 test('День 1: круг с №5 по одной кнопке, без выставления', async () => {
@@ -200,4 +201,62 @@ test('пробел запускает ожидаемую доп. минуту; �
   renderApp((a) => { seedGame(a, TABLE_11, 2); a.dispatch({ type: 'enterStep', step: 'speeches' }); a.dispatch({ type: 'openCircle', first: 5 }); ORDER_FROM_5.forEach((s) => a.speak('speech', s)) })
   expect(screen.queryByText(/Доп\. минута/)).not.toBeInTheDocument(); expect(screen.queryByText('Круг закрывают первые двое')).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Никто не выставлен → Ночь 2/ })).toBeInTheDocument()
+})
+
+// ── Прощание после ночной смерти ────────────────────────────────────────────
+
+const NIGHT_FAREWELL = { rules: { ...DEFAULT_RULES, farewellAfterNight: true } }
+/** Начало Дня 2 после ночи, в которую выбыли died. announce: false — окно утра ещё открыто. */
+const dayAfterNight = (died: number[], config = NIGHT_FAREWELL, announce = true) => (a: AppStore) => {
+  seedGame(a, TABLE_11, 1, config); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
+  a.dispatch({ type: 'confirmNight', died })
+  if (announce) a.dispatch({ type: 'announceMorning' })
+}
+const dayNav = () => within(screen.getByRole('navigation', { name: 'Шаги дня' })).getAllByRole('button').map((b) => b.textContent)
+
+test('правило выключено: после ночной смерти шага прощания нет, день открывается балаганом', () => {
+  const { app } = renderApp(dayAfterNight([7, 3], { rules: DEFAULT_RULES }))
+  expect(app.getState().game!.step).toBe('balagan'); expect(dayNav()).toEqual(['Балаган', 'Круг речей', 'Оправдания', 'Голосование'])
+  expect(screen.queryByRole('button', { name: /Прощание №/ })).not.toBeInTheDocument()
+})
+test('правило включено, двое выбыли ночью: шаг «Прощание» первый — две речи по 30 с, затем балаган', async () => {
+  const { app, user, env } = renderApp(dayAfterNight([7, 3]))
+  expect(app.getState().game!.step).toBe('night_farewell'); expect(dayNav()).toEqual(['Прощание', 'Балаган', 'Круг речей', 'Оправдания', 'Голосование'])
+  expect(screen.getByText('№3 и №7: выбыли ночью · прощание')).toBeInTheDocument()
+  // Круг ещё не начинался: строки «Не говорили» на этом шаге нет.
+  expect(screen.queryByText(/Не говорили/)).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /Прощание №3 · 30 с/ }))
+  expect(app.getState().session!.timer).toMatchObject({ kind: 'farewell', seat: 3, durationMs: 30_000, status: 'running' })
+  expect(screen.getByText('Прощание №3')).toBeInTheDocument()
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /Прощание №7 · 30 с/ }))
+  expect(app.getState().game!.day).toMatchObject({ speaking: { kind: 'farewell', seat: 7 }, nightFarewell: { done: [3], waiting: [] } })
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /Дальше: балаган/ }))
+  expect(app.getState().game!.step).toBe('balagan'); expect(app.getState().game!.day!.speaking).toBeNull()
+  expect(screen.getByRole('button', { name: /Запустить балаган · 60 с/ })).toBeInTheDocument()
+  // Пройденный шаг остаётся первым в полосе; выбывшие говорили, но в игру не вернулись.
+  expect(dayNav()[0]).toBe('Прощание'); expect(app.getState().game!.counts.alive).toBe(9)
+})
+test('ночное прощание без балагана: «Пропустить №…» снимает речь без таймера, дальше — выбор начинающего круг', async () => {
+  const { app, user, env } = renderApp(dayAfterNight([7], { rules: { ...DEFAULT_RULES, farewellAfterNight: true, balagan: false } }))
+  expect(dayNav()).toEqual(['Прощание', 'Круг речей', 'Оправдания', 'Голосование'])
+  expect(screen.getByText('№7: выбыл ночью · прощание')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Пропустить №7' }))
+  expect(app.getState().game!.day!.nightFarewell).toEqual({ done: [7], waiting: [] }); expect(app.getState().session!.timer).toBeNull()
+  advance(env, 500); await user.click(screen.getByRole('button', { name: 'Выбрать, кто начинает круг' }))
+  expect(app.getState().game!.step).toBe('speeches'); expect(screen.getByText('Кто начинает круг?')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №5' })); expect(app.getState().game!.day!.opener).toBe(5)
+})
+test('окно утра называет прощающихся; после «Объявил» пробел запускает прощание первого', async () => {
+  const { app, user, env } = renderApp(dayAfterNight([7, 3], NIGHT_FAREWELL, false))
+  const dialog = screen.getByRole('dialog', { name: 'Объяви столу' })
+  expect(dialog.textContent).toContain('Стол покидают игроки №3 и №7')
+  expect(within(dialog).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['№3прощается со столом — 30 с', '№7прощается со столом — 30 с'])
+  advance(env, 500); await user.keyboard('{Enter}')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(app.getState().game!.day!.speaking).toBeNull()
+  await user.keyboard(' ')
+  expect(app.getState().game!.day!.speaking).toMatchObject({ kind: 'farewell', seat: 3 })
+})
+test('правило выключено: окно утра о прощании не говорит', () => {
+  renderApp(dayAfterNight([7], { rules: DEFAULT_RULES }, false))
+  expect(within(screen.getByRole('dialog', { name: 'Объяви столу' })).queryByRole('listitem')).not.toBeInTheDocument()
 })
