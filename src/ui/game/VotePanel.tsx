@@ -5,7 +5,7 @@ import { enteredVotes, maxVotesFor } from '../../engine'
 import type { Command, GameState, Seat } from '../../engine'
 import { Button, cx } from '../common/Button'
 import { Stepper } from '../common/Stepper'
-import { aliveOf } from './dayFlow'
+import { afterExpelled, aliveOf } from './dayFlow'
 import { useDigitKeys } from './digitKeys'
 import { useMainAction } from './MainButton'
 import type { MainAction } from './MainButton'
@@ -56,16 +56,20 @@ export function VotePanel({ game }: { game: GameState }) {
   useTableMarks(marks, current)
 
   const durations = session?.config.durations
+  const rules = session?.config.rules
   const toNight: Command | null = day ? { type: 'startPhase', phase: { kind: 'night', n: day.n } } : null
   const decides = ballot !== undefined && ballot.n === 2 && ballot.complete && current === null && (ballot.hint?.outcome === 'tie' || ballot.voters === 0)
   let main: MainAction = null
   // Голосов введено больше, чем голосующих, — исход по такой таблице не подтверждается: сначала исправить числа.
-  if (day && ballot && durations && toNight && ballot.complete && !ballot.overflow && current === null && ballot.hint && !decides) {
+  if (day && ballot && durations && rules && toNight && ballot.complete && !ballot.overflow && current === null && ballot.hint && !decides) {
     const { outcome, seats } = ballot.hint
     main = outcome === 'eliminated'
       ? {
-        label: t('day.single', { n: seats[0] ?? 0, sec: t('unit.sec', { n: durations.farewell }) }),
-        onPress: () => store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats }, { type: 'enterStep', step: 'farewell' }]),
+        // Прощание выключено правилами партии — выгнанный уходит без слова, сразу ночь.
+        label: rules.farewellAfterVote
+          ? t('day.single', { n: seats[0] ?? 0, sec: t('unit.sec', { n: durations.farewell }) })
+          : t('day.single.toNight', { n: seats[0] ?? 0, night: day.n }),
+        onPress: () => store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats }, afterExpelled(rules, day)]),
       }
       : {
         label: t('vote.tie', { seats: seatList(lang, seats), sec: t('unit.sec', { n: durations.tiebreak }) }),
@@ -76,13 +80,13 @@ export function VotePanel({ game }: { game: GameState }) {
   }
   useMainAction(main)
 
-  if (!day || !toNight) return null
+  if (!day || !toNight || !rules) return null
   if (!ballot) return <p className="muted">{t('vote.none')}</p>
 
   const expelOther = () => askOnce({
     question: t('vote.other.question'), allowed: aliveOf(game),
     onPick: (seat) => {
-      if (seat !== null) store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats: [seat] }, { type: 'enterStep', step: 'farewell' }])
+      if (seat !== null) store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats: [seat] }, afterExpelled(rules, day)])
     },
   })
   const lastEntry = ballot.entries.at(-1)
@@ -156,7 +160,7 @@ export function VotePanel({ game }: { game: GameState }) {
       )}
 
       {decides
-        ? <TieDecision day={day} ballot={ballot} />
+        ? <TieDecision day={day} ballot={ballot} rules={rules} />
         : (
           <>
             {!ballot.complete && <p className="vote-pending">{t('vote.pending')}</p>}

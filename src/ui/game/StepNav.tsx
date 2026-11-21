@@ -1,13 +1,16 @@
 import { translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { SUMMARY_STEP } from '../../engine'
-import type { DayState, DayStep, GameState, StepId } from '../../engine'
+import { balaganInDay, SUMMARY_STEP } from '../../engine'
+import type { DayState, DayStep, GameState, Rules, StepId } from '../../engine'
 import { nightStepLabel } from './labels'
 
-/** Какие шаги есть у дня: в День 1 только круг; шаги ничьей и прощания появляются, когда наступают. */
-export function daySteps(day: DayState, step: StepId | null, balaganFromDay: number): DayStep[] {
+/**
+ * Какие шаги есть у дня: в День 1 только круг; балаган — если он включён правилами партии;
+ * шаги ничьей и прощания появляются, когда наступают.
+ */
+export function daySteps(day: DayState, step: StepId | null, rules: Rules): DayStep[] {
   const steps: DayStep[] = []
-  if (day.n >= balaganFromDay) steps.push('balagan')
+  if (balaganInDay(rules, day.n)) steps.push('balagan')
   steps.push('speeches')
   if (day.nominationsOpen) steps.push('defense', 'vote')
   const tie = day.ballots[0]?.resolved?.outcome === 'tie'
@@ -17,14 +20,14 @@ export function daySteps(day: DayState, step: StepId | null, balaganFromDay: num
 }
 
 /** Полоса шагов: кликабельна, можно вернуться к пройденному шагу или пропустить шаг. */
-export function StepNav({ game, balaganFromDay }: { game: GameState; balaganFromDay: number }) {
+export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
   const { settings } = useApp()
   const store = useStore()
   const t = useT()
   const lang = useLang()
 
   if (game.day) {
-    const steps = daySteps(game.day, game.step, balaganFromDay)
+    const steps = daySteps(game.day, game.step, rules)
     const at = steps.indexOf(game.step as DayStep)
     return (
       <nav className="steps" aria-label={t('steps.day')}>

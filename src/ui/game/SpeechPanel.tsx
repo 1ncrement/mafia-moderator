@@ -3,7 +3,7 @@ import { seatList } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import type { Command, GameState, RejectCode, Seat } from '../../engine'
 import { Button } from '../common/Button'
-import { aliveOf } from './dayFlow'
+import { afterExpelled, aliveOf } from './dayFlow'
 import { useMainAction } from './MainButton'
 import type { MainAction } from './MainButton'
 import { NominationList } from './NominationList'
@@ -33,11 +33,12 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
   const day = game.day
   const step = game.step
   const durations = session?.config.durations
+  const rules = session?.config.rules
   let main: MainAction = null
   let body: React.ReactNode = null
   let secondary: React.ReactNode = null
 
-  if (day && durations) {
+  if (day && durations && rules) {
     const sec = (kind: keyof typeof durations) => t('unit.sec', { n: durations[kind] })
     const speaking = day.speaking
     const toNight: Command = { type: 'startPhase', phase: { kind: 'night', n: day.n } }
@@ -125,10 +126,10 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
         const only = active.length === 1 ? active[0] : undefined
         if (next !== undefined) main = { label: t(going ? 'day.next' : 'day.defense', { n: next, sec: sec('defense') }), onPress: () => store.speak('defense', next) }
         else if (only) {
-          // Выставлен один: голосования нет, сразу прощание.
+          // Выставлен один: голосования нет, сразу прощание — или ночь, если прощание выключено правилами.
           main = {
-            label: t('day.single', { n: only.target, sec: sec('farewell') }),
-            onPress: () => store.dispatchAll([{ type: 'endSpeech' }, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [only.target] }, { type: 'enterStep', step: 'farewell' }]),
+            label: rules.farewellAfterVote ? t('day.single', { n: only.target, sec: sec('farewell') }) : t('day.single.toNight', { n: only.target, night: day.n }),
+            onPress: () => store.dispatchAll([{ type: 'endSpeech' }, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [only.target] }, afterExpelled(rules, day)]),
           }
           secondary = (
             <Button variant="outline" size="l" onClick={() => store.dispatchAll([{ type: 'resolveVote', ballot: 1, outcome: 'nobody', seats: [] }, toNight])}>

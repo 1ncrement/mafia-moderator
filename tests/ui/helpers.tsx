@@ -4,7 +4,7 @@ import type { UserEvent } from '@testing-library/user-event'
 import { createAppStore, metaOf } from '../../src/app/store'
 import type { AppStore } from '../../src/app/store'
 import { DEFAULT_REGISTRY, registryFor } from '../../src/engine'
-import type { CustomRole, RoleId } from '../../src/engine'
+import type { CustomRole, RoleId, SessionConfig } from '../../src/engine'
 import { createStorage } from '../../src/platform/storage'
 import { App } from '../../src/ui/App'
 import { game, gameWith, testEnv, toDay, toDayWith } from '../helpers'
@@ -31,11 +31,11 @@ export function renderApp(prepare?: (app: AppStore) => void): { app: AppStore; u
   return { app, user, env, unmount: view.unmount }
 }
 
-/** Кладёт в хранилище этого app сессию «начало Дня day» и открывает её. */
-export function seedGame(app: AppStore, table: string, day: number): void {
+/** Кладёт в хранилище этого app сессию «начало Дня day» и открывает её. config — настройки игры, отличные от умолчаний. */
+export function seedGame(app: AppStore, table: string, day: number, config?: Partial<SessionConfig>): void {
   const env = envs.get(app)
   if (!env) throw new Error('seedGame: приложение создано не через renderApp')
-  const session = toDay(game(table), day)
+  const session = toDay(game(table, config), day)
   createStorage(env.kv).save(session, metaOf(session))
   app.openSession(session.id)
 }

@@ -1,4 +1,4 @@
-import { circleOrder } from '../../src/engine'
+import { circleOrder, DEFAULT_RULES } from '../../src/engine'
 import type { Command } from '../../src/engine'
 import { attempt, game, play, st, TABLE_11, toDay } from '../helpers'
 
@@ -41,4 +41,22 @@ test('слово вне очереди не сбивает круг', () => {
   const s = play(d2(), { type: 'openCircle', first: 5 }, speak(5), speak(6), speak(2))
   expect(st(s).day!.waiting).toEqual([7, 8, 9, 10, 11, 1, 3, 4])
   expect(st(play(d2(), { type: 'openCircle', first: 5 }, speak(9))).day!.waiting).toEqual([5, 6, 7, 8, 10, 11, 1, 2, 3, 4])
+})
+
+// ── Правила партии ──────────────────────────────────────────────────────────
+
+const d2With = (rules: Partial<typeof DEFAULT_RULES>) => toDay(game(TABLE_11, { rules: { ...DEFAULT_RULES, ...rules } }), 2)
+const expel7: Command[] = [{ type: 'nominate', by: 5, target: 7 }, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [7] }]
+
+test('балаган выключен — день открывается кругом речей в любой день; включён — балаганом со второго дня', () => {
+  expect(st(d2With({ balagan: false })).step).toBe('speeches')
+  expect(st(toDay(d2With({ balagan: false }), 3)).step).toBe('speeches')
+  expect(st(d2With({})).step).toBe('balagan')
+  expect(st(toDay(game(TABLE_11), 1)).step).toBe('speeches')
+})
+test('прощание после голосования выключено — выгнанный выбывает так же, очереди прощания нет', () => {
+  const off = play(d2With({ farewellAfterVote: false }), ...expel7)
+  expect(st(off).players[6]).toMatchObject({ status: 'out', cause: 'voted' })
+  expect(st(off).day!.farewell).toEqual({ done: [], waiting: [] })
+  expect(st(play(d2(), ...expel7)).day!.farewell).toEqual({ done: [], waiting: [7] })
 })

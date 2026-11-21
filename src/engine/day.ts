@@ -108,6 +108,7 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
     nominations, ballots,
     defense: queue(nominations.filter((x) => x.active).map((x) => x.target), 'defense'),
     tiebreak: queue(byNomination(tie.filter((s) => alive.has(s))), 'tiebreak'),
-    farewell: queue(byNomination(expelled.filter((s) => isSeat(session, s) && !alive.has(s))), 'farewell'),
+    // Прощание после голосования выключено правилами — очереди нет: выгнанный уходит без слова.
+    farewell: queue(session.config.rules.farewellAfterVote ? byNomination(expelled.filter((s) => isSeat(session, s) && !alive.has(s))) : [], 'farewell'),
   }
 }

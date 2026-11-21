@@ -1,11 +1,12 @@
 import { screen, within } from '@testing-library/react'
 import type { AppStore } from '../../src/app/store'
+import { DEFAULT_RULES } from '../../src/engine'
 import { TABLE_11 } from '../helpers'
 import { advance, renderApp, seedGame } from './helpers'
 
-const voting = (a: AppStore) => { seedGame(a, TABLE_11, 2); a.dispatch({ type: 'setStatus', seat: 9, status: 'out', cause: 'shot' });
+const voting = (a: AppStore, config?: Parameters<typeof seedGame>[3]) => { seedGame(a, TABLE_11, 2, config); a.dispatch({ type: 'setStatus', seat: 9, status: 'out', cause: 'shot' });
   [7, 3, 10, 11, 4].forEach((t, i) => a.dispatch({ type: 'nominate', by: i + 1, target: t })); a.dispatch({ type: 'enterStep', step: 'vote' }) }
-const tied = (a: AppStore) => { voting(a); [[7, 0], [3, 2], [10, 3], [11, 2]].forEach(([c, n]) => a.dispatch({ type: 'setVotes', ballot: 1, candidate: c!, count: n! }))
+const tied = (a: AppStore, config?: Parameters<typeof seedGame>[3]) => { voting(a, config); [[7, 0], [3, 2], [10, 3], [11, 2]].forEach(([c, n]) => a.dispatch({ type: 'setVotes', ballot: 1, candidate: c!, count: n! }))
   a.dispatch({ type: 'resolveVote', ballot: 1, outcome: 'tie', seats: [10, 4] }); a.dispatch({ type: 'enterStep', step: 'revote' }) }
 
 test('ввод голосов кнопками, остаток последнему, ничья', async () => {
@@ -78,4 +79,39 @@ test('цифры с клавиатуры работают, только когд
   await user.keyboard('3')                       // осталось 9: цифра записывает
   expect(app.getState().game!.day!.ballots[0]!.entries.map((e) => e.count).slice(0, 2)).toEqual([1, 3])
   expect(screen.getByText(/Можно нажать цифру/)).toBeInTheDocument()
+})
+
+// ── Правило «прощание после голосования» выключено ──────────────────────────
+
+const NO_FAREWELL = { rules: { ...DEFAULT_RULES, farewellAfterVote: false } }
+const digit = (n: string) => within(screen.getByRole('group', { name: 'Число голосов' })).getByRole('button', { name: n })
+
+test('прощание выключено, один лидер: «№7 выгнан → Ночь 2» — статус поставлен, сразу ночь, шага прощания нет', async () => {
+  const { app, user, env } = renderApp((a) => voting(a, NO_FAREWELL))
+  for (const n of ['5', '2', '1', '1']) await user.click(digit(n))
+  advance(env, 500)
+  expect(screen.queryByRole('button', { name: /прощание/ })).not.toBeInTheDocument()
+  expect(within(screen.getByRole('navigation', { name: 'Шаги дня' })).queryByRole('button', { name: 'Прощание' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /№7 выгнан → Ночь 2/ }))
+  expect(app.getState().game!.players[6]).toMatchObject({ status: 'out', cause: 'voted', outPhase: { kind: 'day', n: 2 } })
+  expect(app.getState().game!.phase).toEqual({ kind: 'night', n: 2 })
+  app.undo()
+  expect(app.getState().game).toMatchObject({ phase: { kind: 'day', n: 2 }, step: 'vote' }); expect(app.getState().game!.players[6]!.status).toBe('alive')
+})
+test('прощание выключено: «Выгнать другого…» тоже ведёт сразу в ночь', async () => {
+  const { app, user } = renderApp((a) => voting(a, NO_FAREWELL))
+  await user.click(screen.getByRole('button', { name: 'Выгнать другого…' })); await user.click(screen.getByRole('button', { name: 'Выбрать игрока №2' }))
+  expect(app.getState().game!.players[1]).toMatchObject({ status: 'out', cause: 'voted' })
+  expect(app.getState().game!.phase).toEqual({ kind: 'night', n: 2 })
+})
+test('прощание выключено, вторая ничья: решение ведущего ставит статусы и ведёт в ночь', async () => {
+  const one = renderApp((a) => { tied(a, NO_FAREWELL); a.dispatch({ type: 'setVotes', ballot: 2, candidate: 10, count: 4 }) })
+  await one.user.click(screen.getByRole('button', { name: 'Выгнать одного…' })); await one.user.click(screen.getByRole('button', { name: 'Выбрать игрока №4' }))
+  expect(one.app.getState().game!.players[3]).toMatchObject({ status: 'out', cause: 'voted' })
+  expect(one.app.getState().game!.phase).toEqual({ kind: 'night', n: 2 })
+  one.unmount()
+  const both = renderApp((a) => { tied(a, NO_FAREWELL); a.dispatch({ type: 'setVotes', ballot: 2, candidate: 10, count: 4 }) })
+  await both.user.click(screen.getByRole('button', { name: 'Выгнать обоих: №10 и №4' }))
+  expect(both.app.getState().game!.players.filter((p) => p.status === 'out' && p.cause === 'voted').map((p) => p.seat)).toEqual([4, 10])
+  expect(both.app.getState().game!.phase).toEqual({ kind: 'night', n: 2 })
 })

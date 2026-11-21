@@ -128,7 +128,7 @@ function Game({ game }: { game: GameState }) {
         </div>
         <section className="step-panel" aria-label={t('step.panel')}>
           {journalCollapsed && !settings.rolesHidden && nightOffers}
-          <StepNav game={game} balaganFromDay={session.config.rules.balaganFromDay} />
+          <StepNav game={game} rules={session.config.rules} />
           {session.timer?.kind === 'free' && Panel !== SpeechPanel && <TimerPanel game={game} flash={flash} />}
           <DigitKeysContext.Provider value={digits}>
             {Panel ? <Panel game={game} flash={flash} /> : <h3 className="step-title">{stepLabel(lang, store.registry, game)}</h3>}

@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import { DEFAULT_RULES } from '../../src/engine'
 import { TABLE_11 } from '../helpers'
 import { advance, renderApp, seedGame } from './helpers'
 
@@ -92,4 +93,37 @@ test('запуск таймера отдельной кнопкой и своб�
   expect(screen.getByText('Свободный таймер')).toBeInTheDocument(); expect(app.getState().session!.timer).toMatchObject({ kind: 'free', durationMs: 30_000 })
   // №5 всё ещё говорит: после закрытия свободного таймера ему возвращается таймер речи в «готов».
   await user.click(screen.getByRole('button', { name: 'Убрать таймер' })); expect(app.getState().session!.timer).toMatchObject({ kind: 'speech', seat: 5, status: 'ready' })
+})
+
+// ── Правила партии: балаган и прощание после голосования ────────────────────
+
+const NO_BALAGAN = { rules: { ...DEFAULT_RULES, balagan: false } }
+const NO_FAREWELL = { rules: { ...DEFAULT_RULES, farewellAfterVote: false } }
+
+test('балаган выключен: День 2 начинается с выбора начинающего, шага «Балаган» в полосе нет', async () => {
+  const { app, user } = renderApp((a) => seedGame(a, TABLE_11, 2, NO_BALAGAN))
+  expect(app.getState().game!.step).toBe('speeches')
+  const nav = within(screen.getByRole('navigation', { name: 'Шаги дня' }))
+  expect(nav.queryByRole('button', { name: 'Балаган' })).not.toBeInTheDocument()
+  expect(nav.getAllByRole('button').map((b) => b.textContent)).toEqual(['Круг речей', 'Оправдания', 'Голосование'])
+  expect(screen.queryByRole('button', { name: /Запустить балаган/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Выбрать, кто начинает' }))
+  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №5' }))
+  expect(app.getState().game!.day!.opener).toBe(5)
+})
+test('балаган включён: День 2 открывается балаганом, как раньше', () => {
+  const { app } = renderApp((a) => seedGame(a, TABLE_11, 2))
+  expect(app.getState().game!.step).toBe('balagan')
+  expect(within(screen.getByRole('navigation', { name: 'Шаги дня' })).getByRole('button', { name: 'Балаган' })).toBeInTheDocument()
+})
+test('прощание выключено, выставлен один: «№9 выгнан → Ночь 2», шага прощания нет', async () => {
+  const { app, user, env } = renderApp((a) => { seedGame(a, TABLE_11, 2, NO_FAREWELL); a.dispatch({ type: 'nominate', by: 5, target: 9 }); a.dispatch({ type: 'enterStep', step: 'defense' }) })
+  await user.click(screen.getByRole('button', { name: /Оправдание №9 · 30 с/ })); advance(env, 500)
+  expect(screen.queryByRole('button', { name: /прощание/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /№9 выгнан → Ночь 2/ }))
+  expect(app.getState().game!.players[8]).toMatchObject({ status: 'out', cause: 'voted', outPhase: { kind: 'day', n: 2 } })
+  expect(app.getState().game!.phase).toEqual({ kind: 'night', n: 2 })
+  // Одно нажатие — одна отмена: игрок снова в игре, день на том же шаге.
+  app.undo()
+  expect(app.getState().game).toMatchObject({ phase: { kind: 'day', n: 2 }, step: 'defense' }); expect(app.getState().game!.players[8]!.status).toBe('alive')
 })

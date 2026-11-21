@@ -3,6 +3,7 @@ import { currentPhase, lastOf, samePhase } from './log'
 import { actionOfStepId, nightState, permanentMarks } from './night'
 import { playersNow } from './players'
 import { endHintFor } from './roles/rules'
+import { balaganInDay } from './setup'
 import type { GameState, NightState, PhaseRef, Registry, Session, SideId, StateWarning, StepId } from './types'
 
 // Вывод состояния стола из журнала. Проход по журналу никогда не бросает исключений:
@@ -11,7 +12,7 @@ import type { GameState, NightState, PhaseRef, Registry, Session, SideId, StateW
 export const SUMMARY_STEP: StepId = 'summary'
 
 function defaultStep(session: Session, phase: PhaseRef, night: NightState | null): StepId | null {
-  if (phase.kind === 'day') return phase.n < session.config.rules.balaganFromDay ? 'speeches' : 'balagan'
+  if (phase.kind === 'day') return balaganInDay(session.config.rules, phase.n) ? 'balagan' : 'speeches'
   if (phase.kind === 'night') return night?.steps[0]?.id ?? SUMMARY_STEP
   return null
 }

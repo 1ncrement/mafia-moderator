@@ -1,10 +1,18 @@
 import type { AppStore } from '../../app/store'
-import type { GameState, Seat, Session, SpeechKind, TimerState } from '../../engine'
+import type { Command, DayState, GameState, Rules, Seat, Session, SpeechKind, TimerState } from '../../engine'
 
 // Что сейчас происходит в дне: чья речь ожидается и какой таймер считается «живым».
 // Общая логика для панели таймера и клавиши «пробел».
 
 export const aliveOf = (game: GameState): Seat[] => game.players.filter((p) => p.status === 'alive').map((p) => p.seat)
+
+/**
+ * Что идёт после исхода «выгнан»: прощание, если оно включено правилами партии, иначе сразу ночь.
+ * Статус «выгнан» ставит сам исход — этот шаг его не меняет.
+ */
+export function afterExpelled(rules: Rules, day: DayState): Command {
+  return rules.farewellAfterVote ? { type: 'enterStep', step: 'farewell' } : { type: 'startPhase', phase: { kind: 'night', n: day.n } }
+}
 
 export type Expected = { kind: SpeechKind; seat: Seat | null } | null
 

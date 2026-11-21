@@ -280,6 +280,7 @@ export const uk: Dict = {
   'day.defense': 'Виправдання №{n} · {sec}',
   'day.toVote': 'До голосування',
   'day.single': '№{n} вигнаний → прощання · {sec}',
+  'day.single.toNight': '№{n} вигнаний → Ніч {night}',
   'day.nobodyOut': 'Нікого не вигнано → Ніч {n}',
   'day.tiebreak': 'Промова №{n} · {sec}',
   'day.toRevote': 'До переголосування',

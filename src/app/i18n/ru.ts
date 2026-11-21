@@ -279,6 +279,7 @@ export const ru = {
   'day.defense': 'Оправдание №{n} · {sec}',
   'day.toVote': 'К голосованию',
   'day.single': '№{n} выгнан → прощание · {sec}',
+  'day.single.toNight': '№{n} выгнан → Ночь {night}',
   'day.nobodyOut': 'Никто не выгнан → Ночь {n}',
   'day.tiebreak': 'Речь №{n} · {sec}',
   'day.toRevote': 'К переголосованию',

@@ -87,6 +87,11 @@ export const DEFAULT_RULES: Rules = {
 /** Как играли до появления правил партии: балаган есть, прощание только после голосования, проститутка после мафии. */
 export const LEGACY_RULES: Rules = { ...DEFAULT_RULES, prostituteFirst: false }
 
+/** Есть ли в День n шаг «Балаган»: правило включено и день не раньше первого дня с балаганом. */
+export function balaganInDay(rules: Rules, n: number): boolean {
+  return rules.balagan && n >= rules.balaganFromDay
+}
+
 /**
  * Правила сохранённой игры: недостающее или испорченное поле читается «как было до обновления».
  * fallback — откуда брать недостающее: для черновика новой игры это умолчания новой игры.
