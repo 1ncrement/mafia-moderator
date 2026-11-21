@@ -1,4 +1,4 @@
-import type { CheckAnswer, JournalEntry, JournalGroup, Registry, Seat } from '../../engine'
+import type { CheckAnswer, JournalEntry, JournalGroup, OutCause, Registry, Seat } from '../../engine'
 import type { Lang } from '../../platform/storage'
 import { cap, compositionText, hasKey, phaseLabel, plural, roleName, seatList, stepName, translate, translateKey } from './index'
 
@@ -32,11 +32,13 @@ export function answerText(lang: Lang, registry: Registry, entry: { actionId: st
   return ` — ${answer.found ? role : translate(lang, 'journal.notRole', { role })}`
 }
 
-/** Кто выбыл ночью: «никто не выбыл», «№7 застрелен», «выбыли №2 и №7». */
-function diedText(lang: Lang, died: Seat[]): string {
+/** Кто выбыл ночью: «никто не выбыл», «№7 застрелен», «№5 убит мясником», «выбыли №2 и №7». Причина одного — по ключу словаря. */
+function diedText(lang: Lang, died: Seat[], causes: (OutCause | undefined)[]): string {
   const only = died[0]
   if (only === undefined) return translate(lang, 'journal.result.none')
-  return died.length === 1 ? translate(lang, 'journal.result.shot', { n: only }) : translate(lang, 'journal.result.many', { seats: seatList(lang, died) })
+  if (died.length > 1) return translate(lang, 'journal.result.many', { seats: seatList(lang, died) })
+  const key = `journal.result.${causes[0] ?? ''}`
+  return hasKey(key) ? translate(lang, key, { n: only }) : translate(lang, 'journal.result.out', { n: only })
 }
 
 export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): string {
@@ -54,7 +56,7 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
     case 'night_result': {
       // Причину называем, только когда никто не выбыл и по подсказке не должен был.
       const why = entry.died.length === 0 && entry.reason !== null ? ` (${t(`journal.reason.${entry.reason}`)})` : ''
-      return t('journal.night.result', { result: diedText(lang, entry.died) + why })
+      return t('journal.night.result', { result: diedText(lang, entry.died, entry.causes) + why })
     }
 
     case 'circle':
@@ -77,7 +79,7 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
 
     case 'status':
       if (entry.status === 'alive') return t('journal.status.alive', { n: entry.seat })
-      return t(entry.cause === 'shot' ? 'journal.status.shot' : entry.cause === 'voted' ? 'journal.status.voted' : 'journal.status.out', { n: entry.seat })
+      return hasKey(`journal.status.${entry.cause ?? ''}`) ? translateKey(lang, `journal.status.${entry.cause ?? ''}`, { n: entry.seat }) : t('journal.status.out', { n: entry.seat })
 
     case 'swap':
       return t('journal.swap', { a: entry.a, b: entry.b })
@@ -105,13 +107,14 @@ export function summaryBody(lang: Lang, group: JournalGroup, registry: Registry)
     for (const e of group.entries) {
       if (e.kind !== 'night_action' || e.target === null) continue
       const effect = registry.nightActions.find((a) => a.id === e.actionId)?.effect
-      const key = `effect.${effect}.summary`
+      // У действия может быть своя фраза («удар мясника по №5»), иначе — общая по виду эффекта.
+      const key = hasKey(`action.${e.actionId}.summary`) ? `action.${e.actionId}.summary` : `effect.${effect}.summary`
       // role — название роли исполнителя: нужно записи своей роли («журналист → №9»).
       const params = { target: seat(lang, e.target), role: roleName(lang, registry, e.performerRole) }
       if (hasKey(key)) did.push(translate(lang, key, params) + answerText(lang, registry, e))
     }
     const result = group.entries.findLast((e) => e.kind === 'night_result')
-    const outcome = result?.kind === 'night_result' ? diedText(lang, result.died) : ''
+    const outcome = result?.kind === 'night_result' ? diedText(lang, result.died, result.causes) : ''
     body = [did.join(', '), outcome].filter(Boolean).join(' → ')
   } else {
     const nominated = group.entries.flatMap((e) => (e.kind === 'nomination' ? [e] : [])).sort((a, b) => a.index - b.index)

@@ -81,6 +81,13 @@ export function useMainPress(): { label: string | null; disabled: boolean; press
   return useMemo(() => ({ label: action?.label ?? null, disabled: action?.disabled ?? true, press }), [action, press])
 }
 
+/**
+ * Место над главной кнопкой в прилипающем низу панели шага. Панель шага кладёт сюда кнопки, которые должны быть на виду
+ * вместе с главной: низ прилипает целиком, и главная кнопка их не перекрывает.
+ */
+export const FooterSlotContext = createContext<HTMLElement | null>(null)
+export const useFooterSlot = (): HTMLElement | null => useContext(FooterSlotContext)
+
 export function MainButton({ main }: { main: ReturnType<typeof useMainPress> }) {
   if (main.label === null) return null
   return (

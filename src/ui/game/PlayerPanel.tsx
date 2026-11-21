@@ -52,7 +52,7 @@ export function PlayerPanel({ game, seat, onClose, children }: Props) {
         <span className="player-panel-num num">{t('common.seat', { n: seat })}</span>
         <span className="player-panel-who">
           {!settings.rolesHidden && <span className="card-role"><SideDot registry={store.registry} side={player.side} />{roleText(lang, store.registry, player.roleId)}</span>}
-          <span className="muted">{statusText(lang, player) ?? t('status.alive')}</span>
+          <span className="muted">{statusText(lang, player, settings.rolesHidden) ?? t('status.alive')}</span>
         </span>
         <button type="button" className="icon-btn" aria-label={t('panel.close')} onClick={onClose}><Close /></button>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { hasKey, seatList, translate, translateKey } from '../../app/i18n'
 import type { Lang } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
@@ -6,7 +7,7 @@ import { aliveSeats, nightPlayers, quietNight } from '../../engine'
 import type { GameState, NightDeath, Seat } from '../../engine'
 import { Button } from '../common/Button'
 import { nightStepLabel } from './labels'
-import { useMainAction } from './MainButton'
+import { useFooterSlot, useMainAction } from './MainButton'
 import { nightMarks } from './nightMarks'
 import { blockedPerformers } from './NightPanel'
 import { useAskOnce, useSelection } from './selection'
@@ -37,6 +38,7 @@ export function NightSummary({ game }: { game: GameState }) {
   useEffect(() => clear, [clear])
   const outId = useId()
   const stayId = useId()
+  const footer = useFooterSlot()
   // Решения ведущего поверх подсказки: с кого он снял отметку и кого добавил сам. Живут, пока открыт итог.
   const [unchecked, setUnchecked] = useState<Seat[]>([])
   const [added, setAdded] = useState<Seat[]>([])
@@ -77,6 +79,13 @@ export function NightSummary({ game }: { game: GameState }) {
       if (seat !== null) setAdded((list) => [...list.filter((s) => s !== seat), seat])
     },
   })
+
+  const actions = (
+    <div className="speech-secondary">
+      <Button size="l" onClick={add}>{t('night.add')}</Button>
+      <Button size="l" onClick={() => store.dispatch({ type: 'enterStep', step: night.steps[0]?.id ?? '' })}>{t('night.sum.back')}</Button>
+    </div>
+  )
 
   return (
     <div className="night">
@@ -139,10 +148,8 @@ export function NightSummary({ game }: { game: GameState }) {
         <p className="step-warning">{t('night.missing', { list: missing.map((s) => nightStepLabel(lang, registry, night, s.id)).join(', ') })}</p>
       )}
 
-      <div className="speech-secondary">
-        <Button size="l" onClick={add}>{t('night.add')}</Button>
-        <Button size="l" onClick={() => store.dispatch({ type: 'enterStep', step: night.steps[0]?.id ?? '' })}>{t('night.sum.back')}</Button>
-      </div>
+      {/* Кнопки итога стоят в прилипающем низу панели, над главной кнопкой: длинный список их не уводит под неё. */}
+      {footer ? createPortal(actions, footer) : actions}
     </div>
   )
 }

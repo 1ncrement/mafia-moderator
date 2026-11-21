@@ -14,8 +14,11 @@ export function nightMarks(lang: Lang, registry: Registry, night: NightState, ac
   }
   for (const seat of acting) add(seat, translate(lang, 'night.mark.acting'))
   const mark = (effect: string) => (hasKey(`effect.${effect}.mark`) ? translateKey(lang, `effect.${effect}.mark`) : effect)
-  // Цель нападения помечена, даже если оно не состоялось (блок) или цель вылечили.
-  for (const seat of new Set(night.steps.flatMap((s) => (s.effect === 'kill' && s.target !== null ? [s.target] : [])))) add(seat, mark('kill'))
+  // Цель нападения помечена, даже если оно не состоялось (блок) или цель вылечили. У действия может быть своя метка («цель мясника»).
+  const targetMark = (actionId: string, effect: string) => (hasKey(`action.${actionId}.target`) ? translateKey(lang, `action.${actionId}.target`) : mark(effect))
+  const attacked = new Map<string, Seat>()
+  for (const s of night.steps) if (s.effect === 'kill' && s.target !== null) attacked.set(`${s.target}:${targetMark(s.actionId, s.effect)}`, s.target)
+  for (const [key, seat] of attacked) add(seat, key.slice(key.indexOf(':') + 1))
   for (const seat of night.outcome.blocked) add(seat, mark('block'), 'block')
   for (const seat of night.outcome.healed) add(seat, mark('heal'))
   // Запись своей роли в итог ночи не входит: метка только называет, чей это выбор.

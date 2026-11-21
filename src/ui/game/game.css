@@ -1647,12 +1647,23 @@ button.journal-entry:hover {
     font-size: 13px;
   }
 }
-/* Главная кнопка всегда на виду, даже когда панель шага выше окна. */
-.main-button {
+/*
+ * Низ панели шага всегда на виду, даже когда панель выше окна: главная кнопка и, на итоге ночи, вторичные кнопки над ней.
+ * Прилипает блок целиком, поэтому главная кнопка их не перекрывает; содержимое шага прокручивается под ним.
+ */
+.step-footer {
   position: sticky;
   bottom: 16px;
   z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--panel);
   box-shadow: 0 0 0 8px var(--panel), 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+.step-footer:not(:has(.btn)),
+.step-footer-slot:empty {
+  display: none;
 }
 .speech-secondary .btn {
   flex-basis: 130px;

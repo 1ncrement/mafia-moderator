@@ -102,7 +102,14 @@ function nightEntries(session: Session, registry: Registry, n: number, events: G
   }
   const confirmed = events.findLast((e) => e.type === 'night_confirmed')
   if (confirmed && night.confirmed) {
-    out.push({ ...flags(confirmed), kind: 'night_result', died: night.confirmed.chosen, reason: quietNight(night.outcome) })
+    // Причина — из статуса, который поставил итог этой ночи.
+    const causeOf = (seat: number) => events.findLast((e) => e.type === 'status_set' && e.source === 'night' && e.seat === seat && e.status === 'out')
+    const died = night.confirmed.chosen
+    const causes = died.map((seat) => {
+      const status = causeOf(seat)
+      return status?.type === 'status_set' ? status.cause : undefined
+    })
+    out.push({ ...flags(confirmed), kind: 'night_result', died, causes, reason: quietNight(night.outcome) })
   }
   return out
 }

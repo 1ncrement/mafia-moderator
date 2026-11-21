@@ -409,8 +409,11 @@ export type JournalEntry = { eventId: string | null; edited: boolean; manual: bo
   | { kind: 'night_action'; actionId: string; performerRole: RoleId; actor: Seat | null; target: Seat | null; answer?: CheckAnswer; numbered?: true }
   /** Шаг прошлой ночи без записи. */
   | { kind: 'night_missing'; actionId: string; actor: Seat | null; numbered?: true }
-  /** died — кого отметил ведущий; reason — почему по подсказке никто не выбывает (null — по подсказке кто-то выбывает). */
-  | { kind: 'night_result'; died: Seat[]; reason: QuietNight | null }
+  /**
+   * died — кого отметил ведущий; causes — с какой причиной каждый из них записан, в том же порядке;
+   * reason — почему по подсказке никто не выбывает (null — по подсказке кто-то выбывает).
+   */
+  | { kind: 'night_result'; died: Seat[]; causes: (OutCause | undefined)[]; reason: QuietNight | null }
   | { kind: 'circle'; first: Seat; random?: true }
   | { kind: 'nomination'; index: number; by: Seat | null; target: Seat }
   | { kind: 'votes'; ballot: 1 | 2; voters: number; entries: { candidate: Seat; count: number }[] }

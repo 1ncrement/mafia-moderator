@@ -71,6 +71,11 @@ export const DEFAULT_REGISTRY: Registry = {
       id: 'prostitute_block', order: 20, effect: 'block', performers: ['prostitute'], scope: 'each',
       stepKey: 'action.prostitute_block.step', questionKey: 'action.prostitute_block.question',
     },
+    // Одиночки ходят после чёрных и перед красными: мясник, затем маньяк.
+    {
+      id: 'butcher_kill', order: 22, effect: 'kill', cause: 'slain', performers: ['butcher'], scope: 'each',
+      stepKey: 'action.butcher_kill.step', questionKey: 'action.butcher_kill.question',
+    },
     {
       id: 'sheriff_check', order: 30, effect: 'check_side', performers: ['sheriff'], scope: 'each',
       stepKey: 'action.sheriff_check.step', questionKey: 'action.sheriff_check.question',

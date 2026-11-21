@@ -1,4 +1,4 @@
-import { phaseLabel, stepName, translate, translateKey } from '../../app/i18n'
+import { hasKey, phaseLabel, stepName, translate, translateKey } from '../../app/i18n'
 import type { Lang } from '../../app/i18n'
 import { SUMMARY_STEP } from '../../engine'
 import type { GameState, JournalEntry, NightState, PlayerView, Registry, Seat } from '../../engine'
@@ -23,10 +23,15 @@ export function stepLabel(lang: Lang, registry: Registry, game: GameState, hideS
   return ''
 }
 
-/** «застрелен · Ночь 1», «выгнан · День 2»; у игрока в игре — null. */
-export function statusText(lang: Lang, player: PlayerView): string | null {
+/**
+ * «застрелен · Ночь 1», «убит мясником · Ночь 2», «выгнан · День 2»; у игрока в игре — null.
+ * hideCause — роли скрыты: причина ночной смерти выдала бы, чьих рук это дело, поэтому вместо неё «выбыл».
+ * Изгнание голосованием знает весь стол — оно подписано всегда.
+ */
+export function statusText(lang: Lang, player: PlayerView, hideCause = false): string | null {
   if (player.status === 'alive') return null
-  const cause = translate(lang, player.cause === 'shot' ? 'status.shot' : player.cause === 'voted' ? 'status.voted' : 'status.out')
+  const key = `status.${player.cause ?? ''}`
+  const cause = hasKey(key) && (!hideCause || player.cause === 'voted') ? translateKey(lang, key) : translate(lang, 'status.out')
   return player.outPhase ? `${cause} · ${phaseLabel(lang, player.outPhase)}` : cause
 }
 

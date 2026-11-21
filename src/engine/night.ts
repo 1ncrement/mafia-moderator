@@ -2,8 +2,8 @@ import { allOf, eventsOf, lastOf } from './log'
 import { aliveSeats, isSeat, nightPlayers, rolesBySeat, seatsOf } from './players'
 import { roleOption } from './setup'
 import type {
-  CheckAnswer, EventOf, GameEvent, NightActionDef, NightDeath, NightNote, NightOutcome, NightState, NightStep, PhaseRef, QuietNight, Registry, RoleId,
-  Seat, Session,
+  CheckAnswer, EventOf, GameEvent, NightActionDef, NightDeath, NightNote, NightOutcome, NightState, NightStep, OutCause, PhaseRef, QuietNight, Registry,
+  RoleId, Seat, Session,
 } from './types'
 
 // Ночь: шаги строятся из справочника, итог считает общая функция по типу эффекта.
@@ -11,6 +11,8 @@ import type {
 
 type BareStep = Omit<NightStep, 'lastNight'>
 type Draft = { def: NightActionDef; step: BareStep; record: EventOf<'night_action'> | null }
+/** Нападение на игрока: причина — от действия, которым напали. */
+type Attack = { target: Seat; cause: OutCause }
 
 export function stepIdOf(actionId: string, actor: Seat | null): string {
   return actor === null ? actionId : `${actionId}:${actor}`
@@ -116,16 +118,25 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
   const healed = unique(drafts.flatMap((d) =>
     d.def.effect === 'heal' && targetOf(d) !== null && !isBlocked(d) ? [targetOf(d) as Seat] : []))
 
-  // Нападения: записанные действия «убийство». Заблокированное не состоялось.
-  const attacks = drafts.filter((d) => d.def.effect === 'kill' && targetOf(d) !== null)
-  const landed = attacks.filter((d) => !isBlocked(d))
-  const attacked = unique(landed.map((d) => targetOf(d) as Seat))
-  // Лечение срабатывает первым: нападение на вылеченного отменяется. Несколько нападений на одного — одна смерть.
-  const deaths: NightDeath[] = attacked.filter((seat) => !healed.includes(seat)).map((seat) => ({ seat, cause: 'shot' as const })).sort(bySeat)
-  const notes: NightNote[] = healed
-    .map((seat): NightNote => (attacked.includes(seat) ? { seat, kind: 'healed', cause: 'shot' } : { seat, kind: 'healed' }))
+  // Итог считается по порядку раздела 5.5 дополнения: блоки → нападения → доктор → … → смерти.
+  // Нападения: записанные действия «убийство», в порядке ночи. Заблокированное не состоялось.
+  const attempts = drafts.filter((d) => d.def.effect === 'kill' && targetOf(d) !== null)
+  const landed: Attack[] = attempts.filter((d) => !isBlocked(d)).map((d) => ({ target: targetOf(d) as Seat, cause: d.def.cause ?? 'shot' }))
+  /** Первое по порядку ночи нападение на игрока: его причина и называется. */
+  const firstOn = (attacks: Attack[], seat: Seat): Attack | undefined => attacks.find((a) => a.target === seat)
+  // Доктор срабатывает первым: нападения на вылеченного отменяются.
+  const afterHeal = landed.filter((a) => !healed.includes(a.target))
+  // Остальные, на кого напали, выбывают. Несколько нападений на одного — одна смерть.
+  const deaths: NightDeath[] = unique(afterHeal.map((a) => a.target))
+    .map((seat) => ({ seat, cause: (firstOn(afterHeal, seat) as Attack).cause }))
     .sort(bySeat)
-  const outcome: NightOutcome = { deaths, notes, blocked, healed, noAttack: attacks.length === 0 ? 'none' : landed.length === 0 ? 'blocked' : null }
+  const notes: NightNote[] = healed
+    .map((seat): NightNote => {
+      const attack = firstOn(landed, seat)
+      return attack ? { seat, kind: 'healed', cause: attack.cause } : { seat, kind: 'healed' }
+    })
+    .sort(bySeat)
+  const outcome: NightOutcome = { deaths, notes, blocked, healed, noAttack: attempts.length === 0 ? 'none' : landed.length === 0 ? 'blocked' : null }
 
   const seenAs = new Map(registry.roles.map((r) => [r.id, r.seenBySheriffAs]))
   const answerOf = (d: Draft): CheckAnswer | undefined => {

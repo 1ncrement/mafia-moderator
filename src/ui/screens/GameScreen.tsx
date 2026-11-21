@@ -14,7 +14,7 @@ import { Header } from '../game/Header'
 import type { GameModal } from '../game/Header'
 import { JournalPanel } from '../game/JournalPanel'
 import { stepLabel } from '../game/labels'
-import { MainActionProvider, MainButton, useMainPress } from '../game/MainButton'
+import { FooterSlotContext, MainActionProvider, MainButton, useMainPress } from '../game/MainButton'
 import { MorningDialog } from '../game/MorningDialog'
 import { NightPanel } from '../game/NightPanel'
 import { NightSummary } from '../game/NightSummary'
@@ -84,6 +84,8 @@ function Game({ game }: { game: GameState }) {
   const [adding, setAdding] = useState<PhaseRef | null>(null)
   /** Окно утра открыто снова из панели шага. Первый раз оно открывается само — пока утро не объявлено. */
   const [morningOpen, setMorningOpen] = useState(false)
+  /** Место над главной кнопкой в прилипающем низу панели шага: сюда итог ночи кладёт свои вторичные кнопки. */
+  const [footerSlot, setFooterSlot] = useState<HTMLElement | null>(null)
   const { selection } = useSelection()
   const flash = useTimerSignal()
   const digits = useRef<((n: number) => void) | null>(null)
@@ -143,11 +145,16 @@ function Game({ game }: { game: GameState }) {
             <Button variant="ghost" className="morning-reopen" onClick={() => setMorningOpen(true)}><Sun size={18} />{t('morning.reopen')}</Button>
           )}
           {session.timer?.kind === 'free' && Panel !== SpeechPanel && <TimerPanel game={game} flash={flash} />}
-          <DigitKeysContext.Provider value={digits}>
-            {Panel ? <Panel game={game} flash={flash} /> : <h3 className="step-title">{stepLabel(lang, store.registry, game)}</h3>}
-          </DigitKeysContext.Provider>
+          <FooterSlotContext.Provider value={footerSlot}>
+            <DigitKeysContext.Provider value={digits}>
+              {Panel ? <Panel game={game} flash={flash} /> : <h3 className="step-title">{stepLabel(lang, store.registry, game)}</h3>}
+            </DigitKeysContext.Provider>
+          </FooterSlotContext.Provider>
           {notSpoken.length > 0 && <p className="step-warning">{t('day.notSpoken', { list: notSpoken.join(', ') })}</p>}
-          <MainButton main={main} />
+          <div className="step-footer">
+            <div ref={setFooterSlot} className="step-footer-slot" />
+            <MainButton main={main} />
+          </div>
         </section>
         <JournalPanel
           session={session} collapsed={journalCollapsed} onCollapse={setJournalCollapsed}
