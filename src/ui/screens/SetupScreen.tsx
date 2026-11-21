@@ -1,11 +1,11 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { cap, hasKey, plural, roleName, roleText, roleTitle, stepName, translateKey } from '../../app/i18n'
 import { useApp, useStore, useT } from '../../app/StoreContext'
 import {
-  checkComposition, configurableRoles, DEFAULT_DURATIONS, defaultComposition, MAX_CUSTOM_ROLES, MAX_PLAYERS, MIN_PLAYERS, nestedRoles,
-  nightOrder,
+  checkComposition, configurableRoles, DEFAULT_DURATIONS, DEFAULT_RULES, defaultComposition, MAX_CUSTOM_ROLES, MAX_PLAYERS, MIN_PLAYERS,
+  nestedRoles, nightOrder,
 } from '../../engine'
-import type { Durations, RoleDef, RoleId } from '../../engine'
+import type { Durations, RoleDef, RoleId, Rules } from '../../engine'
 import { Button } from '../common/Button'
 import { Pencil, Plus, Trash } from '../common/icons'
 import { SideDot } from '../common/SideDot'
@@ -16,6 +16,49 @@ import { CustomRoleForm } from './CustomRoleForm'
 import './prepare.css'
 
 export const DURATION_KEYS = ['speech', 'balagan', 'defense', 'tiebreak', 'farewell'] as const
+/** Правила партии, которые включаются и выключаются. */
+const RULE_SWITCHES = ['balagan', 'farewellAfterVote', 'farewellAfterNight'] as const
+
+/**
+ * Блок «Правила партии»: что есть в ходе дня и когда просыпается блокирующая роль.
+ * Задаются до раздачи и хранятся в игре; после раздачи не меняются.
+ */
+function RulesPanel({ rules, farewell, onChange }: { rules: Rules; farewell: string; onChange(next: Rules): void }) {
+  const t = useT()
+  const titleId = useId()
+  const orderId = useId()
+  return (
+    <section className="panel setup-rules" aria-labelledby={titleId}>
+      <h2 id={titleId} className="h2 setup-rules-title">{t('setup.rules')}</h2>
+      {RULE_SWITCHES.map((key) => (
+        <div key={key} className="setup-rule">
+          <button
+            type="button" role="switch" aria-checked={rules[key]} aria-label={t(`setup.rules.${key}`)} className="switch"
+            onClick={() => onChange({ ...rules, [key]: !rules[key] })}
+          >
+            <span className="switch-track"><span className="switch-knob" /></span>
+          </button>
+          <span className="setup-rule-text">
+            <span className="setup-rule-name">{t(`setup.rules.${key}`)}</span>
+            <span className="small muted">{t(`setup.rules.${key}.sub`, { sec: farewell })}</span>
+          </span>
+        </div>
+      ))}
+      <fieldset className="setup-rule-choice" role="radiogroup" aria-labelledby={orderId}>
+        <legend id={orderId} className="setup-rule-name">{t('setup.rules.blockerOrder')}</legend>
+        <div className="choice-grid" data-columns="2">
+          <button type="button" role="radio" aria-checked={rules.prostituteFirst} className="choice" onClick={() => onChange({ ...rules, prostituteFirst: true })}>
+            {t('setup.rules.blockerOrder.first')}
+          </button>
+          <button type="button" role="radio" aria-checked={!rules.prostituteFirst} className="choice" onClick={() => onChange({ ...rules, prostituteFirst: false })}>
+            {t('setup.rules.blockerOrder.afterKillers')}
+          </button>
+        </div>
+        <span className="small muted">{t('setup.rules.blockerOrder.hint')}</span>
+      </fieldset>
+    </section>
+  )
+}
 
 /** Пять длительностей и переключатель «запускать таймер отдельной кнопкой». Шаг 5 секунд, границы 10–300. */
 export function TimerFields({ durations, separate, onDurations, onSeparate }: {
@@ -235,6 +278,11 @@ export function SetupScreen() {
             </ul>
           </div>
 
+          <RulesPanel
+            rules={draft.rules} farewell={t('unit.sec', { n: draft.durations.farewell })}
+            onChange={(rules) => store.editDraft({ rules })}
+          />
+
           <div className="panel setup-night">
             <div className="setup-night-head">
               <h2 className="h2">{t('setup.nightOrder')}</h2>
@@ -276,7 +324,7 @@ export function SetupScreen() {
           </Button>
           <Button
             variant="ghost" className="setup-reset"
-            onClick={() => store.editDraft({ composition: defaultComposition(registry), durations: DEFAULT_DURATIONS, separateTimerStart: false })}
+            onClick={() => store.editDraft({ composition: defaultComposition(registry), durations: DEFAULT_DURATIONS, separateTimerStart: false, rules: DEFAULT_RULES })}
           >
             {t('setup.reset')}
           </Button>

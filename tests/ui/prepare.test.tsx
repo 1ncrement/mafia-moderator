@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import { DEFAULT_RULES } from '../../src/engine'
 import { advance, renderApp } from './helpers'
 
 test('от главной до Дня 1', async () => {
@@ -54,4 +55,51 @@ test('поменять роли двум номерам на экране рас
   await user.click(screen.getByRole('button', { name: 'Выбрать игрока №1' })); await user.click(screen.getByRole('button', { name: 'Выбрать игрока №10' }))
   const after = app.getState().game!.players.map((p) => p.roleId)
   expect(after[0]).toBe(before[9]); expect(after[9]).toBe(before[0])
+})
+
+// ── Правила партии на экране состава ────────────────────────────────────────
+
+const rulesBlock = () => within(screen.getByRole('region', { name: 'Правила партии' }))
+
+test('блок «Правила партии»: умолчания новой игры видны выключателями и выбором', async () => {
+  const { app } = renderApp((a) => a.newGame())
+  expect(app.getState().draft.rules).toEqual(DEFAULT_RULES)
+  expect(rulesBlock().getByRole('switch', { name: 'Балаган перед кругом речей' })).toBeChecked()
+  expect(rulesBlock().getByRole('switch', { name: 'Прощание после голосования' })).toBeChecked()
+  expect(rulesBlock().getByRole('switch', { name: 'Прощание после ночной смерти' })).not.toBeChecked()
+  const order = within(rulesBlock().getByRole('radiogroup', { name: 'Проститутка просыпается' }))
+  expect(order.getByRole('radio', { name: 'Первой' })).toBeChecked(); expect(order.getByRole('radio', { name: 'После мафии' })).not.toBeChecked()
+})
+test('выключатели и выбор меняют правила черновика, раздача кладёт их в игру', async () => {
+  const { app, user } = renderApp((a) => a.newGame())
+  await user.click(rulesBlock().getByRole('switch', { name: 'Балаган перед кругом речей' }))
+  expect(app.getState().draft.rules).toEqual({ ...DEFAULT_RULES, balagan: false })
+  await user.click(rulesBlock().getByRole('switch', { name: 'Прощание после голосования' }))
+  await user.click(rulesBlock().getByRole('switch', { name: 'Прощание после ночной смерти' }))
+  await user.click(rulesBlock().getByRole('radio', { name: 'После мафии' }))
+  const chosen = { ...DEFAULT_RULES, balagan: false, farewellAfterVote: false, farewellAfterNight: true, prostituteFirst: false }
+  expect(app.getState().draft.rules).toEqual(chosen)
+  expect(rulesBlock().getByRole('radio', { name: 'После мафии' })).toBeChecked()
+  await user.click(screen.getByRole('button', { name: /Раздать роли/ }))
+  expect(app.getState().session!.config.rules).toEqual(chosen)
+  // Следующая игра начинается с тех же правил: последний состав запоминается целиком.
+  app.goHome(); app.newGame()
+  expect(app.getState().draft.rules).toEqual(chosen)
+})
+test('«Сбросить к стандарту» возвращает правила партии к умолчаниям', async () => {
+  const { app, user } = renderApp((a) => { a.newGame(); a.editDraft({ rules: { ...DEFAULT_RULES, balagan: false, farewellAfterNight: true, prostituteFirst: false } }) })
+  expect(rulesBlock().getByRole('switch', { name: 'Балаган перед кругом речей' })).not.toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'Сбросить к стандарту' }))
+  expect(app.getState().draft.rules).toEqual(DEFAULT_RULES)
+  expect(rulesBlock().getByRole('switch', { name: 'Балаган перед кругом речей' })).toBeChecked()
+  expect(rulesBlock().getByRole('radio', { name: 'Первой' })).toBeChecked()
+})
+test('правила партии подписаны по-украински', async () => {
+  renderApp((a) => { a.setSettings({ lang: 'uk' }); a.newGame() })
+  const block = within(screen.getByRole('region', { name: 'Правила партії' }))
+  for (const name of ['Балаган перед колом промов', 'Прощання після голосування', 'Прощання після нічної смерті']) {
+    expect(block.getByRole('switch', { name })).toBeInTheDocument()
+  }
+  const order = within(block.getByRole('radiogroup', { name: 'Повія прокидається' }))
+  expect(order.getByRole('radio', { name: 'Першою' })).toBeChecked(); expect(order.getByRole('radio', { name: 'Після мафії' })).toBeInTheDocument()
 })

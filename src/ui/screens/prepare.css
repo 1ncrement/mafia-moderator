@@ -489,6 +489,76 @@ legend.role-form-label {
   flex-direction: column;
   gap: 10px;
 }
+
+/* Правила партии */
+.setup-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-color: var(--text);
+}
+.setup-rules-title {
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.setup-rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+}
+.setup-rule .switch {
+  flex: none;
+}
+.setup-rule-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.setup-rule-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+.setup-rule-choice {
+  min-width: 0;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.setup-rule-choice legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+/* Выбор одного из вариантов: правило партии, опция роли. */
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.choice-grid[data-columns='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.choice {
+  min-height: 48px;
+  padding: 6px 12px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--border);
+  font-size: 15px;
+  text-align: center;
+  color: var(--text-2);
+}
+.choice[aria-checked='true'] {
+  /* Рамка толще на 1 px — отступ меньше на 1 px, чтобы кнопка не прыгала. */
+  padding: 5px 11px;
+  border: 2px solid var(--text);
+  background: var(--card);
+  font-weight: 700;
+  color: var(--text);
+}
 .setup-night-head {
   display: flex;
   align-items: center;
