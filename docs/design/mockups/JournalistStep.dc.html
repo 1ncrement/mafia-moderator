@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Панель шага: журналист сравнивает двух игроков</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1115}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid #9DB0FF;outline-offset:2px}
+a{color:#9DB0FF}a:hover{color:#C4CFFF}
+</style>
+</helmet>
+<div style="width: 480px; height: 900px; box-sizing: border-box; padding: 24px; background: #0F1115; color: #EEF0F4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 15px; line-height: 1.4">
+<section aria-label="Текущий шаг" style="height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px; padding: 20px; border: 1px solid #2B303B; border-radius: 14px; background: #171A20">
+
+<nav aria-label="Шаги ночи">
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{done}}" as="s" hint-placeholder-count="5">
+<li>
+<button type="button" style="width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 12px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; text-align: left; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3ABB8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M5 12l5 5 9-10"></path></svg>
+<span style="flex: 1; font-size: 15px; font-weight: 500">{{s.name}}</span>
+<span style="font-size: 15px; font-weight: 600">{{s.pick}}</span>
+</button>
+</li>
+</sc-for>
+<li>
+<button type="button" aria-current="step" style="width: 100%; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 12px; border-radius: 10px; border: 1px solid #9DB0FF; background: #9DB0FF; color: #0E1330; text-align: left; cursor: pointer">
+<span style="flex: 1; font-size: 15px; font-weight: 700">Журналист</span>
+<span style="font-size: 15px; font-weight: 700">№1 и №2</span>
+</button>
+</li>
+<li>
+<button type="button" style="width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 12px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; text-align: left; cursor: pointer">
+<span style="flex: 1; font-size: 15px; font-weight: 500">Доктор</span>
+</button>
+</li>
+<li>
+<button type="button" style="width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 12px; border-radius: 10px; border: 1px solid #2B303B; background: transparent; text-align: left; cursor: pointer">
+<span style="flex: 1; font-size: 15px; font-weight: 500">Итог ночи</span>
+</button>
+</li>
+</ol>
+</nav>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 14px; color: #A3ABB8">Просыпается журналист — №9</span>
+<span style="font-size: 14px; color: #A3ABB8">Выбрать нельзя: №3 и №7 — уже проверены; №5 — роль открыта, жилет снят; №9 — сам журналист</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: 12px; border: 1px solid #9DB0FF; background: #1B2140">
+<span style="font-size: 14px; color: #C4CFFF">Ответ журналисту · №1 и №2</span>
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 52px; line-height: 1.05; color: #9DB0FF">Разные стороны</span>
+<span style="font-size: 14px; color: #C4CFFF">Покажи игроку: разные</span>
+</div>
+
+<span style="font-size: 14px; color: #A3ABB8">Следующая проверка — через ночь. В Ночь 3 журналист проснётся, но проверять не будет.</span>
+
+<button type="button" style="margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 68px; padding: 0 20px; border: 0; border-radius: 12px; background: #9DB0FF; font-size: 21px; font-weight: 700; color: #0E1330; cursor: pointer">
+Дальше: Доктор
+<span style="padding: 1px 7px; border-radius: 5px; border: 1px solid #0E1330; font-size: 12px; font-weight: 600; color: #0E1330">Enter</span>
+</button>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":480,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const src = [['Проститутка', '→ №5'], ['Мафия', '→ №4'], ['Крёстный отец', '→ №1'], ['Маньяк', '→ №10'], ['Шериф', '→ №8']];
+return { done: src.map((s) => ({ name: s[0], pick: s[1] })) };
+}
+}
+</script>
+</body>
+</html>

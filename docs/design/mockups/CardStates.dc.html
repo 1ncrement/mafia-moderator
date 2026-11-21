@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Карточки игроков: новые состояния</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1115}
+a{color:#F2B33D}a:hover{color:#FFD27A}
+</style>
+</helmet>
+<div style="width: 1040px; height: 320px; box-sizing: border-box; padding: 24px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; background: #0F1115; color: #EEF0F4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 15px; line-height: 1.35">
+<sc-for list="{{cards}}" as="c" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px; min-height: 176px; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 2px solid {{c.border}}; background: {{c.bg}}">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 46px; line-height: 1">{{c.num}}</span>
+<span style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600"><span aria-hidden="true" style="flex: none; width: 10px; height: 10px; border-radius: {{c.dotRadius}}; background: {{c.dotBg}}; box-shadow: {{c.dotRing}}"></span>{{c.role}}</span>
+<span style="margin-top: auto; align-self: flex-start; padding: 3px 9px; border-radius: 6px; background: {{c.markBg}}; font-size: 13px; font-weight: 600; color: {{c.markColor}}">{{c.mark}}</span>
+</div>
+<span style="font-size: 13px; color: #A3ABB8">{{c.caption}}</span>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1040,"height":320}}'>
+class Component extends DCLogic {
+renderVals() {
+const RED = ['#E5484D', 'none', '50%'];
+const BLACK = ['#0A0A0A', '0 0 0 2px #EEF0F4', '50%'];
+const SOLO = ['#B79CFF', 'none', '2px'];
+const src = [
+['6', 'шериф', RED, 'заблокирован', '#8F1D22', '#FFFFFF', '#FF6B70', '#2A1416', 'Ночь: заблокирован проституткой'],
+['4', 'мирный житель', RED, 'молчит', '#2A2413', '#FFD27A', '#F2B33D', '#1E222A', 'День: жертва маньяка'],
+['2', 'бронежилет', RED, 'жилет снят · открыт', '#2B303B', '#EEF0F4', '#5A6270', '#1E222A', 'Пережил убийство, роль открыта'],
+['8', 'мясник', SOLO, 'сам за себя', '#2A2140', '#D9CCFF', '#2B303B', '#1E222A', 'Третья сторона: свой цвет'],
+['9', 'охранник', RED, 'защищает №5', '#1B2140', '#C4CFFF', '#2B303B', '#1E222A', 'Ночь: выбор охранника']
+];
+const cards = src.map((s) => ({
+num: s[0], role: s[1], dotBg: s[2][0], dotRing: s[2][1], dotRadius: s[2][2],
+mark: s[3], markBg: s[4], markColor: s[5], border: s[6], bg: s[7], caption: s[8]
+}));
+return { cards: cards, unused: BLACK };
+}
+}
+</script>
+</body>
+</html>

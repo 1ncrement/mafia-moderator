@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Панель шага: итог ночи с несколькими событиями</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1115}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid #9DB0FF;outline-offset:2px}
+a{color:#9DB0FF}a:hover{color:#C4CFFF}
+</style>
+</helmet>
+<div style="width: 480px; height: 1000px; box-sizing: border-box; padding: 24px; background: #0F1115; color: #EEF0F4; font-family: 'Golos Text', system-ui, sans-serif; font-size: 15px; line-height: 1.4">
+<section aria-label="Итог ночи" style="height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; padding: 20px; border: 1px solid #2B303B; border-radius: 14px; background: #171A20">
+
+<div style="display: flex; flex-direction: column; gap: 2px">
+<h2 style="margin: 0; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ABB8">Итог Ночи 2</h2>
+<span style="font-size: 14px; color: #A3ABB8">Подсказка приложения. Сними отметку, если за столом было иначе.</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #C4CFFF">Покидают стол</span>
+<sc-for list="{{deaths}}" as="d" hint-placeholder-count="3">
+<label style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 14px; border-radius: 12px; border: 1px solid #9DB0FF; background: #1B2140; cursor: pointer">
+<input type="checkbox" checked aria-label="{{d.aria}}" style="width: 22px; height: 22px; accent-color: #9DB0FF">
+<span style="font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 30px; line-height: 1; color: #9DB0FF">{{d.seat}}</span>
+<span style="display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 600">{{d.text}}</span><span style="font-size: 13px; color: #C4CFFF">{{d.sub}}</span></span>
+</label>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #A3ABB8">Остаются в игре</span>
+<sc-for list="{{notes}}" as="n" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 14px; border-radius: 12px; background: #1E222A">
+<span style="min-width: 40px; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 26px; line-height: 1">{{n.seat}}</span>
+<span style="display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 600">{{n.text}}</span><span style="font-size: 13px; color: #A3ABB8">{{n.sub}}</span></span>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="flex: 1 1 180px; height: 48px; padding: 0 12px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; cursor: pointer">Добавить выбывшего…</button>
+<button type="button" style="flex: 1 1 180px; height: 48px; padding: 0 12px; border-radius: 10px; border: 1px solid #2B303B; background: #1E222A; font-size: 15px; cursor: pointer">Назад к шагам ночи</button>
+</div>
+
+<button type="button" style="margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 68px; padding: 0 20px; border: 0; border-radius: 12px; background: #9DB0FF; font-size: 20px; font-weight: 700; color: #0E1330; cursor: pointer">
+Выбывают трое · начать День 3
+<span style="padding: 1px 7px; border-radius: 5px; border: 1px solid #0E1330; font-size: 12px; font-weight: 600; color: #0E1330">Enter</span>
+</button>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":480,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const deaths = [
+['№7', 'Застрелен мафией', 'никто не лечил и не защищал'],
+['№3', 'Убит мясником', 'никто не лечил и не защищал'],
+['№9', 'Охранник закрыл собой №5', 'погиб вместо него · прощается 30 с']
+].map((d) => ({ seat: d[0], text: d[1], sub: d[2], aria: d[0] + ' покидает стол' }));
+const notes = [
+['№2', 'Был в бронежилете', 'второй визит маньяка · жилет снят, роль открыта'],
+['№4', 'Жертва маньяка', 'первый визит · днём молчит'],
+['№11', 'Вылечен доктором', 'в него не стреляли']
+].map((n) => ({ seat: n[0], text: n[1], sub: n[2] }));
+return { deaths: deaths, notes: notes };
+}
+}
+</script>
+</body>
+</html>
