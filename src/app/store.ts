@@ -163,7 +163,8 @@ export function createAppStore(env: Env): AppStore {
     const timer = session.timer
     if (timer?.kind === 'free') return timer
     const speaking = game.day?.speaking
-    if (!speaking) return idle
+    // У хода без речи (молчащий) таймера нет.
+    if (!speaking || speaking.kind === 'silent') return idle
     if (timer && timer.kind === speaking.kind && timer.seat === speaking.seat) return timer
     return newTimer(speaking.kind, speaking.seat, speechSeconds(session.config.durations, speaking.kind) * 1000)
   }
@@ -324,7 +325,8 @@ export function createAppStore(env: Env): AppStore {
 
     speak(kind, seat) {
       const result = run([{ type: 'startSpeech', kind, seat }])
-      if (!result.ok) return result
+      // Ход без речи: слово передано, таймер не создаётся.
+      if (!result.ok || kind === 'silent') return result
       withSession((session) => {
         const fresh = newTimer(kind, seat, speechSeconds(session.config.durations, kind) * 1000)
         return { ...session, timer: session.config.separateTimerStart ? fresh : timerReduce(fresh, { type: 'start' }, env.now()) }

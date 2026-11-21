@@ -59,7 +59,11 @@ export function MorningDialog({ day, morning, seconds, first, onDone, onUndo }: 
   const lines: { seat: Seat; text: string }[] = [
     ...morning.farewell.map((seat) => ({ seat, text: t('morning.farewell', { sec: t('unit.sec', { n: seconds }) }) })),
     ...morning.spared.map((seat) => ({ seat, text: t('morning.spared') })),
-    ...morning.silenced.map((seat) => ({ seat, text: t('morning.silenced') })),
+    // Молчащий: своей минуты нет; по опциям роли — ещё и не выставляет, и не голосует.
+    ...morning.silenced.map((seat) => ({
+      seat,
+      text: [t('morning.silenced'), morning.silence.noNominate ? t('morning.silenced.noNominate') : '', morning.silence.noVote ? t('morning.silenced.noVote') : ''].filter(Boolean).join(', '),
+    })),
   ]
   const count = morning.deaths.length
 

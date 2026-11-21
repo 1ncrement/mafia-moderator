@@ -77,6 +77,11 @@ export const DEFAULT_REGISTRY: Registry = {
       stepKey: 'action.butcher_kill.step', questionKey: 'action.butcher_kill.question',
     },
     {
+      id: 'maniac_visit', order: 25, effect: 'haunt', cause: 'haunted', performers: ['maniac'], scope: 'each',
+      repeatOption: 'maniac_no_repeat', victim: { noNominate: 'maniac_no_nominate', noVote: 'maniac_no_vote' },
+      stepKey: 'action.maniac_visit.step', questionKey: 'action.maniac_visit.question',
+    },
+    {
       id: 'sheriff_check', order: 30, effect: 'check_side', performers: ['sheriff'], scope: 'each',
       stepKey: 'action.sheriff_check.step', questionKey: 'action.sheriff_check.question',
     },

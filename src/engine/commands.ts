@@ -5,6 +5,7 @@ import { aliveSeats, isSeat, nightPlayers, playersAt, playersNow, seatsOf } from
 import type {
   Command, CommandResult, EventOf, LogPatch, NewEvent, NightOutcome, PhaseRef, Registry, RejectCode, Seat, Session,
 } from './types'
+import { roleOption } from './setup'
 import { enteredVotes, maxVotesFor } from './vote'
 
 // Команда ведущего → пачка событий. Ничего не происходит само:
@@ -285,7 +286,9 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       // Мягкое ограничение: та же цель, что прошлой ночью, — предупреждение, force записывает всё равно.
       const def = registry.nightActions.find((a) => a.id === cmd.actionId)
       const repeats = cmd.target !== null && step.lastNight.recorded && step.lastNight.target === cmd.target
-      if (def?.noRepeatTarget && repeats && !cmd.force) return no('repeat_target')
+      // У действия предупреждение может включаться опцией роли («не ходит к одной жертве две ночи подряд»).
+      const warns = def?.noRepeatTarget === true || (def?.repeatOption !== undefined && roleOption(session, registry, def.repeatOption) === true)
+      if (warns && repeats && !cmd.force) return no('repeat_target')
       // Прежняя запись ищется по роли: после обмена ролями она идёт за ролью на новое место.
       const actorOf = actorMapper(log)
       const previous = eventsOf(log, p).filter((e): e is EventOf<'night_action'> =>

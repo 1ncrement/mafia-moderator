@@ -70,16 +70,19 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
     }
 
     if (step === 'speeches') {
-      const started = day.opener !== null || day.spoken.length > 0 || speaking?.kind === 'speech'
+      const started = day.opener !== null || day.spoken.length > 0 || speaking?.kind === 'speech' || speaking?.kind === 'silent'
       const next = day.waiting[0]
       /** В круге ещё никто не говорил. */
-      const first = day.spoken.length === 0 && speaking?.kind !== 'speech'
+      const first = day.spoken.length === 0 && speaking?.kind !== 'speech' && speaking?.kind !== 'silent'
       // Доп. речи первых двоих: очередь появляется в День 1, когда в круге высказались все.
       const closingNext = day.closing.waiting[0]
       const closingNow = speaking?.kind === 'closing' ? speaking.seat : null
       const closingOrder = [...day.closing.done, ...(closingNow !== null ? [closingNow] : []), ...day.closing.waiting]
       if (!started) main = { label: t('day.pickOpener'), onPress: askOpener }
-      else if (next !== undefined) {
+      else if (next !== undefined && day.silenced.includes(next)) {
+        // Очередь молчащего: ход без речи и без таймера — слово к нему переходит, чтобы он мог выставить.
+        main = { label: t('day.silent.turn', { n: next }), onPress: () => store.speak('silent', next) }
+      } else if (next !== undefined) {
         main = { label: t(first ? 'day.give' : 'day.next', { n: next, sec: sec('speech') }), onPress: () => store.speak('speech', next) }
       } else if (closingNext !== undefined) {
         main = { label: t('day.closing', { n: closingNext, sec: sec('speech') }), onPress: () => store.speak('closing', closingNext) }
@@ -87,7 +90,8 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
       else if (active.length > 0) main = { label: t('day.toDefense', { n: active.length }), onPress: () => go('defense') }
       else main = { label: t('day.noNominations', { n: day.n }), onPress: () => store.dispatch(toNight) }
 
-      const speaker = speaking?.kind === 'speech' ? speaking.seat : null
+      // Выставляет тот, чей сейчас ход: говорящий — или молчащий, если опция роли не запрещает ему выставлять.
+      const speaker = speaking?.kind === 'speech' || (speaking?.kind === 'silent' && !day.silence.noNominate) ? speaking.seat : null
       const nominate = (by: Seat) => askOnce({
         question: t('day.nominate.question', { n: by }),
         allowed: aliveOf(game),

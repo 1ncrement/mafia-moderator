@@ -24,6 +24,17 @@ export function TimerPanel({ game, flash }: { game: GameState; flash?: boolean }
 
   const live = liveTimer(session, game)
   const next = expectedSpeech(game)
+  // Ход молчащего — идущий или следующий: таймера нет, вместо него строка о том, что своей минуты у игрока нет.
+  const speaking = game.day?.speaking
+  const silent = speaking?.kind === 'silent' ? speaking.seat : !live && !speaking && next?.kind === 'silent' ? next.seat : null
+  if (silent !== null && live?.kind !== 'free') {
+    return (
+      <div className="timer timer-silent">
+        <span className="timer-silent-title num">{t('day.silent.title', { n: silent })}</span>
+        <span className="timer-state">{t('day.silent.text')}</span>
+      </div>
+    )
+  }
   // Нет идущей речи — показываем таймер следующей в состоянии «готов».
   const timer: TimerState | null = live ?? (next ? newTimer(next.kind, next.seat, speechSeconds(session.config.durations, next.kind) * 1000) : null)
   if (!timer) return null

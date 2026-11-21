@@ -84,6 +84,8 @@ export function VotePanel({ game }: { game: GameState }) {
   if (!day || !toNight || !rules) return null
   if (!ballot) return <p className="muted">{t('vote.none')}</p>
 
+  // Кто сегодня не голосует: молчащие, если так задано опцией; ничейные в переголосовании не голосуют и так.
+  const muted = day.silence.noVote ? day.silenced.filter((seat) => !(ballot.n === 2 && ballot.candidates.includes(seat))) : []
   const expelOther = () => askOnce({
     question: t('vote.other.question'), allowed: aliveOf(game),
     onPick: (seat) => {
@@ -143,6 +145,8 @@ export function VotePanel({ game }: { game: GameState }) {
         </div>
       )}
       {current === null && <span className="muted">{t('vote.counter', { voters: ballot.voters, left: ballot.remaining })}</span>}
+      {/* Опция роли: молчащие сегодня не голосуют — число голосующих по умолчанию уже без них. */}
+      {muted.length > 0 && <span className="small muted">{t(muted.length > 1 ? 'vote.muted.many' : 'vote.muted.one', { seats: seatList(lang, muted) })}</span>}
       {ballot.overflow && <p className="alert-line" role="alert">{t('vote.overflow')}</p>}
 
       <div className="speech-secondary">

@@ -9,6 +9,8 @@ export type TimerAction =
 
 /** Длительность речи в секундах. Доп. речь первых двоих своей настройки не имеет: она длится как обычная речь. */
 export function speechSeconds(durations: Durations, kind: SpeechKind): number {
+  // У хода без речи таймера нет.
+  if (kind === 'silent') return 0
   return durations[kind === 'closing' ? 'speech' : kind]
 }
 

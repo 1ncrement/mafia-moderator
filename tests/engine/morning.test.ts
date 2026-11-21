@@ -7,7 +7,7 @@ import { act, attempt, game, n1, play, st, TABLE_11 } from '../helpers'
 
 const N1 = { kind: 'night', n: 1 } as const
 const morning = (s: Session) => st(s).morning
-const QUIET = { deaths: [], farewell: [], spared: [], silenced: [], announced: false }
+const QUIET = { deaths: [], farewell: [], spared: [], silenced: [], silence: { noNominate: false, noVote: false }, announced: false }
 
 test('утра нет до Дня 2: распределение, День 1 и ночь', () => {
   const dealt = game(TABLE_11)

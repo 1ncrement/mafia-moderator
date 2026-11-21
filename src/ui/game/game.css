@@ -269,6 +269,26 @@
   border-color: var(--block);
   background: var(--block-card);
 }
+/* Молчит сегодня (жертва визита): янтарная рамка и янтарная плашка. */
+.card-silenced {
+  border-color: var(--day);
+}
+.card-mark-silent {
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--day-tint);
+  color: #ffd27a;
+}
+/* Ход молчащего в круге: таймера нет. */
+.timer-silent {
+  gap: 4px;
+}
+.timer-silent-title {
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.1;
+}
 /* Жилет снят, роль открыта столу: рамка заметнее, метка плашкой. */
 .card-open {
   border-color: var(--border-strong);

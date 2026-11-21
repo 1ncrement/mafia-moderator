@@ -26,6 +26,7 @@ export function answerText(lang: Lang, registry: Registry, entry: { actionId: st
   const answer = entry.answer
   if (!answer) return ''
   if (answer.kind === 'side') return ` — ${translateKey(lang, `side.${answer.side}.one`)}`
+  if (answer.kind === 'visit') return ` — ${translate(lang, answer.lethal ? 'journal.visit.again' : 'journal.visit.first')}`
   const def = registry.nightActions.find((a) => a.id === entry.actionId)
   if (answer.kind === 'blocked') return ` — ${translate(lang, def?.effect === 'find_role' ? 'journal.searchBlocked' : 'journal.checkBlocked')}`
   const role = roleName(lang, registry, def?.findRole ?? '')

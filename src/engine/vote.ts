@@ -51,9 +51,10 @@ function makeBallot(
  * Тур 1 — активные выставленные в порядке выставления, голосуют все игроки в игре.
  * Тур 2 появляется после ничьей: только её участники, сами они не голосуют.
  * У подтверждённого тура кандидаты и голосующие считаются на момент перед исходом.
+ * mute — кто сегодня не голосует (молчащие, если так задано опцией): по умолчанию голосующих меньше на тех из них, кто в игре.
  */
 export function buildBallots(
-  session: Session, registry: Registry, events: GameEvent[], nominations: Nomination[], now: PlayerView[],
+  session: Session, registry: Registry, events: GameEvent[], nominations: Nomination[], now: PlayerView[], mute: readonly Seat[] = [],
 ): Ballot[] {
   const resolvedOf = (n: 1 | 2) => lastOf(events, 'vote_resolved', (e) => e.ballot === n)
   const aliveAt = (resolved: GameEvent | null) => new Set(aliveSeats(resolved ? playersBefore(session, registry, resolved) : now))
@@ -62,13 +63,15 @@ export function buildBallots(
   const alive1 = aliveAt(first)
   const candidates1 = nominations.map((x) => x.target).filter((s) => alive1.has(s))
   if (candidates1.length === 0) return []
-  const ballots = [makeBallot(1, candidates1, alive1.size, events, first)]
+  const muted = (alive: ReadonlySet<Seat>, except: Seat[] = []) => mute.filter((s) => alive.has(s) && !except.includes(s)).length
+  const ballots = [makeBallot(1, candidates1, alive1.size - muted(alive1), events, first)]
 
   if (first?.outcome === 'tie') {
     const second = resolvedOf(2)
     const alive2 = aliveAt(second)
     const candidates2 = candidates1.filter((s) => first.seats.includes(s) && alive2.has(s))
-    if (candidates2.length > 0) ballots.push(makeBallot(2, candidates2, alive2.size - candidates2.length, events, second))
+    // Ничейные не голосуют и так: молчащий среди них второй раз не вычитается.
+    if (candidates2.length > 0) ballots.push(makeBallot(2, candidates2, alive2.size - candidates2.length - muted(alive2, candidates2), events, second))
   }
   return ballots
 }

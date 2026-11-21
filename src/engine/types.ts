@@ -78,6 +78,10 @@ export type NightActionDef = {
   /** Для find_role: какую роль ищут. */
   findRole?: RoleId
   noRepeatTarget?: true
+  /** Предупреждение о повторе цели действует, только пока включена эта опция роли (выключатель). */
+  repeatOption?: string
+  /** Для haunt: опции-выключатели «жертва не выставляет» и «жертва не голосует». */
+  victim?: { noNominate: string; noVote: string }
   /** Сколько игроков выбирает исполнитель; без поля — одного. */
   targets?: 2
   /** Себя выбрать нельзя. */
@@ -100,8 +104,11 @@ export type PhaseRef = { kind: 'deal' } | { kind: 'day'; n: number } | { kind: '
 export type DayStep = 'night_farewell' | 'balagan' | 'speeches' | 'defense' | 'vote' | 'tiebreak' | 'revote' | 'farewell'
 /** DayStep, id ночного шага или 'summary'. */
 export type StepId = string
-/** closing — доп. речь первых двоих в конце первого круга: идёт внутри шага «Круг речей», длится как обычная речь. */
-export type SpeechKind = 'balagan' | 'speech' | 'closing' | 'defense' | 'tiebreak' | 'farewell'
+/**
+ * closing — доп. речь первых двоих в конце первого круга: идёт внутри шага «Круг речей», длится как обычная речь.
+ * silent — ход молчащего игрока в круге: речи и таймера нет, но очередь его проходит, и в свой ход он может выставить.
+ */
+export type SpeechKind = 'balagan' | 'speech' | 'closing' | 'defense' | 'tiebreak' | 'farewell' | 'silent'
 /** shot — застрелен, voted — выгнан голосованием, slain — убит ударом, haunted — убит визитом, guard — погиб вместо подзащитного. */
 export type OutCause = 'shot' | 'voted' | 'slain' | 'haunted' | 'guard'
 
@@ -305,7 +312,9 @@ export type GameState = {
  * deaths — кто покинул стол прошлой ночью; farewell — кто из них прощается со столом; spared — остался в игре благодаря жилету;
  * silenced — сегодня молчит. announced — ведущий нажал «Объявил».
  */
-export type Morning = { deaths: Seat[]; farewell: Seat[]; spared: Seat[]; silenced: Seat[]; announced: boolean }
+export type Morning = { deaths: Seat[]; farewell: Seat[]; spared: Seat[]; silenced: Seat[]; silence: Silence; announced: boolean }
+/** Что ещё, кроме своей минуты в круге, запрещено сегодня молчащим — по опциям роли. */
+export type Silence = { noNominate: boolean; noVote: boolean }
 
 // ── День ────────────────────────────────────────────────────────────────────
 
@@ -348,13 +357,17 @@ export type DayState = {
   farewell: SpeechQueue
   /** Выгнаны голосованием сегодня, но остались в игре: изгнание принял жилет. */
   spared: Seat[]
+  /** Сегодня молчат: игроки в игре, к которым прошлой ночью приходили с визитом. Своей минуты в круге у них нет. */
+  silenced: Seat[]
+  silence: Silence
   /** Прощание выбывших прошлой ночью — по возрастанию номеров. Говорится тем же видом речи, что и прощание выгнанного. */
   nightFarewell: SpeechQueue
 }
 
 // ── Ночь ────────────────────────────────────────────────────────────────────
 
-export type CheckAnswer = { kind: 'side'; side: SideId } | { kind: 'found'; found: boolean } | { kind: 'blocked' }
+/** visit — состоявшийся визит: lethal — повторный, то есть нападение. */
+export type CheckAnswer = { kind: 'side'; side: SideId } | { kind: 'found'; found: boolean } | { kind: 'blocked' } | { kind: 'visit'; lethal: boolean }
 export type NightStep = {
   /** actionId для командного и серого шага, иначе `${actionId}:${actor}`. */
   id: string

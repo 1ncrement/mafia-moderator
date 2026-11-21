@@ -122,7 +122,7 @@ test('строки под объявлением: кто прощается, к�
   const shown = (deaths: number[]) => {
     const view = render(
       <StoreProvider store={createAppStore(testEnv())}>
-        <MorningDialog day={3} seconds={30} first morning={{ deaths, farewell: [9], spared: [2], silenced: [4], announced: false }} onDone={() => {}} />
+        <MorningDialog day={3} seconds={30} first morning={{ deaths, farewell: [9], spared: [2], silenced: [4], silence: { noNominate: false, noVote: false }, announced: false }} onDone={() => {}} />
       </StoreProvider>,
     )
     const items = within(screen.getByRole('dialog')).getAllByRole('listitem').map((li) => li.textContent)

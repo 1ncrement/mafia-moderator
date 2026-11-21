@@ -1,9 +1,9 @@
-import { allOf, eventsOf, lastOf } from './log'
+import { allOf, eventsOf, lastOf, phaseOrder } from './log'
 import { aliveSeats, isSeat, nightPlayers, rolesBySeat, seatsOf } from './players'
 import { roleOption } from './setup'
 import type {
-  CheckAnswer, EventOf, GameEvent, NightActionDef, NightDeath, NightNote, NightOutcome, NightState, NightStep, OutCause, PhaseRef, QuietNight, Registry,
-  RoleId, Seat, Session,
+  CheckAnswer, EventOf, GameEvent, NightActionDef, NightDeath, NightNote, NightOutcome, NightState, NightStep, OutCause, PhaseRef, PlayerView, QuietNight,
+  Registry, RoleId, Seat, Session,
 } from './types'
 
 // Ночь: шаги строятся из справочника, итог считает общая функция по типу эффекта.
@@ -53,7 +53,20 @@ export function actorMapper(log: readonly GameEvent[]): (event: EventOf<'night_a
   }
 }
 
-function computeNight(session: Session, registry: Registry, n: number): { steps: BareStep[]; outcome: NightOutcome } {
+/** Записи и блоки одной ночи — общая основа для расчёта итога и для счётчика визитов. */
+type NightBase = {
+  drafts: Draft[]
+  views: PlayerView[]
+  alive: Seat[]
+  roles: RoleId[]
+  blocked: Seat[]
+  /** Цель записи; цель, выбывшая вручную посреди ночи, в расчёте не участвует. */
+  targetOf(d: Draft): Seat | null
+  /** Действие отменено блоком. */
+  isBlocked(d: Draft): boolean
+}
+
+function nightBase(session: Session, registry: Registry, n: number): NightBase {
   const phase: PhaseRef = { kind: 'night', n }
   const roles = rolesBySeat(session, registry)
   const dealt = new Set(roles)
@@ -121,13 +134,48 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
     // Лидера нет — блок единственного исполнителя отменяет командное действие всегда; одиночное — по опции, если она есть.
     return d.def.leader !== undefined || cancelledByOption(d.def)
   }
+  return { drafts, views, alive, roles, blocked, targetOf, isBlocked }
+}
+
+/** Состоявшиеся визиты ночи n: к кому приходили (исполнитель не заблокирован, цель в игре). */
+export function visitsAt(session: Session, registry: Registry, n: number): Seat[] {
+  const { drafts, targetOf, isBlocked } = nightBase(session, registry, n)
+  return unique(drafts.flatMap((d) => {
+    const target = targetOf(d)
+    return d.def.effect === 'haunt' && target !== null && !isBlocked(d) ? [target] : []
+  }))
+}
+
+/**
+ * Счётчик визитов к игроку на начало ночи n: состоявшиеся визиты прошлых ночей. Второй и следующий визит — нападение.
+ * Когда жилет игрока снят, счётчик обнуляется: считаются визиты с фазы снятия. Визит той же ночи, в которую жилет принял удар,
+ * засчитывается — жилет срабатывает раньше, чем визит растит счётчик (порядок раздела 5.5: пункт 5, затем пункт 7).
+ */
+export function hauntCount(session: Session, registry: Registry, n: number, seat: Seat): number {
+  const off = nightPlayers(session, registry, n)[seat - 1]?.vestOff
+  const from = off ? phaseOrder(off) : -Infinity
+  let count = 0
+  for (let k = 1; k < n; k++) {
+    if (phaseOrder({ kind: 'night', n: k }) >= from && visitsAt(session, registry, k).includes(seat)) count++
+  }
+  return count
+}
+
+function computeNight(session: Session, registry: Registry, n: number): { steps: BareStep[]; outcome: NightOutcome } {
+  const { drafts, views, roles, blocked, targetOf, isBlocked } = nightBase(session, registry, n)
   const healed = unique(drafts.flatMap((d) =>
     d.def.effect === 'heal' && targetOf(d) !== null && !isBlocked(d) ? [targetOf(d) as Seat] : []))
 
-  // Итог считается по порядку раздела 5.5 дополнения: блоки → нападения → доктор → … → смерти.
-  // Нападения: записанные действия «убийство», в порядке ночи. Заблокированное не состоялось.
-  const attempts = drafts.filter((d) => d.def.effect === 'kill' && targetOf(d) !== null)
-  const landed: Attack[] = attempts.filter((d) => !isBlocked(d)).map((d) => ({ target: targetOf(d) as Seat, cause: d.def.cause ?? 'shot' }))
+  // Итог считается по порядку раздела 5.5 дополнения: блоки → нападения → доктор → охранник → жилет → смерти → визит.
+  // Визиты: второй и следующий визит к игроку — нападение.
+  const visits = drafts.flatMap((d) => {
+    const target = targetOf(d)
+    return d.def.effect === 'haunt' && target !== null ? [{ d, target, lethal: hauntCount(session, registry, n, target) >= 1 }] : []
+  })
+  const causeOf = (def: NightActionDef): OutCause => def.cause ?? (def.effect === 'haunt' ? 'haunted' : 'shot')
+  // Нападения в порядке ночи: записанные убийства и повторные визиты. Заблокированное не состоялось.
+  const attempts = drafts.filter((d) => targetOf(d) !== null && (d.def.effect === 'kill' || visits.some((v) => v.d === d && v.lethal)))
+  const landed: Attack[] = attempts.filter((d) => !isBlocked(d)).map((d) => ({ target: targetOf(d) as Seat, cause: causeOf(d.def) }))
   /** Первое по порядку ночи нападение на игрока: его причина и называется. */
   const firstOn = (attacks: Attack[], seat: Seat): Attack | undefined => attacks.find((a) => a.target === seat)
   // Доктор срабатывает первым: нападения на вылеченного отменяются — и защитник, закрывавший его, остаётся жив.
@@ -161,6 +209,9 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
       return attack.guarded === undefined ? { seat, cause: attack.cause } : { seat, cause: attack.cause, guarded: attack.guarded }
     })
     .sort(bySeat)
+  // Визит (не заблокирован): цель, оставшаяся в игре, завтра молчит. Причина в заметке — визит был нападением, но жертву спасли.
+  const silenced = visits.filter((v) => !isBlocked(v.d) && !deaths.some((death) => death.seat === v.target))
+    .map((v): NightNote => (v.lethal ? { seat: v.target, kind: 'silenced', cause: causeOf(v.d.def) } : { seat: v.target, kind: 'silenced' }))
   const notes: NightNote[] = [
     ...healed.map((seat): NightNote => {
       // От чего спасён: от нападения на него самого или от того, что он принял на себя как защитник.
@@ -168,7 +219,8 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
       return attack ? { seat, kind: 'healed', cause: attack.cause } : { seat, kind: 'healed' }
     }),
     ...spared.map((seat): NightNote => ({ seat, kind: 'vest', cause: mainOn(seat).cause })),
-  ].sort(bySeat)
+    ...silenced,
+  ].sort((a, b) => a.seat - b.seat || a.kind.localeCompare(b.kind))
   const outcome: NightOutcome = { deaths, notes, blocked, healed, noAttack: attempts.length === 0 ? 'none' : landed.length === 0 ? 'blocked' : null }
 
   const seenAs = new Map(registry.roles.map((r) => [r.id, r.seenBySheriffAs]))
@@ -179,6 +231,8 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
     if (d.def.effect === 'check_side') return isBlocked(d) ? { kind: 'blocked' } : { kind: 'side', side: seenAs.get(role) ?? '' }
     // Поиск роли блок отменяет, только если так задано опцией: по умолчанию поиск идёт раньше блока и от него не зависит.
     if (d.def.effect === 'find_role') return isBlocked(d) ? { kind: 'blocked' } : { kind: 'found', found: role === d.def.findRole }
+    // Состоявшийся визит: первый он или повторный (нападение).
+    if (d.def.effect === 'haunt' && !isBlocked(d)) return { kind: 'visit', lethal: visits.some((v) => v.d === d && v.lethal) }
     return undefined
   }
 

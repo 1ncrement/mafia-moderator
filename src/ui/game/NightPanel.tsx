@@ -152,7 +152,7 @@ export function NightPanel({ game }: { game: GameState }) {
           </div>
           <BlockNotice night={night} step={step} hidden={false} />
           {pending !== null && pendingBox}
-          {answer && answer.kind !== 'blocked' && step.target !== null && (
+          {answer && (answer.kind === 'side' || answer.kind === 'found') && step.target !== null && (
             <div className="answer">
               <span className="answer-cap">{t('night.answer', { step: nightStepLabel(lang, registry, night, step.id) })}</span>
               <span className={answer.kind === 'found' && !answer.found ? 'answer-big answer-mid num' : 'answer-big num'}>
@@ -165,6 +165,14 @@ export function NightPanel({ game }: { game: GameState }) {
                   ? roleText(lang, registry, game.players[step.target - 1]?.roleId ?? '')
                   : t(answer.found ? 'night.show.found' : 'night.show.notFound')}
               </span>
+            </div>
+          )}
+          {/* Визит: первый — жертва завтра молчит; повторный — нападение. Что будет с жертвой, покажет итог ночи. */}
+          {answer?.kind === 'visit' && step.target !== null && (
+            <div className="answer">
+              <span className="answer-cap">{t('night.recorded', { step: nightStepLabel(lang, registry, night, step.id) })}</span>
+              <span className="answer-big answer-mid num">{t(answer.lethal ? 'night.visit.again' : 'night.visit.first')}</span>
+              <span className="answer-cap">{t(answer.lethal ? 'night.visit.again.sub' : 'night.visit.first.sub', { seat: seat(step.target) })}</span>
             </div>
           )}
           {step.effect === 'note' && step.recorded && (

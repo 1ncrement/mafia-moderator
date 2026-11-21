@@ -1,6 +1,8 @@
 import { currentPhase, eventsOf, lastOf, nextPhase, samePhase } from './log'
+import { visitsAt } from './night'
 import { aliveSeats, isSeat, leftAtNight, playersAt, playersBefore, playersNow } from './players'
-import type { DayState, EventOf, Nomination, PhaseRef, PlayerView, Registry, Seat, Session, SpeechKind, SpeechQueue } from './types'
+import { roleOption } from './setup'
+import type { DayState, EventOf, Nomination, PhaseRef, PlayerView, Registry, Seat, Session, Silence, SpeechKind, SpeechQueue } from './types'
 import { buildBallots } from './vote'
 
 /** Круг: по возрастанию номеров от начинающего, после последнего — первый; выбывшие пропускаются. */
@@ -44,6 +46,13 @@ export function nightFarewellSeats(session: Session, registry: Registry, players
   return left.filter((seat) => guardCauses.includes(players[seat - 1]?.cause ?? 'shot'))
 }
 
+/** Что запрещено молчащим кроме своей минуты: опции действия «визит» в этой игре. */
+export function silenceOf(session: Session, registry: Registry): Silence {
+  const victim = registry.nightActions.find((a) => a.effect === 'haunt' && a.victim)?.victim
+  const on = (id: string | undefined) => id !== undefined && roleOption(session, registry, id) === true
+  return { noNominate: on(victim?.noNominate), noVote: on(victim?.noVote) }
+}
+
 /** Состояние дня n: круг речей, выставленные, туры голосования, очереди оправданий и прощаний. */
 export function dayState(session: Session, registry: Registry, n: number): DayState {
   const phase: PhaseRef = { kind: 'day', n }
@@ -70,8 +79,10 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
   if (speaking && speaking.seat !== null && speaking.kind !== 'farewell' && !alive.has(speaking.seat)) speaking = null
 
   const circleSeq = circle?.seq ?? -Infinity
-  const speeches = starts.filter((e) => e.kind === 'speech' && isSeat(session, e.seat) && e.seq > circleSeq)
-  const speakingSeat = speaking?.kind === 'speech' ? speaking.seat : null
+  // Ход в круге — речь или ход без речи (молчащий): очередь проходит и у того, и у другого.
+  const inTurn = (kind: SpeechKind) => kind === 'speech' || kind === 'silent'
+  const speeches = starts.filter((e) => inTurn(e.kind) && isSeat(session, e.seat) && e.seq > circleSeq)
+  const speakingSeat = speaking && inTurn(speaking.kind) ? speaking.seat : null
   const spoken = unique(speeches.map((e) => e.seat as Seat)).filter((s) => s !== speakingSeat)
   const skipped = unique(events.flatMap((e) => (e.type === 'speaker_skipped' && e.seq > circleSeq && isSeat(session, e.seat) ? [e.seat] : [])))
     .filter((s) => !spoken.includes(s) && s !== speakingSeat)
@@ -109,9 +120,13 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
     waiting: closingSeats.filter((s) => !closingStarted.has(s)),
   }
 
-  // Выставление и голосование.
+  // Молчат сегодня: к кому приходили прошлой ночью и кто в игре. Выбывший из списка пропадает, возвращённый — возвращается.
+  const silenced = n > 1 ? visitsAt(session, registry, n - 1).filter((s) => alive.has(s)).sort((a, b) => a - b) : []
+  const silence = silenceOf(session, registry)
+
+  // Выставление и голосование. Молчащие не голосуют, если так задано опцией.
   const nominations = nominationsOf(session, phase, alive)
-  const ballots = buildBallots(session, registry, events, nominations, now)
+  const ballots = buildBallots(session, registry, events, nominations, now, silence.noVote ? silenced : [])
 
   // Очереди речей по 30 секунд.
   const order = nominations.map((x) => x.target)
@@ -131,7 +146,7 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
     n,
     nominationsOpen: n >= session.config.rules.nominationsFromDay,
     opener, openerRandom, previousOpener, spoken, skipped, waiting, speaking,
-    nominations, ballots, closing,
+    nominations, ballots, closing, silenced, silence,
     defense: queue(nominations.filter((x) => x.active).map((x) => x.target), 'defense'),
     tiebreak: queue(byNomination(tie.filter((s) => alive.has(s))), 'tiebreak'),
     // Изгнание принял жилет: игрок в игре, в очередь прощания он не попадает.

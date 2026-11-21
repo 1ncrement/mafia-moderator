@@ -28,8 +28,13 @@ export function expectedSpeech(game: GameState): Expected {
   switch (game.step) {
     case 'night_farewell': return first(day.nightFarewell.waiting, 'farewell')
     case 'balagan': return { kind: 'balagan', seat: null }
-    // Круг пройден — в День 1 очередь продолжают доп. речи первых двоих.
-    case 'speeches': return day.opener === null ? null : first(day.waiting, 'speech') ?? first(day.closing.waiting, 'closing')
+    // Круг пройден — в День 1 очередь продолжают доп. речи первых двоих. Очередь молчащего — ход без речи и без таймера.
+    case 'speeches': {
+      if (day.opener === null) return null
+      const next = day.waiting[0]
+      if (next !== undefined && day.silenced.includes(next)) return { kind: 'silent', seat: next }
+      return first(day.waiting, 'speech') ?? first(day.closing.waiting, 'closing')
+    }
     case 'defense': return first(day.defense.waiting, 'defense')
     case 'tiebreak': return first(day.tiebreak.waiting, 'tiebreak')
     case 'farewell': return first(day.farewell.waiting, 'farewell')
@@ -53,6 +58,8 @@ export function toggleTimer(store: AppStore, session: Session, game: GameState):
     store.timer({ type: live.status === 'running' ? 'pause' : live.status === 'paused' ? 'resume' : 'start' })
     return
   }
+  // Идёт ход молчащего: таймера у него нет, а слово дальше передаёт главная кнопка — пробел тут ничего не делает.
+  if (game.day?.speaking?.kind === 'silent') return
   const next = expectedSpeech(game)
   if (!next) return
   const given = store.speak(next.kind, next.seat)

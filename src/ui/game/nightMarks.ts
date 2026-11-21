@@ -14,11 +14,16 @@ export function nightMarks(lang: Lang, registry: Registry, night: NightState, ac
   }
   for (const seat of acting) add(seat, translate(lang, 'night.mark.acting'))
   const mark = (effect: string) => (hasKey(`effect.${effect}.mark`) ? translateKey(lang, `effect.${effect}.mark`) : effect)
-  // Цель нападения помечена, даже если оно не состоялось (блок) или цель вылечили. У действия может быть своя метка («цель мясника»).
-  const targetMark = (actionId: string, effect: string) => (hasKey(`action.${actionId}.target`) ? translateKey(lang, `action.${actionId}.target`) : mark(effect))
-  const attacked = new Map<string, Seat>()
-  for (const s of night.steps) if (s.effect === 'kill' && s.target !== null) attacked.set(`${s.target}:${targetMark(s.actionId, s.effect)}`, s.target)
-  for (const [key, seat] of attacked) add(seat, key.slice(key.indexOf(':') + 1))
+  // Цель помечена, даже если действие не состоялось (блок) или цель спасли. У действия может быть своя метка
+  // («цель мясника», «визит маньяка»); у нападения без своей метки — общая.
+  const targetMark = (actionId: string, effect: string): string | null =>
+    (hasKey(`action.${actionId}.target`) ? translateKey(lang, `action.${actionId}.target`) : effect === 'kill' ? mark(effect) : null)
+  const targeted = new Map<string, Seat>()
+  for (const s of night.steps) {
+    const text = s.target === null ? null : targetMark(s.actionId, s.effect)
+    if (s.target !== null && text !== null) targeted.set(`${s.target}:${text}`, s.target)
+  }
+  for (const [key, seat] of targeted) add(seat, key.slice(key.indexOf(':') + 1))
   for (const seat of night.outcome.blocked) add(seat, mark('block'), 'block')
   // Выбор защитника — на его собственной карточке: «защищает №5».
   for (const s of night.steps) {
