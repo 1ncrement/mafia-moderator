@@ -105,3 +105,7 @@ tests         тесты движка, хранилища, store и интерф
 - `docs/superpowers/plans/2026-11-15-custom-roles.md` — план реализации своих ролей.
 - `docs/design/mockups/` — исходники макетов.
 - `docs/acceptance.md` — результат приёмки.
+
+## Лицензия
+
+MIT, см. файл LICENSE.
