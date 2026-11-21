@@ -263,6 +263,19 @@
 .card-mark-night {
   color: var(--night);
 }
+/* Заблокирован проституткой этой ночью: красная рамка и красная плашка. */
+.card-blocked,
+.card-blocked:hover {
+  border-color: var(--block);
+  background: var(--block-card);
+}
+.card-mark-block {
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--block-pill);
+  color: #fff;
+}
 .card-out {
   background: var(--panel);
 }
@@ -1098,6 +1111,20 @@ button.journal-entry:hover {
 .night-step[data-grey] {
   border-style: dashed;
 }
+/* Действие шага отменено блоком: красная рамка (толще на 1 px — отступ меньше на 1 px) и плашка «заблокирован». */
+.night-step[data-blocked],
+.night-step[data-blocked][aria-current='step'] {
+  padding: 3px 11px;
+  border: 2px solid var(--block);
+}
+.night-step-blocked {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--block-pill);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
 .night-step[data-grey] .night-step-name {
   color: var(--text-2);
 }
@@ -1139,7 +1166,47 @@ button.journal-entry:hover {
   font-size: 18px;
   font-weight: 600;
 }
-.night-blocked,
+/* Блок проститутки на шаге заблокированной роли. */
+.block-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: var(--r-m);
+  border: 2px solid var(--block);
+  background: var(--block-tint);
+}
+.block-box-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--block-ink);
+}
+.block-box-big {
+  font-weight: 600;
+  font-size: 46px;
+  line-height: 1.05;
+  color: #fff;
+}
+.block-box-text {
+  font-size: 15px;
+  color: var(--block-ink);
+}
+.block-box-hint {
+  font-size: 14px;
+  color: var(--text-2);
+}
+/* Строка на итоге ночи: кому показать блок. */
+.block-line {
+  padding: 10px 14px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--block);
+  background: var(--block-tint);
+  font-weight: 600;
+  color: var(--block-ink);
+}
 .night-repeat {
   padding: 12px 16px;
   border-radius: var(--r-m);

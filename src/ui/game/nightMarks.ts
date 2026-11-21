@@ -15,7 +15,7 @@ export function nightMarks(lang: Lang, registry: Registry, night: NightState, ac
   for (const seat of acting) add(seat, translate(lang, 'night.mark.acting'))
   const mark = (effect: string) => (hasKey(`effect.${effect}.mark`) ? translateKey(lang, `effect.${effect}.mark`) : effect)
   if (night.outcome.shotAt !== null) add(night.outcome.shotAt, mark('kill'))
-  for (const seat of night.outcome.blocked) add(seat, mark('block'))
+  for (const seat of night.outcome.blocked) add(seat, mark('block'), 'block')
   for (const seat of night.outcome.healed) add(seat, mark('heal'))
   // Запись своей роли в итог ночи не входит: метка только называет, чей это выбор.
   // У роли с несколькими носителями в метке есть номер носителя, как в названии шага: «выбор: журналист №6».

@@ -30,7 +30,7 @@ test('подсказка итога ночи не зависит от запис
 test('блок проститутки показан плашкой; шериф видит чёрную свою роль чёрной', async () => {
   const { user } = renderApp((a) => { seed(1)(a); a.dispatch({ type: 'startPhase', phase: N1 })
     a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 6 }); a.dispatch({ type: 'enterStep', step: 'act_custom_j:6' }) })
-  expect(screen.getByText('заблокирован — действие не состоялось')).toBeInTheDocument()
+  expect(screen.getByText('Покажи игроку, что он заблокирован. Действие этой ночью не состоится.')).toBeInTheDocument()
   await user.click(document.querySelector<HTMLElement>('[data-step="sheriff_check:1"]')!)
   await user.click(screen.getByRole('button', { name: 'Выбрать игрока №9' }))
   expect(screen.getByText('№9 — чёрный')).toBeInTheDocument()

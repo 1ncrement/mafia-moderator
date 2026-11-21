@@ -13,7 +13,7 @@ export type CardView = {
   highlight: boolean
   /** Ярлык в углу: «выставлен · 1». */
   badge: string | null
-  /** Метки внизу карточки. Ночные (tone: night) скрываются вместе с ролями. */
+  /** Метки внизу карточки. Ночные (tone: night и block) скрываются вместе с ролями. */
   marks: SeatMark[]
   /** Режим выбора: null — режима нет; иначе можно ли выбрать и выбран ли. */
   pick: { allowed: boolean; picked: boolean; mark: string | null } | null
@@ -29,11 +29,12 @@ export function PlayerCard({ view, registry, rolesHidden, onOpen, onPick }: Prop
   const out = player.status === 'out'
   const status = statusText(lang, player)
   const selectable = pick?.allowed === true
-  const marks = rolesHidden ? view.marks.filter((m) => m.tone !== 'night') : view.marks
+  const marks = rolesHidden ? view.marks.filter((m) => m.tone !== 'night' && m.tone !== 'block') : view.marks
   const className = cx(
     'card',
     out && 'card-out',
     view.highlight && 'card-speaking',
+    marks.some((m) => m.tone === 'block') && 'card-blocked',
     pick?.picked && 'card-picked',
     pick && !selectable && 'card-locked',
     selectable && 'card-selectable',

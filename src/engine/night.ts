@@ -64,7 +64,7 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
     drafts.push({
       def, record,
       step: {
-        id: stepIdOf(def.id, actor), actionId: def.id, effect: def.effect, actor, actors, performerRole, inherited, grey, blocked: false,
+        id: stepIdOf(def.id, actor), actionId: def.id, effect: def.effect, actor, actors, performerRole, inherited, grey, blocked: false, blockedActors: [],
         recorded: record !== null, target: record?.target ?? null, eventId: record?.id ?? null, edited: record?.edited === true,
       },
     })
@@ -127,7 +127,7 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
 
   const steps = drafts.map((d) => {
     const answer = answerOf(d)
-    const step = { ...d.step, blocked: !d.step.grey && isBlocked(d) }
+    const step = { ...d.step, blocked: !d.step.grey && isBlocked(d), blockedActors: d.step.actors.filter((seat) => blocked.includes(seat)) }
     return answer ? { ...step, answer } : step
   })
   return { steps, outcome }

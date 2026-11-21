@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { answerText, roleName } from '../../app/i18n'
+import { answerText, roleName, seatList } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { aliveSeats, nightPlayers } from '../../engine'
 import type { GameState, NightState } from '../../engine'
@@ -7,6 +7,7 @@ import { Button } from '../common/Button'
 import { nightStepLabel } from './labels'
 import { useMainAction } from './MainButton'
 import { nightMarks } from './nightMarks'
+import { blockedPerformers } from './NightPanel'
 import { useAskOnce, useSelection } from './selection'
 import { useTableMarks } from './tableMarks'
 
@@ -59,6 +60,8 @@ export function NightSummary({ game }: { game: GameState }) {
   if (!night || !session) return null
   const registry = store.registry
   const missing = night.steps.filter((s) => !s.grey && !s.recorded)
+  // Кому показать блок: заблокированные исполнители ночных шагов. Нужна, когда блокирующая роль ходит после них.
+  const blocked = [...new Set(night.steps.flatMap(blockedPerformers))].sort((a, b) => a - b)
   const seat = (n: number) => t('common.seat', { n })
 
   const other = (
@@ -99,6 +102,12 @@ export function NightSummary({ game }: { game: GameState }) {
           {t('night.sum.back')}
         </Button>
       </div>
+
+      {blocked.length > 0 && (
+        <p className="block-line" role="status">
+          {t(blocked.length > 1 ? 'night.sum.blocked.many' : 'night.sum.blocked.one', { seats: seatList(lang, blocked) })}
+        </p>
+      )}
 
       <div className="answer">
         <span className="answer-cap">{t('night.sum.hint')}</span>

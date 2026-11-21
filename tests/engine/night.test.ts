@@ -214,3 +214,18 @@ test('отменённый блоком поиск: постоянной мет�
   const checked = journal(check, DEFAULT_REGISTRY)[0]!.entries.find((e) => e.kind === 'night_action' && e.actionId === 'sheriff_check')!
   expect(entryText('ru', checked, DEFAULT_REGISTRY)).toBe('Шериф → №8 — заблокирован, проверка не состоялась')
 })
+
+test('шаг знает, кто из его исполнителей заблокирован, — даже когда действие блоком не отменено', () => {
+  const blockedIn = (s: Session, id: string) => stepOf(s, id).blockedActors
+  const sheriff = play(n1(), act('prostitute_block', 10, 1))
+  expect(blockedIn(sheriff, 'sheriff_check:1')).toEqual([1]); expect(blockedIn(sheriff, 'doctor_heal:4')).toEqual([]); expect(blockedIn(sheriff, 'mafia_shot')).toEqual([])
+  // Рядовая мафия заблокирована: выстрел не отменён, но показать игроку блок надо.
+  const soldier = play(n1(), act('prostitute_block', 10, 8))
+  expect(stepOf(soldier, 'mafia_shot')).toMatchObject({ blocked: false, blockedActors: [8] })
+  // Крёстный отец заблокирован: он исполнитель и выстрела, и поиска.
+  const boss = play(n1(), act('prostitute_block', 10, 3))
+  expect(stepOf(boss, 'mafia_shot')).toMatchObject({ blocked: true, blockedActors: [3] })
+  expect(stepOf(boss, 'godfather_search:3')).toMatchObject({ blocked: false, blockedActors: [3] })
+  // Мирный житель заблокирован — ни у одного шага исполнителей под блоком нет.
+  expect(st(play(n1(), act('prostitute_block', 10, 5))).night!.steps.every((x) => x.blockedActors.length === 0)).toBe(true)
+})

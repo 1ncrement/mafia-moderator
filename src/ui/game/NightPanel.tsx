@@ -2,13 +2,50 @@ import { useEffect, useState } from 'react'
 import { answerText, cap, hasKey, roleName, roleText, seatList, stepQuestion, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { aliveSeats, nightPlayers, SUMMARY_STEP } from '../../engine'
-import type { GameState, NightStep, Seat } from '../../engine'
+import type { GameState, NightState, NightStep, Seat } from '../../engine'
 import { Button } from '../common/Button'
+import { Blocked } from '../common/icons'
 import { nightStepLabel } from './labels'
 import { useMainAction } from './MainButton'
 import { nightMarks } from './nightMarks'
 import { useSelection } from './selection'
 import { useTableMarks } from './tableMarks'
+
+/** Исполнители шага под блоком, которым надо показать, что они заблокированы. У шага самой блокирующей роли таких нет. */
+export const blockedPerformers = (step: NightStep): Seat[] => (step.effect === 'block' ? [] : step.blockedActors)
+
+/**
+ * Красный блок: исполнитель шага заблокирован. Говорит, кому показать блок и что этой ночью не состоится —
+ * или что блок на действие не влияет. При скрытых ролях номера нет: на шаге роли он выдал бы, кто её носитель.
+ */
+function BlockNotice({ night, step, hidden }: { night: NightState; step: NightStep; hidden: boolean }) {
+  const t = useT()
+  const lang = useLang()
+  const seats = blockedPerformers(step)
+  if (seats.length === 0) return null
+  // Чей это блок — по шагу блокирующей роли, выбравшей этого игрока.
+  const blocker = night.steps.find((s) => s.effect === 'block' && s.target !== null && seats.includes(s.target))
+  const bannerKey = `action.${blocker?.actionId ?? ''}.banner`
+  // Что с действием шага: у действия может быть своя фраза, иначе — общая по виду эффекта.
+  const state = step.blocked ? 'blocked' : 'unaffected'
+  const actionKey = `action.${step.actionId}.${state}`
+  const effectKey = `night.block.${step.effect}.${state}`
+  const consequence = hasKey(actionKey) ? translateKey(lang, actionKey) : hasKey(effectKey) ? translateKey(lang, effectKey) : ''
+  const many = seats.length > 1 && !hidden
+  const recordKey = step.effect === 'check_side' || step.effect === 'find_role' ? 'night.block.record.answer' : 'night.block.record'
+  return (
+    <>
+      <div className="block-box" role="alert">
+        <span className="block-box-head"><Blocked />{hasKey(bannerKey) ? translateKey(lang, bannerKey) : t('night.block.title')}</span>
+        <span className="block-box-big num">
+          {hidden ? t('night.block.hidden') : t(many ? 'night.block.seats.many' : 'night.block.seats.one', { seats: seatList(lang, seats) })}
+        </span>
+        <span className="block-box-text">{[t(many ? 'night.block.show.many' : 'night.block.show.one'), consequence].filter(Boolean).join(' ')}</span>
+      </div>
+      {step.blocked && <span className="block-box-hint">{t(recordKey)}</span>}
+    </>
+  )
+}
 
 /**
  * Шаг ночи: стол в режиме выбора с вопросом действия, решение этой роли прошлой ночью,
@@ -76,7 +113,6 @@ export function NightPanel({ game }: { game: GameState }) {
 
   if (!night || !step || !def) return null
   const role = roleName(lang, registry, step.performerRole)
-  const blockedKey = `night.blocked.${step.effect}`
   const answer = step.answer
   const pending = repeat && repeat.step === step.id ? repeat.target : null
   const seat = (n: Seat) => t('common.seat', { n })
@@ -114,7 +150,7 @@ export function NightPanel({ game }: { game: GameState }) {
               </span>
             )}
           </div>
-          {step.blocked && hasKey(blockedKey) && <p className="night-blocked">{translateKey(lang, blockedKey)}</p>}
+          <BlockNotice night={night} step={step} hidden={false} />
           {pending !== null && pendingBox}
           {answer && answer.kind !== 'blocked' && step.target !== null && (
             <div className="answer">
@@ -140,6 +176,8 @@ export function NightPanel({ game }: { game: GameState }) {
           )}
         </>
       )}
+      {/* Блок виден и при скрытых ролях: ведущему надо показать игроку, что он заблокирован. */}
+      {hidden && <BlockNotice night={night} step={step} hidden />}
       {hidden && pending !== null && pendingBox}
     </div>
   )

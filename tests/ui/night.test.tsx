@@ -1,7 +1,8 @@
 import { act, screen, within } from '@testing-library/react'
 import type { AppStore } from '../../src/app/store'
-import { TABLE_11 } from '../helpers'
-import { advance, renderApp, seedGame } from './helpers'
+import { DEFAULT_REGISTRY } from '../../src/engine'
+import { CUSTOM_TABLE, JOURNALIST, MANIAC, TABLE_11 } from '../helpers'
+import { advance, renderApp, seedCustomGame, seedGame } from './helpers'
 
 const night1 = (a: AppStore) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }) }
 /** Ночь 1, открыт шаг мафии: в новой игре ночь начинается с проститутки, а этим тестам нужен выстрел. */
@@ -23,9 +24,11 @@ test('шериф видит сторону', async () => {
   const { user } = renderApp((a) => { night1(a); a.dispatch({ type: 'enterStep', step: 'sheriff_check:1' }) })
   await user.click(screen.getByRole('button', { name: 'Выбрать игрока №10' })); expect(screen.getByText('№10 — чёрный')).toBeInTheDocument()
 })
-test('заблокированному шерифу ответа нет', () => {
-  renderApp((a) => { night1(a); a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 1 }); a.dispatch({ type: 'enterStep', step: 'sheriff_check:1' }) })
-  expect(screen.getAllByText(/заблокирован — проверка не состоялась/).length).toBeGreaterThan(0)
+test('заблокированному шерифу ответа нет', async () => {
+  const { user } = renderApp((a) => { night1(a); a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 1 }); a.dispatch({ type: 'enterStep', step: 'sheriff_check:1' }) })
+  expect(screen.getByText('Проверка этой ночью не состоится.', { exact: false })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №8' }))
+  expect(document.querySelector('.answer')).toBeNull()
 })
 test('доктор: прошлая ночь, предупреждение и «Записать всё равно»', async () => {
   const { app, user } = renderApp((a) => { night1(a); a.dispatch({ type: 'recordNightAction', actionId: 'doctor_heal', actor: 4, target: 5 })
@@ -111,4 +114,106 @@ test('ночью возвращённый в игру сразу доступе�
   await user.click(screen.getByRole('button', { name: 'Панель игрока №7' })); await user.click(screen.getByRole('button', { name: 'Вернуть в игру' }))
   await user.click(screen.getByRole('button', { name: 'Выбрать игрока №7' }))
   expect(app.getState().game!.night!.steps[0]).toMatchObject({ recorded: true, target: 7 })
+})
+
+// ── Блок проститутки на шаге заблокированной роли ───────────────────────────
+
+const OPTION_ID = DEFAULT_REGISTRY.roles.flatMap((r) => r.options ?? [])[0]!.id
+/** Ночь 1, проститутка (№10) блокирует target, открыт шаг step. */
+const blockedNight = (target: number, step: string, roleOptions?: Record<string, string>) => (a: AppStore) => {
+  seedGame(a, TABLE_11, 1, roleOptions ? { roleOptions } : undefined); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
+  a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target }); a.dispatch({ type: 'enterStep', step })
+}
+const blockBox = () => screen.queryByRole('alert')
+const navStep = (id: string) => document.querySelector<HTMLElement>(`[data-step="${id}"]`)!
+const card = (n: number) => document.querySelectorAll<HTMLElement>('.table-grid .card')[n - 1]!
+
+test('шериф заблокирован: красный блок с номером и текстом, пометка в полосе шагов, красная метка на карточке', () => {
+  renderApp(blockedNight(1, 'sheriff_check:1'))
+  const box = within(blockBox()!)
+  expect(box.getByText('Блок проститутки')).toBeInTheDocument(); expect(box.getByText('№1 заблокирован')).toBeInTheDocument()
+  expect(box.getByText('Покажи игроку, что он заблокирован. Проверка этой ночью не состоится.')).toBeInTheDocument()
+  expect(screen.getByText('Выбор записать можно, ответа на него не будет.')).toBeInTheDocument()
+  expect(navStep('sheriff_check:1')).toHaveAttribute('data-blocked'); expect(within(navStep('sheriff_check:1')).getByText('заблокирован')).toBeInTheDocument()
+  expect(navStep('doctor_heal:4')).not.toHaveAttribute('data-blocked')
+  expect(card(1)).toHaveClass('card-blocked'); expect(within(card(1)).getByText('заблокирован')).toHaveClass('card-mark-block')
+  expect(card(4)).not.toHaveClass('card-blocked')
+})
+test('доктор заблокирован: «лечение не сработает»; своя роль: «действие не состоится»', () => {
+  const doctor = renderApp(blockedNight(4, 'doctor_heal:4'))
+  expect(within(blockBox()!).getByText('№4 заблокирован')).toBeInTheDocument()
+  expect(within(blockBox()!).getByText('Покажи игроку, что он заблокирован. Лечение этой ночью не сработает.')).toBeInTheDocument()
+  expect(screen.getByText('Выбор записать можно, но он не сработает.')).toBeInTheDocument()
+  doctor.unmount()
+  renderApp((a) => { seedCustomGame(a, [JOURNALIST, MANIAC], CUSTOM_TABLE, 1); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
+    a.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 6 }); a.dispatch({ type: 'enterStep', step: 'act_custom_j:6' }) })
+  expect(within(blockBox()!).getByText('№6 заблокирован')).toBeInTheDocument()
+  expect(within(blockBox()!).getByText('Покажи игроку, что он заблокирован. Действие этой ночью не состоится.')).toBeInTheDocument()
+})
+test('крёстный отец заблокирован: на шагах мафии и крёстного отца показано то, что отменяет опция проститутки', async () => {
+  const NO_SHOT = 'Выстрела этой ночью не будет.', SHOT_OK = 'На выстрел это не влияет.'
+  const NO_SEARCH = 'Поиск шерифа этой ночью не состоится.', SEARCH_OK = 'На поиск шерифа это не влияет.'
+  for (const [value, onMafia, onSearch] of [['shot', NO_SHOT, SEARCH_OK], ['search', SHOT_OK, NO_SEARCH], ['both', NO_SHOT, NO_SEARCH]] as const) {
+    const { user, unmount } = renderApp(blockedNight(3, 'mafia_shot', { [OPTION_ID]: value }))
+    expect(within(blockBox()!).getByText('№3 заблокирован')).toBeInTheDocument()
+    expect(within(blockBox()!).getByText(`Покажи игроку, что он заблокирован. ${onMafia}`)).toBeInTheDocument()
+    // Пометка «заблокирован» в полосе шагов — только у шага, действие которого блок отменил.
+    expect(navStep('mafia_shot').hasAttribute('data-blocked')).toBe(onMafia === NO_SHOT)
+    expect(navStep('godfather_search:3').hasAttribute('data-blocked')).toBe(onSearch === NO_SEARCH)
+    await user.click(navStep('godfather_search:3'))
+    expect(within(blockBox()!).getByText(`Покажи игроку, что он заблокирован. ${onSearch}`)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Выбрать игрока №1' }))
+    // Поиск не отменён — ответ показан; отменён — ответа нет.
+    expect(screen.queryByText('№1 — шериф') !== null).toBe(onSearch === SEARCH_OK)
+    unmount()
+  }
+})
+test('рядовая мафия заблокирована при живом крёстном отце: блок показан, «на выстрел не влияет»', () => {
+  renderApp(blockedNight(8, 'mafia_shot'))
+  expect(within(blockBox()!).getByText('№8 заблокирован')).toBeInTheDocument()
+  expect(within(blockBox()!).getByText('Покажи игроку, что он заблокирован. На выстрел это не влияет.')).toBeInTheDocument()
+  expect(navStep('mafia_shot')).not.toHaveAttribute('data-blocked')
+  expect(screen.queryByText(/Выбор записать можно/)).not.toBeInTheDocument()
+  expect(card(8)).toHaveClass('card-blocked')
+})
+test('блок виден и при скрытых ролях — без номера исполнителя и без метки на карточке: роль он не выдаёт', () => {
+  renderApp((a) => { blockedNight(1, 'sheriff_check:1')(a); a.setSettings({ rolesHidden: true }) })
+  const box = within(blockBox()!)
+  expect(box.getByText('Блок проститутки')).toBeInTheDocument(); expect(box.getByText('Исполнитель заблокирован')).toBeInTheDocument()
+  expect(box.getByText('Покажи игроку, что он заблокирован. Проверка этой ночью не состоится.')).toBeInTheDocument()
+  expect(within(navStep('sheriff_check:1')).getByText('заблокирован')).toBeInTheDocument()
+  // Ни блок, ни панель шага, ни стол не называют, кто именно заблокирован: по шагу «Шериф» это выдало бы роль.
+  expect(blockBox()!.textContent).not.toMatch(/№\s*1/); expect(screen.getByRole('region', { name: 'Текущий шаг' }).textContent).not.toMatch(/№\s*\d/)
+  expect(card(1)).not.toHaveClass('card-blocked'); expect(within(card(1)).queryByText('заблокирован')).not.toBeInTheDocument()
+})
+test('итог ночи: строка «Заблокированы: №… — покажи игроку» — про тех, у кого есть ночной шаг', () => {
+  const sheriff = renderApp(blockedNight(1, 'summary'))
+  expect(screen.getByText('Заблокированы: №1 — покажи игроку')).toBeInTheDocument()
+  sheriff.unmount()
+  // Заблокирован мирный житель: ночью он не просыпается — показывать блок некому.
+  const civilian = renderApp(blockedNight(5, 'summary'))
+  expect(screen.queryByText(/Заблокированы:/)).not.toBeInTheDocument(); expect(card(5)).toHaveClass('card-blocked')
+  civilian.unmount()
+  // Роли скрыты — номеров на итоге нет.
+  renderApp((a) => { blockedNight(1, 'summary')(a); a.setSettings({ rolesHidden: true }) })
+  expect(screen.queryByText(/Заблокированы:/)).not.toBeInTheDocument()
+})
+test('без блока ничего красного нет: ни блока, ни пометки шага, ни метки на карточке, ни строки на итоге', async () => {
+  const { user } = renderApp((a) => { night1(a); a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 }); a.dispatch({ type: 'enterStep', step: 'sheriff_check:1' }) })
+  const clean = () => {
+    expect(blockBox()).not.toBeInTheDocument(); expect(document.querySelector('[data-blocked]')).toBeNull()
+    expect(document.querySelector('.card-blocked, .card-mark-block')).toBeNull(); expect(screen.queryByText(/заблокирован/i)).not.toBeInTheDocument()
+  }
+  clean()
+  await user.click(navStep('mafia_shot')); clean()
+  await user.click(navStep('summary')); clean()
+})
+test('проститутка после мафии: блок появляется на уже пройденном шаге, когда она сделала выбор', async () => {
+  const { user } = renderApp((a) => { seedGame(a, TABLE_11, 1, { rules: { nominationsFromDay: 2, balaganFromDay: 2, balagan: true, farewellAfterVote: true, farewellAfterNight: false, prostituteFirst: false } })
+    a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }) })
+  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №7' }))
+  expect(navStep('mafia_shot')).not.toHaveAttribute('data-blocked')
+  await user.click(navStep('prostitute_block:10')); await user.click(screen.getByRole('button', { name: 'Выбрать игрока №3' }))
+  expect(navStep('mafia_shot')).toHaveAttribute('data-blocked')
+  await user.click(navStep('mafia_shot')); expect(within(blockBox()!).getByText('№3 заблокирован')).toBeInTheDocument()
 })

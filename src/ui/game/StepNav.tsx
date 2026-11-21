@@ -1,7 +1,7 @@
 import { phaseLabel, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { balaganInDay, SUMMARY_STEP } from '../../engine'
-import type { DayState, DayStep, GameState, Rules, StepId } from '../../engine'
+import type { DayState, DayStep, GameState, NightStep, Rules, StepId } from '../../engine'
 import { nightStepLabel } from './labels'
 
 /**
@@ -18,6 +18,9 @@ export function daySteps(day: DayState, step: StepId | null, rules: Rules): DayS
   if (day.farewell.done.length + day.farewell.waiting.length > 0 || step === 'farewell') steps.push('farewell')
   return steps
 }
+
+/** Действие шага отменено блоком. Шаг самой блокирующей роли так не помечается: её блок «на себя» ей показывать незачем. */
+export const isBlockedStep = (step: NightStep): boolean => step.blocked && step.effect !== 'block'
 
 /** Полоса шагов: кликабельна, можно вернуться к пройденному шагу или пропустить шаг. */
 export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
@@ -61,6 +64,7 @@ export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
             <li key={s.id}>
               <button
                 type="button" className="night-step" data-step={s.id} data-grey={s.grey && !settings.rolesHidden ? '' : undefined}
+                data-blocked={isBlockedStep(s) ? '' : undefined}
                 aria-current={s.id === game.step ? 'step' : undefined}
                 onClick={() => s.id !== game.step && store.dispatch({ type: 'enterStep', step: s.id })}
               >
@@ -71,6 +75,8 @@ export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
                 <span className="night-step-side">
                   {s.grey ? !settings.rolesHidden && <span className="night-step-last">{t('night.nav.grey')}</span> : (
                     <>
+                      {/* Пометка видна и при скрытых ролях: она называет шаг, а не игрока. */}
+                      {isBlockedStep(s) && <span className="night-step-blocked">{t('night.nav.blocked')}</span>}
                       {s.recorded && !settings.rolesHidden && <span className="night-step-pick">→ {seat(s.target)}</span>}
                       {s.lastNight.recorded && !settings.rolesHidden && <span className="night-step-last">{t('night.nav.last', { target: seat(s.lastNight.target) })}</span>}
                     </>

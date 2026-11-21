@@ -4,8 +4,8 @@ import type { Seat } from '../../engine'
 
 // Метки на карточках, которые ставит панель шага: голоса в голосовании, ночные метки ночью.
 
-/** tone: night — ночная метка, скрывается вместе с ролями; day — янтарная; plain — обычная. */
-export type SeatMark = { text: string; tone: 'plain' | 'day' | 'night' }
+/** tone: night — ночная метка, скрывается вместе с ролями; block — «заблокирован», красная, тоже ночная; day — янтарная; plain — обычная. */
+export type SeatMark = { text: string; tone: 'plain' | 'day' | 'night' | 'block' }
 export type TableMarks = { marks: Record<Seat, SeatMark[]>; highlight: Seat | null }
 
 const EMPTY: TableMarks = { marks: {}, highlight: null }

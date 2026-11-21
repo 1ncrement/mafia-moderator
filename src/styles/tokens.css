@@ -20,6 +20,12 @@
   --black: #0a0a0a;
   --alert: #ff8a6b;
   --alert-tint: #2b1a16;
+  /* Блок проститутки: рамка, подложка, текст на подложке, плашка и подложка карточки. */
+  --block: #ff6b70;
+  --block-tint: #3a1418;
+  --block-ink: #ffc2c4;
+  --block-pill: #8f1d22;
+  --block-card: #2a1416;
 
   --font-ui: 'Golos Text', system-ui, sans-serif;
   --font-num: 'Oswald', 'Golos Text', sans-serif;
