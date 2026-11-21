@@ -481,5 +481,5 @@ export const ru = {
   'night.blocked.note': 'заблокирован — действие не состоялось',
   'night.mark.note': 'выбор: {role}',
   'effect.note': 'выбор',
-  'effect.note.summary': '{role} → {target}',
+  'effect.note.summary': '{role}: {target}',
 }

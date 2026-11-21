@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { cap, hasKey, plural, roleText, roleTitle, stepName, translateKey } from '../../app/i18n'
+import { cap, hasKey, plural, roleName, roleText, roleTitle, stepName, translateKey } from '../../app/i18n'
 import { useApp, useStore, useT } from '../../app/StoreContext'
 import {
   checkComposition, configurableRoles, DEFAULT_DURATIONS, defaultComposition, MAX_CUSTOM_ROLES, MAX_PLAYERS, MIN_PLAYERS, nestedRoles,
@@ -80,13 +80,13 @@ export function SetupScreen() {
       continue
     }
     const custom = registry.roles.find((r) => r.id === card)?.custom === true
-    const text = roleText(lang, registry, card)
-    deck.push({ id: card, text: custom ? text.toLowerCase() : text, n: 1, custom })
+    deck.push({ id: card, text: roleText(lang, registry, card), n: 1, custom })
   }
   // Шаги ночи для этого состава, по порядку пробуждения.
   const order = nightOrder(registry, check.deck).map((def) => ({
     id: def.id,
-    text: stepName(lang, registry, def).toLowerCase(),
+    // Встроенный шаг назван словом из словаря — оно пишется строчными; свой шаг назван ролью, её регистр уже верный.
+    text: hasKey(def.stepKey) ? stepName(lang, registry, def).toLowerCase() : roleName(lang, registry, def.performers[0] ?? ''),
     custom: def.performers.some((id) => registry.roles.find((r) => r.id === id)?.custom === true),
   }))
 

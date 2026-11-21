@@ -142,3 +142,17 @@ test('Escape закрывает форму роли и когда фокус н�
   expect(screen.queryByRole('form', { name: 'Новая роль' })).not.toBeInTheDocument()
   expect(app.getState().settings.customRoles).toEqual([])
 })
+
+test('аббревиатура в названии остаётся прописной в колоде и в порядке ночи, обычное название — со строчной', () => {
+  renderApp((a) => {
+    a.newGame()
+    a.addCustomRole({ name: 'КГБ', side: a.registry.sides[0]!.id, night: true })
+    a.addCustomRole({ name: 'Журналист', side: a.registry.sides[1]!.id, night: true })
+  })
+  const deck = within(screen.getByRole('list', { name: 'Колода' }))
+  expect(deck.getByText('КГБ')).toBeInTheDocument(); expect(deck.getByText('журналист')).toBeInTheDocument()
+  const order = within(screen.getByRole('list', { name: 'Ночью просыпаются' })).getAllByRole('listitem').map((li) => li.textContent)
+  expect(order.slice(-2)).toEqual(['6 · КГБ', '7 · журналист'])
+  // В строке роли название стоит в начале — с заглавной.
+  expect(screen.getByRole('switch', { name: 'Журналист участвует в игре' })).toBeInTheDocument()
+})

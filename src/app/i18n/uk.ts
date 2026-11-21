@@ -482,5 +482,5 @@ export const uk: Dict = {
   'night.blocked.note': 'заблокований — дія не відбулася',
   'night.mark.note': 'вибір: {role}',
   'effect.note': 'вибір',
-  'effect.note.summary': '{role} → {target}',
+  'effect.note.summary': '{role}: {target}',
 }

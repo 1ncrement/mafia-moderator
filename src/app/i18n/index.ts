@@ -52,9 +52,22 @@ export function seatList(lang: Lang, seats: Seat[]): string {
   return `${names.slice(0, -1).join(', ')} ${translate(lang, 'common.and')} ${names.at(-1)}`
 }
 
-/** Название роли: у своей — как ввёл ведущий, у встроенной — из словаря. */
+/**
+ * Название своей роли по образцу встроенных — со строчной буквы: «Журналист» → «журналист».
+ * Аббревиатура («КГБ», вторая буква прописная) остаётся как есть.
+ */
+export function lowerFirst(name: string): string {
+  const [first = '', second = ''] = [...name]
+  if (second !== second.toLowerCase()) return name
+  return first.toLowerCase() + name.slice(first.length)
+}
+
+/**
+ * Название роли, как оно стоит внутри фразы и на карточке: у встроенной — из словаря, у своей — то, что ввёл ведущий,
+ * со строчной буквы. Там, где название начинает строку, его поднимает cap.
+ */
 export function roleTitle(lang: Lang, def: RoleDef): string {
-  return def.name ?? translateKey(lang, def.nameKey)
+  return def.name !== undefined ? lowerFirst(def.name) : translateKey(lang, def.nameKey)
 }
 
 /** Название роли на столе: роль с displayAs показана названием этой роли и пометкой markKey. */
