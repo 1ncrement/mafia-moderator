@@ -184,15 +184,15 @@ export function visitsAt(session: Session, registry: Registry, n: number): Seat[
 
 /**
  * Счётчик визитов к игроку на начало ночи n: состоявшиеся визиты прошлых ночей. Второй и следующий визит — нападение.
- * Когда жилет игрока снят, счётчик обнуляется: считаются визиты с фазы снятия. Визит той же ночи, в которую жилет принял удар,
- * засчитывается — жилет срабатывает раньше, чем визит растит счётчик (порядок раздела 5.5: пункт 5, затем пункт 7).
+ * Когда жилет игрока снят, счётчик обнуляется: считаются только визиты после фазы снятия. Визит той ночи, в которую
+ * жилет принял удар, не засчитывается — чтобы убить, нужно прийти ещё два раза (слова заказчика, раздел 5.5).
  */
 export function hauntCount(session: Session, registry: Registry, n: number, seat: Seat): number {
   const off = nightPlayers(session, registry, n)[seat - 1]?.vestOff
   const from = off ? phaseOrder(off) : -Infinity
   let count = 0
   for (let k = 1; k < n; k++) {
-    if (phaseOrder({ kind: 'night', n: k }) >= from && visitsAt(session, registry, k).includes(seat)) count++
+    if (phaseOrder({ kind: 'night', n: k }) > from && visitsAt(session, registry, k).includes(seat)) count++
   }
   return count
 }

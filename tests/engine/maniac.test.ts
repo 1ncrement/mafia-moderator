@@ -64,11 +64,16 @@ test('проститутка заблокировала маньяка — ви�
   expect(out(second)).toMatchObject({ deaths: [], notes: [], noAttack: 'blocked' })
 })
 test('жилет принимает второй визит; когда жилет снят, счётчик визитов к этому игроку обнуляется', () => {
-  // Визит, который сам снял жилет: счётчик обнулён жилетом (5.5 п. 5), затем этот визит засчитан (п. 7) — следующий убивает.
+  // Визит, который сам снял жилет, в новый счёт не входит: по словам заказчика, после жилета маньяку нужно прийти ещё два раза.
   let s = play(nextNight(play(night1(), visit(5))), visit(5, true))
   expect(out(s)).toMatchObject({ deaths: [], notes: [{ seat: 5, kind: 'silenced', cause: 'haunted' }, { seat: 5, kind: 'vest', cause: 'haunted' }], noAttack: null })
   s = nextNight(s)
-  expect(st(s).players[4]).toMatchObject({ status: 'alive', vest: 'used' }); expect(hauntCount(s, R, 3, 5)).toBe(1)
+  expect(st(s).players[4]).toMatchObject({ status: 'alive', vest: 'used' }); expect(hauntCount(s, R, 3, 5)).toBe(0)
+  // Первый визит после снятия жилета — жертва только молчит; второй — убивает.
+  s = play(s, visit(5, true))
+  expect(out(s).deaths).toEqual([])
+  s = nextNight(s)
+  expect(hauntCount(s, R, 4, 5)).toBe(1)
   expect(out(play(s, visit(5, true))).deaths).toEqual([{ seat: 5, cause: 'haunted' }])
   // Жилет снят не маньяком (выстрел мафии): прежний визит обнулён — следующий визит снова первый.
   let shot = play(nextNight(play(night1(), visit(5))), act('mafia_shot', null, 5), visit(9))
