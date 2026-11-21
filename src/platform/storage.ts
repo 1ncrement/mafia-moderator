@@ -72,8 +72,23 @@ function looksLikeConfig(c: unknown): c is SessionConfig {
     && (c.customRoles === undefined || Array.isArray(c.customRoles))
 }
 
-/** Настройки с полным набором правил партии: недостающие поля берутся из fallback (по умолчанию — «как было до обновления»). */
-const withRules = (config: SessionConfig, fallback?: Rules): SessionConfig => ({ ...config, rules: normalizeRules(config.rules, fallback) })
+/** Значения опций ролей: только выключатели и строки. Мусор на месте опций — опций нет, они читаются по умолчанию из справочника. */
+function cleanRoleOptions(input: unknown): SessionConfig['roleOptions'] {
+  if (!isRecord(input)) return undefined
+  const options: Record<string, boolean | string> = {}
+  for (const [id, value] of Object.entries(input)) if (typeof value === 'boolean' || typeof value === 'string') options[id] = value
+  return options
+}
+
+/**
+ * Настройки с полным набором правил партии и годными опциями ролей: недостающие правила берутся из fallback
+ * (по умолчанию — «как было до обновления»).
+ */
+function withRules(config: SessionConfig, fallback?: Rules): SessionConfig {
+  const { roleOptions: raw, ...rest } = config
+  const roleOptions = cleanRoleOptions(raw)
+  return { ...rest, rules: normalizeRules(config.rules, fallback), ...(roleOptions ? { roleOptions } : {}) }
+}
 
 /** Запись перечня своих ролей с полями нужных типов. Смысл (сторона, повторы, предел) проверяет справочник. */
 const looksLikeRole = (r: unknown): r is CustomRole =>

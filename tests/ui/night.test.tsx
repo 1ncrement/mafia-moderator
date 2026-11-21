@@ -4,15 +4,20 @@ import { TABLE_11 } from '../helpers'
 import { advance, renderApp, seedGame } from './helpers'
 
 const night1 = (a: AppStore) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }) }
-test('шаги ночи по порядку, крёстный отец получает ответ', async () => {
-  const { app, user } = renderApp(night1)
+/** Ночь 1, открыт шаг мафии: в новой игре ночь начинается с проститутки, а этим тестам нужен выстрел. */
+const mafiaStep = (a: AppStore) => { night1(a); a.dispatch({ type: 'enterStep', step: 'mafia_shot' }) }
+test('шаги ночи по порядку (проститутка первой), крёстный отец получает ответ', async () => {
+  const { app, user, env } = renderApp(night1)
   expect(within(screen.getByRole('navigation', { name: 'Шаги ночи' })).getAllByRole('button').map((b) => b.getAttribute('data-step')))
-    .toEqual(['mafia_shot', 'godfather_search:3', 'prostitute_block:10', 'sheriff_check:1', 'doctor_heal:4', 'summary'])
+    .toEqual(['prostitute_block:10', 'mafia_shot', 'godfather_search:3', 'sheriff_check:1', 'doctor_heal:4', 'summary'])
+  expect(screen.getByText('Кого блокирует проститутка?')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Выбрать игрока №6' }))
-  await user.click(screen.getByRole('button', { name: /Дальше: Крёстный отец/ }))
+  await user.click(screen.getByRole('button', { name: /Дальше: Мафия/ }))
+  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №6' }))
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /Дальше: Крёстный отец/ }))
   await user.click(screen.getByRole('button', { name: 'Выбрать игрока №1' }))
   expect(screen.getByText('№1 — шериф')).toBeInTheDocument()
-  expect(app.getState().game!.night!.steps[1]).toMatchObject({ target: 1, answer: { kind: 'found', found: true } })
+  expect(app.getState().game!.night!.steps[2]).toMatchObject({ target: 1, answer: { kind: 'found', found: true } })
 })
 test('шериф видит сторону', async () => {
   const { user } = renderApp((a) => { night1(a); a.dispatch({ type: 'enterStep', step: 'sheriff_check:1' }) })
@@ -51,12 +56,12 @@ test('итог ночи: подсказка, подтверждение одно
 // Сверх плана
 test('ночь целиком: «Никого», ночные метки на столе, подсказки итога', async () => {
   const { app, user, env } = renderApp(night1)
-  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №7' }))
-  for (const step of ['Крёстный отец', 'Проститутка']) { advance(env, 500); await user.click(screen.getByRole('button', { name: new RegExp(`Дальше: ${step}`) })) }
+  // Ночь начинается с проститутки: она никого не блокирует.
   await user.click(screen.getByRole('button', { name: 'Никого' }))
-  expect(app.getState().game!.night!.steps[2]).toMatchObject({ recorded: true, target: null })
-  advance(env, 500); await user.click(screen.getByRole('button', { name: /Дальше: Шериф/ })); advance(env, 500)
-  await user.click(screen.getByRole('button', { name: /Дальше: Доктор/ })); await user.click(screen.getByRole('button', { name: 'Выбрать игрока №7' }))
+  expect(app.getState().game!.night!.steps[0]).toMatchObject({ actionId: 'prostitute_block', recorded: true, target: null })
+  await user.click(screen.getByRole('button', { name: /Дальше: Мафия/ })); await user.click(screen.getByRole('button', { name: 'Выбрать игрока №7' }))
+  for (const step of ['Крёстный отец', 'Шериф', 'Доктор']) { advance(env, 500); await user.click(screen.getByRole('button', { name: new RegExp(`Дальше: ${step}`) })) }
+  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №7' }))
   expect(within(screen.getByRole('button', { name: 'Выбрать игрока №7' })).getByText('цель мафии')).toBeInTheDocument()
   advance(env, 500); await user.click(within(screen.getByRole('navigation', { name: 'Шаги ночи' })).getByRole('button', { name: 'Итог ночи' }))
   expect(app.getState().game!.step).toBe('summary')
@@ -75,12 +80,12 @@ test('блок крёстного отца: «выстрела не было»; 
 })
 test('выстрел перешёл к проститутке: вопрос называет её', () => {
   renderApp((a) => { seedGame(a, TABLE_11, 1); for (const seat of [3, 8]) a.dispatch({ type: 'setStatus', seat, status: 'out', cause: 'voted' })
-    a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }) })
+    a.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } }); a.dispatch({ type: 'enterStep', step: 'mafia_shot' }) })
   expect(screen.getByText('В кого стреляет проститутка?')).toBeInTheDocument(); expect(screen.getByText(/Просыпается проститутка — №10/)).toBeInTheDocument()
 })
 
 test('скрытие ролей ночью прячет номера ролей, записанный выбор, ночные метки и итог', () => {
-  const { app } = renderApp((a) => { night1(a); a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 6 }); a.setSettings({ rolesHidden: true }) })
+  const { app } = renderApp((a) => { mafiaStep(a); a.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 6 }); a.setSettings({ rolesHidden: true }) })
   expect(screen.getByText('Просыпается мафия')).toBeInTheDocument()
   expect(screen.queryByText(/№3|№8|№6/)).not.toBeInTheDocument()
   expect(screen.queryByText(/цель мафии|выбран|ходит сейчас/)).not.toBeInTheDocument()
@@ -94,7 +99,7 @@ test('скрытие ролей ночью прячет номера ролей,
 })
 
 test('ночной выбор возвращается после отменённого вопроса из панели игрока', async () => {
-  const { user } = renderApp(night1)
+  const { user } = renderApp(mafiaStep)
   await user.click(screen.getByRole('button', { name: 'Панель игрока №5' })); await user.click(screen.getByRole('button', { name: 'Поменять роль с…' }))
   expect(screen.getByText('С кем поменять роль №5?')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Отмена' }))

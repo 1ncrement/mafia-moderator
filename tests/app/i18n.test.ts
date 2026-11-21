@@ -17,6 +17,11 @@ test('у каждой роли, стороны и ночного действи�
   for (const r of DEFAULT_REGISTRY.roles) expect(ru).toHaveProperty([r.nameKey])
   for (const s of DEFAULT_REGISTRY.sides) expect(ru).toHaveProperty([s.nameKey])
   for (const a of DEFAULT_REGISTRY.nightActions) { expect(ru).toHaveProperty([a.stepKey]); expect(ru).toHaveProperty([a.questionKey]) }
+  // Опции ролей: подпись опции, подписи вариантов и предупреждения.
+  for (const o of DEFAULT_REGISTRY.roles.flatMap((r) => r.options ?? [])) {
+    expect(ru).toHaveProperty([o.labelKey])
+    if (o.kind === 'choice') for (const c of o.choices) { expect(ru).toHaveProperty([c.labelKey]); if (c.lateBlockKey) expect(ru).toHaveProperty([c.lateBlockKey]) }
+  }
 })
 test('запись журнала переводится на оба языка', () => {
   const e: JournalEntry = { kind: 'night_action', actionId: 'godfather_search', performerRole: 'godfather', actor: 3, target: 1,

@@ -58,3 +58,21 @@ test('последний состав из старых настроек пол�
   kv.setItem('mafia:settings', JSON.stringify({ ...DEFAULT_SETTINGS, lastConfig: { ...old.config, rules: { ...OLD_RULES, balagan: false } } }))
   expect(createStorage(kv).settings().lastConfig?.rules).toEqual({ ...DEFAULT_RULES, balagan: false })
 })
+
+// ── Опции ролей в сохранённых данных ────────────────────────────────────────
+
+test('опции ролей сохраняются; мусор на месте опций не делает игру нечитаемой — опции читаются по умолчанию', () => {
+  const kv = fakeKV(); const s = game(TABLE_11, { roleOptions: { leader_block: 'both' } })
+  createStorage(kv).save(s, metaOf(s))
+  const loaded = createStorage(kv).load(s.id)
+  expect(loaded?.ok && loaded.session.config.roleOptions).toEqual({ leader_block: 'both' })
+  for (const junk of ['строка', 5, [1, 2], null]) {
+    kv.setItem(`mafia:session:${s.id}`, JSON.stringify({ ...s, config: { ...s.config, roleOptions: junk } }))
+    const read = createStorage(kv).load(s.id)
+    expect(read).toMatchObject({ ok: true }); expect(read?.ok && read.session.config).not.toHaveProperty('roleOptions')
+  }
+  // Значения не того вида отбрасываются по одному.
+  kv.setItem(`mafia:session:${s.id}`, JSON.stringify({ ...s, config: { ...s.config, roleOptions: { a: 'x', b: true, c: 5, d: null, e: {} } } }))
+  const mixed = createStorage(kv).load(s.id)
+  expect(mixed?.ok && mixed.session.config.roleOptions).toEqual({ a: 'x', b: true })
+})

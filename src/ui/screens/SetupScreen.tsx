@@ -3,9 +3,9 @@ import { cap, hasKey, plural, roleName, roleText, roleTitle, stepName, translate
 import { useApp, useStore, useT } from '../../app/StoreContext'
 import {
   checkComposition, configurableRoles, DEFAULT_DURATIONS, DEFAULT_RULES, defaultComposition, MAX_CUSTOM_ROLES, MAX_PLAYERS, MIN_PLAYERS,
-  nestedRoles, nightOrder,
+  nestedRoles, nightOrder, optionValue,
 } from '../../engine'
-import type { Durations, RoleDef, RoleId, Rules } from '../../engine'
+import type { Durations, RoleDef, RoleId, Rules, SessionConfig } from '../../engine'
 import { Button } from '../common/Button'
 import { Pencil, Plus, Trash } from '../common/icons'
 import { SideDot } from '../common/SideDot'
@@ -83,6 +83,60 @@ export function TimerFields({ durations, separate, onDurations, onSeparate }: {
           <span className="switch-track"><span className="switch-knob" /></span>
         </button>
       </label>
+    </div>
+  )
+}
+
+/**
+ * Опции включённой роли под её строкой. Рисуются по описанию из справочника: выбор из вариантов или выключатель —
+ * о конкретных ролях экран не знает. blockFirst — блокирующая роль просыпается первой (правило партии):
+ * от него зависит предупреждение у варианта, которому нужен ранний блок.
+ */
+function RoleOptions({ role, values, blockFirst, onChange }: {
+  role: RoleDef; values: SessionConfig['roleOptions']; blockFirst: boolean; onChange(id: string, value: boolean | string): void
+}) {
+  const { settings } = useApp()
+  const lang = settings.lang
+  const options = role.options ?? []
+  if (options.length === 0) return null
+  const toggles = options.flatMap((def) => (def.kind === 'toggle' ? [def] : []))
+  return (
+    <div className="role-options">
+      {options.map((def) => {
+        if (def.kind !== 'choice') return null
+        const value = optionValue(def, values)
+        const warning = blockFirst ? undefined : def.choices.find((c) => c.value === value)?.lateBlockKey
+        const label = translateKey(lang, def.labelKey)
+        return (
+          <fieldset key={def.id} className="role-option" role="radiogroup" aria-label={label}>
+            <legend className="role-option-label">{label}</legend>
+            <div className="choice-grid" data-columns={def.choices.length >= 3 ? 3 : 2}>
+              {def.choices.map((c) => (
+                <button key={c.value} type="button" role="radio" aria-checked={c.value === value} className="choice" onClick={() => onChange(def.id, c.value)}>
+                  {translateKey(lang, c.labelKey)}
+                </button>
+              ))}
+            </div>
+            {warning && <span className="role-option-warning" role="status">{translateKey(lang, warning)}</span>}
+          </fieldset>
+        )
+      })}
+      {toggles.length > 0 && (
+        <div className="role-option role-option-toggles">
+          {toggles.map((def) => {
+            const on = optionValue(def, values) === true
+            const label = translateKey(lang, def.labelKey)
+            return (
+              <div key={def.id} className="role-toggle">
+                <button type="button" role="switch" aria-checked={on} aria-label={label} className="switch switch-small" onClick={() => onChange(def.id, !on)}>
+                  <span className="switch-track"><span className="switch-knob" /></span>
+                </button>
+                <span>{label}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -224,6 +278,12 @@ export function SetupScreen() {
                   lessLabel={t('stepper.less', { name })} moreLabel={t('stepper.more', { name })}
                   onChange={(n) => setCount(role.id, n)}
                 />
+                {count > 0 && (
+                  <RoleOptions
+                    role={role} values={draft.roleOptions} blockFirst={draft.rules.prostituteFirst}
+                    onChange={(id, value) => store.editDraft({ roleOptions: { ...draft.roleOptions, [id]: value } })}
+                  />
+                )}
               </div>
             )
           })}
@@ -324,7 +384,7 @@ export function SetupScreen() {
           </Button>
           <Button
             variant="ghost" className="setup-reset"
-            onClick={() => store.editDraft({ composition: defaultComposition(registry), durations: DEFAULT_DURATIONS, separateTimerStart: false, rules: DEFAULT_RULES })}
+            onClick={() => store.editDraft({ composition: defaultComposition(registry), durations: DEFAULT_DURATIONS, separateTimerStart: false, rules: DEFAULT_RULES, roleOptions: {} })}
           >
             {t('setup.reset')}
           </Button>

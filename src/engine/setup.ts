@@ -1,5 +1,5 @@
 import { blackNotLess } from './roles/rules'
-import type { Durations, NightActionDef, Registry, RoleDef, RoleId, Rules, Session, SessionConfig, SideId } from './types'
+import type { Durations, NightActionDef, Registry, RoleDef, RoleId, RoleOptionDef, Rules, Session, SessionConfig, SideId } from './types'
 
 export const MIN_PLAYERS = 4
 export const MAX_PLAYERS = 20
@@ -75,6 +75,24 @@ export function nightOrder(registry: Registry, deck: readonly RoleId[]): NightAc
   return [...registry.nightActions]
     .sort((a, b) => a.order - b.order)
     .filter((def) => (def.inheritedBy ? [...def.performers, def.inheritedBy] : def.performers).some((role) => cards.has(role)))
+}
+
+// ── Опции ролей ─────────────────────────────────────────────────────────────
+
+/** Значение опции из набора значений: нет ключа или значение не того вида — умолчание из справочника. */
+export function optionValue(def: RoleOptionDef, values: SessionConfig['roleOptions']): boolean | string {
+  const given: unknown = typeof values === 'object' && values !== null ? values[def.id] : undefined
+  if (def.kind === 'toggle') return typeof given === 'boolean' ? given : def.default
+  return typeof given === 'string' && def.choices.some((c) => c.value === given) ? given : def.default
+}
+
+/** Значение опции роли в этой игре. Опции с таким id в справочнике нет — false. */
+export function roleOption(session: Session, registry: Registry, id: string): boolean | string {
+  for (const role of registry.roles) {
+    const def = role.options?.find((o) => o.id === id)
+    if (def) return optionValue(def, session.config.roleOptions)
+  }
+  return false
 }
 
 // ── Умолчания сессии ────────────────────────────────────────────────────────

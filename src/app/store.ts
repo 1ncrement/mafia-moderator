@@ -79,14 +79,14 @@ export type AppStore = {
   now(): number
   beep(): void
   randomInt: RandomInt
-  /** Справочник идущей сессии; без сессии — встроенный справочник плюс перечень своих ролей из настроек. */
+  /** Справочник идущей сессии; без сессии — встроенный справочник плюс перечень своих ролей из настроек, порядок ночи — по правилам черновика. */
   readonly registry: Registry
 }
 
 const UNDO_LIMIT = 50
 
-/** Справочник сессии: встроенный плюс свои роли, которые она запомнила при раздаче. */
-const sessionRegistry = (base: Registry, session: Session): Registry => registryFor(base, session.config.customRoles)
+/** Справочник сессии: встроенный плюс свои роли, которые она запомнила при раздаче; порядок ночи — по её правилам партии. */
+const sessionRegistry = (base: Registry, session: Session): Registry => registryFor(base, session.config.customRoles, session.config.rules)
 
 export function metaOf(session: Session, base: Registry = DEFAULT_REGISTRY): SessionMeta {
   const game = deriveState(session, sessionRegistry(base, session))
@@ -284,7 +284,7 @@ export function createAppStore(env: Env): AppStore {
 
   const store: AppStore = {
     get registry() {
-      return state.session ? regOf(state.session) : registryFor(base, state.settings.customRoles)
+      return state.session ? regOf(state.session) : registryFor(base, state.settings.customRoles, state.draft.rules)
     },
     now: env.now,
     beep: env.beep,

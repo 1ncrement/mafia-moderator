@@ -16,19 +16,30 @@ export const DEFAULT_REGISTRY: Registry = {
       id: 'godfather', nameKey: 'role.godfather', side: 'black', defaultCount: 0,
       countsWithin: 'mafia', exactCount: 1, displayAs: 'mafia', markKey: 'mark.head', seenBySheriffAs: 'black',
     },
-    { id: 'prostitute', nameKey: 'role.prostitute', side: 'black', defaultCount: 1, seenBySheriffAs: 'black' },
+    {
+      id: 'prostitute', nameKey: 'role.prostitute', side: 'black', defaultCount: 1, seenBySheriffAs: 'black',
+      // Что отменяет блок главы мафии. Отмена поиска имеет смысл, только если блок известен до хода главы.
+      options: [{
+        id: 'leader_block', kind: 'choice', default: 'shot', labelKey: 'option.leader_block',
+        choices: [
+          { value: 'shot', labelKey: 'option.leader_block.shot' },
+          { value: 'search', labelKey: 'option.leader_block.search', lateBlockKey: 'option.leader_block.late' },
+          { value: 'both', labelKey: 'option.leader_block.both', lateBlockKey: 'option.leader_block.late' },
+        ],
+      }],
+    },
     { id: 'sheriff', nameKey: 'role.sheriff', side: 'red', defaultCount: 1, seenBySheriffAs: 'red' },
     { id: 'doctor', nameKey: 'role.doctor', side: 'red', defaultCount: 1, seenBySheriffAs: 'red' },
   ],
   nightActions: [
     {
       id: 'mafia_shot', order: 10, effect: 'kill', performers: ['mafia', 'godfather'], scope: 'team',
-      leader: 'godfather', inheritedBy: 'prostitute',
+      leader: 'godfather', inheritedBy: 'prostitute', blockCancels: { option: 'leader_block', values: ['shot', 'both'] },
       stepKey: 'action.mafia_shot.step', questionKey: 'action.mafia_shot.question',
     },
     {
       id: 'godfather_search', order: 15, effect: 'find_role', performers: ['godfather'], scope: 'each',
-      findRole: 'sheriff',
+      findRole: 'sheriff', blockCancels: { option: 'leader_block', values: ['search', 'both'] },
       stepKey: 'action.godfather_search.step', questionKey: 'action.godfather_search.question',
     },
     {

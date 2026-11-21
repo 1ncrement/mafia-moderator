@@ -61,7 +61,8 @@ test('сессия без customRoles и мусор в настройках не
   env.kv.setItem(`mafia:session:${id}`, JSON.stringify(raw))
   const old = createAppStore(testEnv(env.kv))
   expect(old.getState().session!.config).not.toHaveProperty('customRoles')
-  expect(old.getState()).toMatchObject({ screen: 'deal', brokenSession: null }); expect(old.registry).toBe(DEFAULT_REGISTRY)
+  // Справочник — встроенные роли без добавок (порядок ночи в нём — по правилам партии этой игры).
+  expect(old.getState()).toMatchObject({ screen: 'deal', brokenSession: null }); expect(old.registry.roles).toBe(DEFAULT_REGISTRY.roles)
   expect(old.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } }).ok).toBe(true)
   env.kv.setItem('mafia:settings', JSON.stringify({ lang: 'ru', customRoles: 'мусор' }))
   expect(createAppStore(testEnv(env.kv)).getState().settings.customRoles).toEqual([])

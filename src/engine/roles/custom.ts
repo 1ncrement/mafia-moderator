@@ -1,4 +1,4 @@
-import type { CustomRole, NightActionDef, Registry, RoleDef, RoleId } from '../types'
+import type { CustomRole, NightActionDef, Registry, RoleDef, RoleId, Rules } from '../types'
 
 // Свои роли ведущего. Справочник собирается на лету: встроенный плюс роли, которые пришли данными.
 // Движок по-прежнему получает справочник параметром и не знает, откуда в нём роли.
@@ -41,13 +41,38 @@ export function sanitizeCustomRoles(base: Registry, input: unknown): CustomRole[
 }
 
 const cache = new WeakMap<Registry, WeakMap<readonly CustomRole[], Registry>>()
+const blockFirstCache = new WeakMap<Registry, Registry>()
 
 /**
- * Справочник со своими ролями: они стоят после встроенных, ночная роль получает действие «запись»
- * в конце ночной очереди, в порядке перечня. Без своих ролей возвращается сам base.
- * Результат запоминается по массиву: тот же перечень — тот же объект справочника.
+ * Тот же справочник, но блокирующие действия стоят в ночной очереди раньше всех: ведущий узнаёт о блоке
+ * до хода остальных ролей. Результат запоминается: тот же справочник — тот же объект.
  */
-export function registryFor(base: Registry, custom: readonly CustomRole[] | undefined): Registry {
+function withBlockFirst(registry: Registry): Registry {
+  const known = blockFirstCache.get(registry)
+  if (known) return known
+  const blocks = registry.nightActions.filter((a) => a.effect === 'block')
+  const earliest = Math.min(...registry.nightActions.map((a) => a.order))
+  const result: Registry = blocks.length === 0 ? registry : {
+    ...registry,
+    // Несколько блокирующих действий сохраняют порядок между собой.
+    nightActions: registry.nightActions.map((a) => (a.effect === 'block' ? { ...a, order: earliest - blocks.length + blocks.indexOf(a) } : a)),
+  }
+  blockFirstCache.set(registry, result)
+  return result
+}
+
+/**
+ * Справочник игры: встроенный плюс свои роли, порядок ночи — по правилам партии.
+ * Свои роли стоят после встроенных, ночная роль получает действие «запись» в конце ночной очереди, в порядке перечня.
+ * rules.prostituteFirst — блокирующая роль просыпается первой; без правил и без своих ролей возвращается сам base.
+ * Результат запоминается: тот же перечень и то же правило — тот же объект справочника.
+ */
+export function registryFor(base: Registry, custom: readonly CustomRole[] | undefined, rules?: Pick<Rules, 'prostituteFirst'>): Registry {
+  const registry = withCustomRoles(base, custom)
+  return rules?.prostituteFirst === true ? withBlockFirst(registry) : registry
+}
+
+function withCustomRoles(base: Registry, custom: readonly CustomRole[] | undefined): Registry {
   if (!Array.isArray(custom) || custom.length === 0) return base
   let byList = cache.get(base)
   if (!byList) cache.set(base, (byList = new WeakMap()))

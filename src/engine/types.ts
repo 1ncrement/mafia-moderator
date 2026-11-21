@@ -12,6 +12,16 @@ export type SideDef = { id: SideId; nameKey: string; colorVar: string; ring?: tr
 /** Роль, которую создал ведущий. night — у роли есть ночной шаг, выбор которого только записывается. */
 export type CustomRole = { id: RoleId; name: string; side: SideId; night: boolean }
 
+/** Вариант опции-выбора. lateBlockKey — предупреждение, если этот вариант выбран, а блокирующая роль просыпается не первой. */
+export type RoleOptionChoice = { value: string; labelKey: string; lateBlockKey?: string }
+/**
+ * Опция роли: описана в справочнике, задаётся на экране состава, значение лежит в настройках сессии (roleOptions) под id опции.
+ * id уникален в пределах справочника.
+ */
+export type RoleOptionDef =
+  | { id: string; kind: 'toggle'; default: boolean; labelKey: string }
+  | { id: string; kind: 'choice'; default: string; choices: RoleOptionChoice[]; labelKey: string }
+
 export type RoleDef = {
   id: RoleId
   nameKey: string
@@ -32,6 +42,8 @@ export type RoleDef = {
   /** Ключ пометки на карточке. */
   markKey?: string
   seenBySheriffAs: SideId
+  /** Опции роли: экран состава рисует их под строкой включённой роли. */
+  options?: RoleOptionDef[]
 }
 
 export type NightActionDef = {
@@ -42,6 +54,11 @@ export type NightActionDef = {
   scope: 'team' | 'each'
   /** Блок лидера отменяет командное действие. */
   leader?: RoleId
+  /**
+   * Блок отменяет действие только при этих значениях опции роли: для командного действия — блок лидера,
+   * для одиночного — блок исполнителя. Без поля блок отменяет действие всегда.
+   */
+  blockCancels?: { option: string; values: string[] }
   /** Кто выполняет, когда живых performers нет. */
   inheritedBy?: RoleId
   /** Для find_role: какую роль ищут. */
@@ -144,6 +161,8 @@ export type SessionConfig = {
   separateTimerStart: boolean
   /** Свои роли, которые участвуют в игре: копия на момент раздачи. В старых сохранениях поля нет. */
   customRoles?: CustomRole[]
+  /** Значения опций ролей по id опции. Нет поля или ключа — значение по умолчанию из справочника. */
+  roleOptions?: Record<string, boolean | string>
 }
 /** В сессии лежат настройки и журнал. Состояние стола не хранится — его выводит deriveState. */
 export type Session = {

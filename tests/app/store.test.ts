@@ -212,3 +212,48 @@ test('доп. речь первого круга получает таймер �
   app.speak('closing', 2); app.undo()
   expect(app.getState().session!.timer).toMatchObject({ kind: 'closing', seat: 1, status: 'ready', durationMs: 50_000 })
 })
+
+// ── Порядок проститутки и опции ролей ───────────────────────────────────────
+
+const firstStep = (app: ReturnType<typeof seeded>) => app.getState().game!.night!.steps[0]!.actionId
+
+test('новая игра: проститутка просыпается первой; «после мафии» — по правилу партии', () => {
+  const app = seeded(testEnv()); app.startFirstDay(); app.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
+  expect(firstStep(app)).toBe('prostitute_block'); expect(app.getState().game!.step).toMatch(/^prostitute_block/)
+  const later = createAppStore(testEnv()); later.newGame()
+  later.editDraft({ playerCount: 11, composition: { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1 }, rules: { ...later.getState().draft.rules, prostituteFirst: false } })
+  later.dealDraft(); later.startFirstDay(); later.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
+  expect(firstStep(later)).toBe('mafia_shot')
+})
+test('игра, сохранённая до обновления, доигрывается по-старому: проститутка после мафии, блок крёстного отца отменяет выстрел', () => {
+  const env = testEnv()
+  const old = { ...game(TABLE_11), id: 'old' }
+  const saved = { ...old, config: { ...old.config, rules: { nominationsFromDay: 2, balaganFromDay: 2 } } }
+  expect(saved.config).not.toHaveProperty('roleOptions')
+  env.kv.setItem('mafia:session:old', JSON.stringify(saved)); env.kv.setItem('mafia:active', 'old')
+  const app = createAppStore(env)
+  app.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } }); app.dispatch({ type: 'startPhase', phase: { kind: 'night', n: 1 } })
+  expect(app.getState().game!.night!.steps.map((s) => s.actionId)).toEqual(['mafia_shot', 'godfather_search', 'prostitute_block', 'sheriff_check', 'doctor_heal'])
+  app.dispatch({ type: 'recordNightAction', actionId: 'mafia_shot', actor: null, target: 7 })
+  app.dispatch({ type: 'recordNightAction', actionId: 'godfather_search', actor: 3, target: 1 })
+  app.dispatch({ type: 'recordNightAction', actionId: 'prostitute_block', actor: 10, target: 3 })
+  expect(app.getState().game!.night!.outcome).toMatchObject({ dies: null, reason: 'shooter_blocked' })
+  expect(app.getState().game!.night!.steps.find((s) => s.actionId === 'godfather_search')!.answer).toEqual({ kind: 'found', found: true })
+  // Балаган и прощание после голосования у старой игры на месте.
+  app.dispatch({ type: 'confirmNight', chosen: null }); expect(app.getState().game!.step).toBe('balagan')
+  expect(app.getState().session!.config.rules).toMatchObject({ balagan: true, farewellAfterVote: true, farewellAfterNight: false, prostituteFirst: false })
+})
+test('опции ролей из черновика попадают в игру и запоминаются для следующей', () => {
+  const env = testEnv(); const app = createAppStore(env); app.newGame()
+  app.editDraft({ roleOptions: { leader_block: 'both' } }); app.dealDraft()
+  expect(app.getState().session!.config.roleOptions).toEqual({ leader_block: 'both' })
+  app.goHome(); app.newGame(); expect(app.getState().draft.roleOptions).toEqual({ leader_block: 'both' })
+  expect(createAppStore(env).getState().settings.lastConfig?.roleOptions).toEqual({ leader_block: 'both' })
+})
+test('справочник экрана состава следует правилу черновика: порядок ночи меняется вместе с выбором', () => {
+  const app = createAppStore(testEnv()); app.newGame()
+  const order = () => [...app.registry.nightActions].sort((a, b) => a.order - b.order).map((a) => a.id)
+  expect(order()[0]).toBe('prostitute_block')
+  app.editDraft({ rules: { ...app.getState().draft.rules, prostituteFirst: false } })
+  expect(order().slice(0, 3)).toEqual(['mafia_shot', 'godfather_search', 'prostitute_block'])
+})

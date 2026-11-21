@@ -1,5 +1,6 @@
 import { allOf, eventsOf, lastOf } from './log'
 import { aliveSeats, isSeat, nightPlayers, rolesBySeat } from './players'
+import { roleOption } from './setup'
 import type {
   CheckAnswer, EventOf, GameEvent, NightActionDef, NightOutcome, NightState, NightStep, PhaseRef, Registry, RoleId, Seat, Session,
 } from './types'
@@ -90,11 +91,16 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
   // Все действия ночи одновременны. Заблокированные — цели всех блоков.
   const targetOf = (d: Draft): Seat | null => d.record?.target ?? null
   const blocked = unique(drafts.flatMap((d) => (d.def.effect === 'block' && targetOf(d) !== null ? [targetOf(d) as Seat] : [])))
+  /** Отменяет ли блок это действие по опции роли: что именно отменяет блок лидера, задано в настройках игры. */
+  const cancelledByOption = (def: NightActionDef): boolean =>
+    !def.blockCancels || def.blockCancels.values.includes(String(roleOption(session, registry, def.blockCancels.option)))
   const isBlocked = (d: Draft): boolean => {
-    // Жив лидер — действие отменяет только его блок. Лидера нет — блок единственного исполнителя.
+    // Жив лидер — командное действие отменяет только его блок, и только если так задано опцией.
     const leaders = d.def.leader ? d.step.actors.filter((seat) => roles[seat - 1] === d.def.leader) : []
-    if (leaders.length > 0) return leaders.some((seat) => blocked.includes(seat))
-    return d.step.actors.length === 1 && blocked.includes(d.step.actors[0] as Seat)
+    if (leaders.length > 0) return leaders.some((seat) => blocked.includes(seat)) && cancelledByOption(d.def)
+    if (d.step.actors.length !== 1 || !blocked.includes(d.step.actors[0] as Seat)) return false
+    // Лидера нет — блок единственного исполнителя отменяет командное действие всегда; одиночное — по опции, если она есть.
+    return d.def.leader !== undefined || cancelledByOption(d.def)
   }
   const healed = unique(drafts.flatMap((d) =>
     d.def.effect === 'heal' && targetOf(d) !== null && !isBlocked(d) ? [targetOf(d) as Seat] : []))
@@ -114,8 +120,8 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
     if (target === null) return undefined
     const role = roles[target - 1] ?? ''
     if (d.def.effect === 'check_side') return isBlocked(d) ? { kind: 'blocked' } : { kind: 'side', side: seenAs.get(role) ?? '' }
-    // Поиск роли идёт раньше блока, блок на него не влияет.
-    if (d.def.effect === 'find_role') return { kind: 'found', found: role === d.def.findRole }
+    // Поиск роли блок отменяет, только если так задано опцией: по умолчанию поиск идёт раньше блока и от него не зависит.
+    if (d.def.effect === 'find_role') return isBlocked(d) ? { kind: 'blocked' } : { kind: 'found', found: role === d.def.findRole }
     return undefined
   }
 
