@@ -9,7 +9,7 @@ import type { GameEvent, JournalEntry, JournalGroup, PhaseRef, Registry, RoleId,
 
 const flags = (e: GameEvent) => ({ eventId: e.id, edited: e.edited === true, manual: e.manual === true })
 
-/** Записи, общие для любой фазы: ручной статус, обмен ролями, конец игры. */
+/** Записи, общие для любой фазы: ручной статус, жилет, обмен ролями, конец игры. */
 function commonEntry(session: Session, e: GameEvent): JournalEntry | null {
   switch (e.type) {
     case 'status_set':
@@ -18,6 +18,8 @@ function commonEntry(session: Session, e: GameEvent): JournalEntry | null {
       return e.status === 'out'
         ? { ...flags(e), kind: 'status', seat: e.seat, status: 'out', cause: e.cause }
         : { ...flags(e), kind: 'status', seat: e.seat, status: 'alive' }
+    case 'vest_set':
+      return isSeat(session, e.seat) ? { ...flags(e), kind: 'vest', seat: e.seat, used: e.used === true, source: e.source } : null
     case 'roles_swapped':
       return isSeat(session, e.a) && isSeat(session, e.b) ? { ...flags(e), kind: 'swap', a: e.a, b: e.b } : null
     case 'game_finished':

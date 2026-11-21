@@ -32,7 +32,7 @@ export const deathSeats = (outcome: NightOutcome): Seat[] => outcome.deaths.map(
 /** Почему по подсказке никто не выбывает; null — кто-то выбывает. */
 export function quietNight(outcome: NightOutcome): QuietNight | null {
   if (outcome.deaths.length > 0) return null
-  return outcome.noAttack ?? 'saved'
+  return outcome.noAttack ?? (outcome.notes.some((note) => note.kind === 'vest') ? 'spared' : 'saved')
 }
 
 /**
@@ -57,8 +57,9 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
   const phase: PhaseRef = { kind: 'night', n }
   const roles = rolesBySeat(session, registry)
   const dealt = new Set(roles)
-  // Носители действия — те, кто в игре этой ночью (см. nightPlayers).
-  const alive = aliveSeats(nightPlayers(session, registry, n))
+  // Носители действия — те, кто в игре этой ночью (см. nightPlayers). Жилет — каким он был этой ночью до подтверждения её итога.
+  const views = nightPlayers(session, registry, n)
+  const alive = aliveSeats(views)
   const actorOf = actorMapper(session.log)
   const aliveWith = (ids: RoleId[]) => alive.filter((seat) => ids.includes(roles[seat - 1] ?? ''))
   const records = eventsOf(session.log, phase).filter((e): e is EventOf<'night_action'> => e.type === 'night_action')
@@ -145,21 +146,29 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
   })
   // Доктор лечил самого защитника — закрыв собой, он тоже выживает.
   const final = moved.filter((a) => a.guarded === undefined || !healed.includes(a.target))
-  // Остальные, на кого напали, выбывают. Несколько нападений на одного — одна смерть; закрывший собой погиб «вместо подзащитного».
-  const deaths: NightDeath[] = unique(final.map((a) => a.target))
+  /** Нападение, которым объясняется исход для игрока: закрывший собой погиб «вместо подзащитного», иначе — первое по порядку ночи. */
+  const mainOn = (seat: Seat): Attack => {
+    const own = final.filter((a) => a.target === seat)
+    return own.find((a) => a.guarded !== undefined) ?? (own[0] as Attack)
+  }
+  const victims = unique(final.map((a) => a.target))
+  // Жилет: игрок с целым жилетом переживает нападение (сколько бы их ни было этой ночью) — жилет снимет подтверждение итога.
+  const spared = victims.filter((seat) => views[seat - 1]?.vest === 'intact')
+  // Остальные, на кого напали, выбывают. Несколько нападений на одного — одна смерть.
+  const deaths: NightDeath[] = victims.filter((seat) => !spared.includes(seat))
     .map((seat): NightDeath => {
-      const own = final.filter((a) => a.target === seat)
-      const attack = own.find((a) => a.guarded !== undefined) ?? (own[0] as Attack)
+      const attack = mainOn(seat)
       return attack.guarded === undefined ? { seat, cause: attack.cause } : { seat, cause: attack.cause, guarded: attack.guarded }
     })
     .sort(bySeat)
-  const notes: NightNote[] = healed
-    .map((seat): NightNote => {
+  const notes: NightNote[] = [
+    ...healed.map((seat): NightNote => {
       // От чего спасён: от нападения на него самого или от того, что он принял на себя как защитник.
       const attack = firstOn(landed, seat) ?? firstOn(moved, seat)
       return attack ? { seat, kind: 'healed', cause: attack.cause } : { seat, kind: 'healed' }
-    })
-    .sort(bySeat)
+    }),
+    ...spared.map((seat): NightNote => ({ seat, kind: 'vest', cause: mainOn(seat).cause })),
+  ].sort(bySeat)
   const outcome: NightOutcome = { deaths, notes, blocked, healed, noAttack: attempts.length === 0 ? 'none' : landed.length === 0 ? 'blocked' : null }
 
   const seenAs = new Map(registry.roles.map((r) => [r.id, r.seenBySheriffAs]))

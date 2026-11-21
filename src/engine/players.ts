@@ -38,19 +38,26 @@ type Cutoff = { order: number; seq: number } | null
 
 function players(session: Session, registry: Registry, cutoff: Cutoff): PlayerView[] {
   const sideOf = new Map(registry.roles.map((r) => [r.id, r.side]))
+  const extraLife = new Set(registry.roles.filter((r) => r.extraLife).map((r) => r.id))
+  // Жилет есть только у роли со второй жизнью; сначала он цел.
   const views: PlayerView[] = rolesBySeat(session, registry).map((roleId, i) => ({
-    seat: i + 1, roleId, side: sideOf.get(roleId) ?? '', status: 'alive',
+    seat: i + 1, roleId, side: sideOf.get(roleId) ?? '', status: 'alive', ...(extraLife.has(roleId) ? { vest: 'intact' as const } : {}),
   }))
   for (const e of orderedLog(session.log)) {
-    if (e.type !== 'status_set' || !isSeat(session, e.seat)) continue
+    if ((e.type !== 'status_set' && e.type !== 'vest_set') || !isSeat(session, e.seat)) continue
     if (cutoff) {
       const order = phaseOrder(e.phase)
       if (order > cutoff.order || (order === cutoff.order && e.seq >= cutoff.seq)) continue
     }
     const view = views[e.seat - 1] as PlayerView
-    views[e.seat - 1] = e.status === 'out'
-      ? { seat: view.seat, roleId: view.roleId, side: view.side, status: 'out', cause: e.cause, outPhase: e.phase }
-      : { seat: view.seat, roleId: view.roleId, side: view.side, status: 'alive' }
+    if (e.type === 'vest_set') {
+      if (view.vest === undefined) continue
+      const { vestOff: _was, ...rest } = view
+      views[e.seat - 1] = e.used === true ? { ...rest, vest: 'used', vestOff: e.phase } : { ...rest, vest: 'intact' }
+      continue
+    }
+    const { cause: _cause, outPhase: _phase, ...rest } = view
+    views[e.seat - 1] = e.status === 'out' ? { ...rest, status: 'out', cause: e.cause, outPhase: e.phase } : { ...rest, status: 'alive' }
   }
   return views
 }

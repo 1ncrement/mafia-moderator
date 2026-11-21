@@ -140,6 +140,11 @@ export type GameEvent =
   | Ev<'game_finished', { winner: SideId | null }>
   /** Ведущий объявил столу итог прошлой ночи: событие дня, в видимый журнал не попадает. */
   | Ev<'morning_announced', object>
+  /**
+   * Жилет игрока со второй жизнью снят (used) или возвращён: итогом ночи, исходом голосования или ведущим вручную.
+   * Возврат — тоже событие во времени: прошлые ночи он не переписывает.
+   */
+  | Ev<'vest_set', { seat: Seat; used: boolean; source: 'night' | 'vote' | 'manual' }>
 
 export type EventOf<T extends GameEvent['type']> = Extract<GameEvent, { type: T }>
 export type NewEvent = GameEvent extends infer E ? (E extends GameEvent ? Omit<E, 'id' | 'seq' | 'tx'> : never) : never
@@ -250,6 +255,8 @@ export type Command =
   | { type: 'announceMorning' }
   /** Правка итога уже подтверждённой ночи: кто выбыл на самом деле — весь набор. */
   | { type: 'setNightResult'; night: number; died: Seat[] }
+  /** Ведущий вручную снимает (used) или возвращает жилет игроку со второй жизнью. */
+  | { type: 'setVest'; seat: Seat; used: boolean }
 
 export type RejectCode =
   | 'redeal_closed' | 'wrong_phase' | 'not_alive' | 'unknown_event' | 'nominations_closed'
@@ -269,6 +276,10 @@ export type PlayerView = {
   status: 'alive' | 'out'
   cause?: OutCause
   outPhase?: PhaseRef
+  /** Жилет игрока со второй жизнью: цел или снят (роль открыта столу). У остальных ролей поля нет. */
+  vest?: 'intact' | 'used'
+  /** В какой фазе жилет снят: от неё заново считаются визиты к этому игроку. */
+  vestOff?: PhaseRef
 }
 export type EndHint = 'no_black' | 'black_not_less' | null
 export type GameState = {
@@ -335,6 +346,8 @@ export type DayState = {
   defense: SpeechQueue
   tiebreak: SpeechQueue
   farewell: SpeechQueue
+  /** Выгнаны голосованием сегодня, но остались в игре: изгнание принял жилет. */
+  spared: Seat[]
   /** Прощание выбывших прошлой ночью — по возрастанию номеров. Говорится тем же видом речи, что и прощание выгнанного. */
   nightFarewell: SpeechQueue
 }
@@ -391,8 +404,8 @@ export type NightOutcome = {
   /** Почему нападений не было: 'none' — никто не нападал, 'blocked' — все нападавшие заблокированы; null — нападение было. */
   noAttack: 'none' | 'blocked' | null
 }
-/** Почему по подсказке никто не выбывает: нападений не было, нападавший заблокирован, цель спасена. */
-export type QuietNight = 'none' | 'blocked' | 'saved'
+/** Почему по подсказке никто не выбывает: нападений не было, нападавший заблокирован, цель вылечена (saved), удар принял жилет (spared). */
+export type QuietNight = 'none' | 'blocked' | 'saved' | 'spared'
 export type NightState = {
   n: number
   steps: NightStep[]
@@ -421,6 +434,8 @@ export type JournalEntry = { eventId: string | null; edited: boolean; manual: bo
   | { kind: 'votes'; ballot: 1 | 2; voters: number; entries: { candidate: Seat; count: number }[] }
   | { kind: 'vote_result'; ballot: 1 | 2; outcome: VoteOutcome; seats: Seat[] }
   | { kind: 'status'; seat: Seat; status: 'alive' | 'out'; cause?: OutCause }
+  /** Жилет снят (used) или возвращён; source — чем: итогом ночи, голосованием, ведущим. */
+  | { kind: 'vest'; seat: Seat; used: boolean; source: 'night' | 'vote' | 'manual' }
   | { kind: 'swap'; a: Seat; b: Seat }
   | { kind: 'finish'; winner: SideId | null }
 )

@@ -1,11 +1,11 @@
 import { seatList } from '../../app/i18n'
 import { useLang, useStore, useT } from '../../app/StoreContext'
-import type { Ballot, Command, DayState, Rules } from '../../engine'
+import type { Ballot, Command, DayState, GameState, Rules } from '../../engine'
 import { afterExpelled } from './dayFlow'
 import { useAskOnce } from './selection'
 
 /** Вторая ничья (или голосовать некому): исход приложение не предлагает, решает ведущий. Три равные кнопки без главной. */
-export function TieDecision({ day, ballot, rules }: { day: DayState; ballot: Ballot; rules: Rules }) {
+export function TieDecision({ game, day, ballot, rules }: { game: GameState; day: DayState; ballot: Ballot; rules: Rules }) {
   const store = useStore()
   const t = useT()
   const lang = useLang()
@@ -13,7 +13,7 @@ export function TieDecision({ day, ballot, rules }: { day: DayState; ballot: Bal
   const seats = ballot.hint?.seats ?? ballot.candidates
   const toNight: Command = { type: 'startPhase', phase: { kind: 'night', n: day.n } }
   const expel = (who: number[]) =>
-    store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats: who }, afterExpelled(rules, day)])
+    store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats: who }, afterExpelled(rules, day, game, who)])
 
   return (
     <div className="tie">

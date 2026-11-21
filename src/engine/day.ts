@@ -134,6 +134,9 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
     nominations, ballots, closing,
     defense: queue(nominations.filter((x) => x.active).map((x) => x.target), 'defense'),
     tiebreak: queue(byNomination(tie.filter((s) => alive.has(s))), 'tiebreak'),
+    // Изгнание принял жилет: игрок в игре, в очередь прощания он не попадает.
+    spared: unique(events.flatMap((e) => (e.type === 'vest_set' && e.source === 'vote' && e.used === true && isSeat(session, e.seat) ? [e.seat] : [])))
+      .filter((s) => alive.has(s)).sort((a, b) => a - b),
     // Прощание после голосования выключено правилами — очереди нет: выгнанный уходит без слова.
     farewell: queue(session.config.rules.farewellAfterVote ? byNomination(expelled.filter((s) => isSeat(session, s) && !alive.has(s))) : [], 'farewell'),
     // Вид речи тот же, очереди различаются местами: выбывший ночью не может быть выгнан тем же днём.

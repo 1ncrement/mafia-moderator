@@ -6,9 +6,10 @@ import type { Seat } from '../../engine'
 
 /**
  * tone: night — ночная метка, скрывается вместе с ролями; block — «заблокирован», красная, тоже ночная;
- * solo — «сам за себя», часть роли, скрывается вместе с ней; day — янтарная; plain — обычная.
+ * solo — «сам за себя», часть роли, скрывается вместе с ней; open — «жилет снят · открыт»: это знает весь стол, видна всегда;
+ * day — янтарная; plain — обычная.
  */
-export type SeatMark = { text: string; tone: 'plain' | 'day' | 'night' | 'block' | 'solo' }
+export type SeatMark = { text: string; tone: 'plain' | 'day' | 'night' | 'block' | 'solo' | 'open' }
 export type TableMarks = { marks: Record<Seat, SeatMark[]>; highlight: Seat | null }
 
 const EMPTY: TableMarks = { marks: {}, highlight: null }

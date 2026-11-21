@@ -269,6 +269,17 @@
   border-color: var(--block);
   background: var(--block-card);
 }
+/* Жилет снят, роль открыта столу: рамка заметнее, метка плашкой. */
+.card-open {
+  border-color: var(--border-strong);
+}
+.card-mark-open {
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--border);
+  color: var(--text);
+}
 /* Одиночка: метка «сам за себя» своего цвета. */
 .card-mark-solo {
   align-self: flex-start;

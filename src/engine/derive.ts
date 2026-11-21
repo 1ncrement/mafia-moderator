@@ -60,9 +60,13 @@ export function deriveState(session: Session, registry: Registry): GameState {
   }
   for (const b of day?.ballots ?? []) if (b.overflow && !b.resolved) warnings.push({ code: 'votes_overflow', ballot: b.n })
 
+  // Кого прошлой ночью спас жилет: он снят итогом той ночи, игрок в игре.
+  const sparedAt = (n: number): number[] => [...new Set(session.log.flatMap((e) => (
+    e.type === 'vest_set' && e.source === 'night' && e.used === true && samePhase(e.phase, { kind: 'night', n }) ? [e.seat] : [])))]
+    .filter((seat) => views[seat - 1]?.status === 'alive' && views[seat - 1]?.vest === 'used').sort((a, b) => a - b)
   // Утро выводится из статусов после прошлой ночи: ручная правка статуса и правка итога сразу меняют объявление.
   const morning: Morning | null = day && day.n >= 2 ? {
-    deaths: leftAtNight(views, day.n - 1), farewell, spared: [], silenced: [],
+    deaths: leftAtNight(views, day.n - 1), farewell, spared: sparedAt(day.n - 1), silenced: [],
     announced: session.log.some((e) => e.type === 'morning_announced' && samePhase(e.phase, phase)),
   } : null
 

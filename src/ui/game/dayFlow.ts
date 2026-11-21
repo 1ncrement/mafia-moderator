@@ -6,12 +6,16 @@ import type { Command, DayState, GameState, Rules, Seat, Session, SpeechKind, Ti
 
 export const aliveOf = (game: GameState): Seat[] => game.players.filter((p) => p.status === 'alive').map((p) => p.seat)
 
+/** Кого из выгнанных спасёт жилет: он цел, изгнание не сработает, игрок останется в игре. */
+export const sparedByVest = (game: GameState, seats: readonly Seat[]): Seat[] => seats.filter((seat) => game.players[seat - 1]?.vest === 'intact')
+
 /**
- * Что идёт после исхода «выгнан»: прощание, если оно включено правилами партии, иначе сразу ночь.
- * Статус «выгнан» ставит сам исход — этот шаг его не меняет.
+ * Что идёт после исхода «выгнан»: прощание, если оно включено правилами партии и есть кому прощаться, иначе сразу ночь.
+ * Статус «выгнан» ставит сам исход — этот шаг его не меняет. seats — кого выгоняют: спасённый жилетом не прощается.
  */
-export function afterExpelled(rules: Rules, day: DayState): Command {
-  return rules.farewellAfterVote ? { type: 'enterStep', step: 'farewell' } : { type: 'startPhase', phase: { kind: 'night', n: day.n } }
+export function afterExpelled(rules: Rules, day: DayState, game: GameState, seats: readonly Seat[]): Command {
+  const leaves = seats.length > sparedByVest(game, seats).length
+  return rules.farewellAfterVote && leaves ? { type: 'enterStep', step: 'farewell' } : { type: 'startPhase', phase: { kind: 'night', n: day.n } }
 }
 
 export type Expected = { kind: SpeechKind; seat: Seat | null } | null

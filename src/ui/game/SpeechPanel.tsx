@@ -4,7 +4,7 @@ import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { balaganInDay } from '../../engine'
 import type { Command, GameState, RejectCode, Seat } from '../../engine'
 import { Button } from '../common/Button'
-import { afterExpelled, aliveOf } from './dayFlow'
+import { afterExpelled, aliveOf, sparedByVest } from './dayFlow'
 import { useMainAction } from './MainButton'
 import type { MainAction } from './MainButton'
 import { NominationList } from './NominationList'
@@ -153,9 +153,14 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
         if (next !== undefined) main = { label: t(going ? 'day.next' : 'day.defense', { n: next, sec: sec('defense') }), onPress: () => store.speak('defense', next) }
         else if (only) {
           // Выставлен один: голосования нет, сразу прощание — или ночь, если прощание выключено правилами.
+          // Игрок в целом жилете остаётся в игре: кнопка говорит об этом заранее, чтобы ведущий объявил столу.
           main = {
-            label: rules.farewellAfterVote ? t('day.single', { n: only.target, sec: sec('farewell') }) : t('day.single.toNight', { n: only.target, night: day.n }),
-            onPress: () => store.dispatchAll([{ type: 'endSpeech' }, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [only.target] }, afterExpelled(rules, day)]),
+            label: sparedByVest(game, [only.target]).length > 0 ? t('day.single.vest', { n: only.target, night: day.n })
+              : rules.farewellAfterVote ? t('day.single', { n: only.target, sec: sec('farewell') })
+              : t('day.single.toNight', { n: only.target, night: day.n }),
+            onPress: () => store.dispatchAll([
+              { type: 'endSpeech' }, { type: 'resolveVote', ballot: 1, outcome: 'eliminated', seats: [only.target] }, afterExpelled(rules, day, game, [only.target]),
+            ]),
           }
           secondary = (
             <Button variant="outline" size="l" onClick={() => store.dispatchAll([{ type: 'resolveVote', ballot: 1, outcome: 'nobody', seats: [] }, toNight])}>
@@ -190,6 +195,9 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
       body = (
         <>
           {title && <p className="speech-title">{title}</p>}
+          {step === 'farewell' && day.spared.length > 0 && (
+            <p className="step-warning" role="status">{t(day.spared.length > 1 ? 'day.spared.many' : 'day.spared.one', { seats: seatList(lang, day.spared) })}</p>
+          )}
           <div className="queue">
             <span className="small muted">{t('day.queue')}</span>
             <ol className="queue-list">

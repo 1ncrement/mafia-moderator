@@ -60,6 +60,13 @@ export function PlayerPanel({ game, seat, onClose, children }: Props) {
         <Button size="l" disabled={out && player.cause === 'shot'} onClick={() => setStatus('out', 'shot')}>{t('panel.shot')}</Button>
         <Button size="l" disabled={out && player.cause === 'voted'} onClick={() => setStatus('out', 'voted')}>{t('panel.voted')}</Button>
         <Button size="l" disabled={!out} onClick={() => setStatus('alive')}>{t('panel.revive')}</Button>
+        {/* Жилет: снять и вернуть вручную. Целый жилет при скрытых ролях не показываем — кнопка назвала бы роль. */}
+        {player.vest === 'intact' && !settings.rolesHidden && (
+          <Button size="l" onClick={() => { store.dispatch({ type: 'setVest', seat, used: true }); onClose() }}>{t('panel.vest.off')}</Button>
+        )}
+        {player.vest === 'used' && (
+          <Button size="l" onClick={() => { store.dispatch({ type: 'setVest', seat, used: false }); onClose() }}>{t('panel.vest.on')}</Button>
+        )}
         {children}
         <Button size="l" variant="outline" onClick={swap}>{t('panel.swap')}</Button>
       </div>

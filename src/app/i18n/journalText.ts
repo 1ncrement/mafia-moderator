@@ -81,6 +81,10 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
       if (entry.status === 'alive') return t('journal.status.alive', { n: entry.seat })
       return hasKey(`journal.status.${entry.cause ?? ''}`) ? translateKey(lang, `journal.status.${entry.cause ?? ''}`, { n: entry.seat }) : t('journal.status.out', { n: entry.seat })
 
+    case 'vest':
+      // Жилет принял смерть (ночью или на голосовании) — «остаётся»; снят или возвращён ведущим — так и сказано.
+      return t(!entry.used ? 'journal.vest.on' : entry.source === 'manual' ? 'journal.vest.off' : 'journal.vest.spared', { n: entry.seat })
+
     case 'swap':
       return t('journal.swap', { a: entry.a, b: entry.b })
 
@@ -124,12 +128,16 @@ export function summaryBody(lang: Lang, group: JournalGroup, registry: Registry)
       : circle?.kind === 'circle' ? t('summary.day.circle', { n: circle.first })
       : ''
     let right = ''
+    // Кого из выгнанных спас жилет: в игре он остался.
+    const spared = group.entries.flatMap((e) => (e.kind === 'vest' && e.source === 'vote' && e.used ? [e.seat] : []))
+    const gone = result?.kind === 'vote_result' ? result.seats.filter((s) => !spared.includes(s)) : []
     if (result?.kind === 'vote_result') {
       if (result.outcome === 'tie') right = t('summary.day.tie', { seats: seatList(lang, result.seats) })
       else if (result.outcome === 'nobody' || result.seats.length === 0) right = t('summary.day.nobody')
-      else if (result.seats.length > 1) right = t('summary.day.expelledMany', { seats: seatList(lang, result.seats) })
+      else if (gone.length === 0) right = t('summary.day.spared', { seats: seatList(lang, result.seats) })
+      else if (gone.length > 1) right = t('summary.day.expelledMany', { seats: seatList(lang, gone) })
       else {
-        const only = result.seats[0] as Seat
+        const only = gone[0] as Seat
         const table = group.entries.findLast((e) => e.kind === 'votes' && e.ballot === result.ballot)
         const count = table?.kind === 'votes' ? table.entries.find((x) => x.candidate === only)?.count : undefined
         right = t('summary.day.expelled', { n: only }) + (count === undefined ? '' : ` (${plural(lang, count, 'votes')})`)

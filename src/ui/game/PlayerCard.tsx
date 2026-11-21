@@ -35,6 +35,7 @@ export function PlayerCard({ view, registry, rolesHidden, onOpen, onPick }: Prop
     out && 'card-out',
     view.highlight && 'card-speaking',
     marks.some((m) => m.tone === 'block') && 'card-blocked',
+    marks.some((m) => m.tone === 'open') && 'card-open',
     pick?.picked && 'card-picked',
     pick && !selectable && 'card-locked',
     selectable && 'card-selectable',

@@ -40,7 +40,8 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
     const inPhase = eventsOf(log, p)
     const resolved = inPhase.filter((e) => e.type === 'vote_resolved' && (e.ballot === ballot || (withLater && e.ballot > ballot)))
     const txs = new Set(resolved.map((e) => e.tx))
-    const statuses = inPhase.filter((e) => e.type === 'status_set' && e.source === 'vote' && txs.has(e.tx))
+    // Вместе с исходом уходит и то, что он поставил: статусы «выгнан» и снятые жилеты.
+    const statuses = inPhase.filter((e) => (e.type === 'status_set' || e.type === 'vest_set') && e.source === 'vote' && txs.has(e.tx))
     const later = withLater
       ? inPhase.filter((e) => (e.type === 'votes_set' || e.type === 'voters_set') && e.ballot > ballot)
       : []
@@ -54,6 +55,13 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
   /** Статусы, которые поставил итог этой ночи: их заменяет правка итога. */
   const nightStatusIds = (p: PhaseRef): string[] =>
     eventsOf(log, p).filter((e) => e.type === 'status_set' && e.source === 'night').map((e) => e.id)
+  /** Жилеты, снятые по подсказке: каждый, кто пережил нападение благодаря жилету. Пишутся той же пачкой, что и итог ночи. */
+  const nightVests = (p: PhaseRef, outcome: NightOutcome): NewEvent[] => outcome.notes.flatMap((note) => (note.kind === 'vest'
+    ? [{ type: 'vest_set' as const, phase: p, seat: note.seat, used: true, source: 'night' as const }]
+    : []))
+  /** Жилеты, которые снял итог этой ночи: «Исправить» ставит их заново по пересчитанной подсказке. */
+  const nightVestIds = (p: PhaseRef): string[] =>
+    eventsOf(log, p).filter((e) => e.type === 'vest_set' && e.source === 'night').map((e) => e.id)
 
   switch (cmd.type) {
     case 'deal': {
@@ -247,11 +255,20 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       const events: NewEvent[] = [{
         type: 'vote_resolved', phase: p, ballot: cmd.ballot, outcome: cmd.outcome, seats, ...(changed ? { edited: true as const } : {}),
       }]
+      // Повторное подтверждение заменяет прежний исход вместе с его статусами и снятыми жилетами.
+      const replaced = resolutionIds(p, cmd.ballot, true)
       if (cmd.outcome === 'eliminated') {
-        for (const seat of seats) events.push({ type: 'status_set', phase: p, seat, status: 'out', cause: 'voted', source: 'vote' })
+        // Жилет — каким он был бы без прежнего исхода этого тура: повторное подтверждение второй раз его не «тратит».
+        const without: Session = { ...session, log: log.filter((e) => !replaced.includes(e.id)) }
+        const views = isNow(p) ? playersNow(without, registry) : playersAt(without, registry, nextPhase(p))
+        for (const seat of seats) {
+          // Изгнание игрока в целом жилете не срабатывает: он остаётся в игре, жилет снят.
+          events.push(views[seat - 1]?.vest === 'intact'
+            ? { type: 'vest_set', phase: p, seat, used: true, source: 'vote' }
+            : { type: 'status_set', phase: p, seat, status: 'out', cause: 'voted', source: 'vote' })
+        }
       }
-      // Повторное подтверждение заменяет прежний исход вместе с его статусами.
-      return ok({ remove: resolutionIds(p, cmd.ballot, true), add: events })
+      return ok({ remove: replaced, add: events })
     }
 
     // ── Ночь ──────────────────────────────────────────────────────────────
@@ -296,6 +313,7 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
         add: [
           { type: 'night_confirmed', phase, hinted: deathSeats(outcome), chosen: died },
           ...nightStatuses(phase, outcome, died),
+          ...nightVests(phase, outcome),
           { type: 'phase_started', phase: nextPhase(phase) },
         ],
       })
@@ -309,9 +327,11 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       const expected = deathSeats(outcome)
       // «Оставить»: статусы не трогаем, запоминаем новую подсказку — предупреждение уходит.
       if (!cmd.apply) return ok({ replace: [{ ...confirmed, hinted: expected, chosen: seatsOf(session, confirmed.chosen) }] })
-      // «Исправить»: все прежние выбывшие этой ночи возвращаются в игру, набор подсказки получает статус той же ночью.
+      // «Исправить»: все прежние выбывшие этой ночи возвращаются в игру, набор подсказки получает статус той же ночью;
+      // жилеты, снятые итогом этой ночи, ставятся заново по пересчитанной подсказке. До этого правка записи жилет не трогает.
       return ok({
-        remove: nightStatusIds(p), replace: [{ ...confirmed, hinted: expected, chosen: expected }], add: nightStatuses(p, outcome, expected),
+        remove: [...nightStatusIds(p), ...nightVestIds(p)], replace: [{ ...confirmed, hinted: expected, chosen: expected }],
+        add: [...nightStatuses(p, outcome, expected), ...nightVests(p, outcome)],
       })
     }
 
@@ -321,6 +341,15 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       // Окно, открытое снова, в журнал не пишет.
       if (eventsOf(log, phase).some((e) => e.type === 'morning_announced')) return ok({})
       return add({ type: 'morning_announced', phase })
+    }
+
+    case 'setVest': {
+      if (!isSeat(session, cmd.seat)) return no('not_alive')
+      const vest = playersNow(session, registry)[cmd.seat - 1]?.vest
+      // Жилет есть только у роли со второй жизнью.
+      if (vest === undefined) return no('target_not_allowed')
+      if ((vest === 'used') === cmd.used) return ok({})
+      return add({ type: 'vest_set', phase, manual: true, seat: cmd.seat, used: cmd.used, source: 'manual' })
     }
 
     case 'setNightResult': {

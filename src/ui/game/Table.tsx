@@ -30,6 +30,8 @@ function useCards(game: GameState): CardView[] {
       if (day?.skipped.includes(seat)) parts.push(t('card.skipped'))
       if (parts.length > 0) marks.push({ text: parts.join(' · '), tone: 'plain' })
     }
+    // Жилет снят — роль открыта всему столу: метка видна и при скрытых ролях.
+    if (player.vest === 'used') marks.push({ text: t('card.vestOff'), tone: 'open' })
     // Одиночка помечен на карточке: его сторона — он сам. Метка скрывается вместе с ролями.
     if (soloSides.has(player.side)) marks.push({ text: t('side.solo'), tone: 'solo' })
     marks.push(...(extra.marks[seat] ?? []))

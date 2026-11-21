@@ -5,7 +5,7 @@ import { enteredVotes, maxVotesFor } from '../../engine'
 import type { Command, GameState, Seat } from '../../engine'
 import { Button, cx } from '../common/Button'
 import { Stepper } from '../common/Stepper'
-import { afterExpelled, aliveOf } from './dayFlow'
+import { afterExpelled, aliveOf, sparedByVest } from './dayFlow'
 import { useDigitKeys } from './digitKeys'
 import { useMainAction } from './MainButton'
 import type { MainAction } from './MainButton'
@@ -66,10 +66,11 @@ export function VotePanel({ game }: { game: GameState }) {
     main = outcome === 'eliminated'
       ? {
         // Прощание выключено правилами партии — выгнанный уходит без слова, сразу ночь.
-        label: rules.farewellAfterVote
-          ? t('day.single', { n: seats[0] ?? 0, sec: t('unit.sec', { n: durations.farewell }) })
+        // Лидер в целом жилете остаётся в игре — кнопка говорит об этом заранее.
+        label: sparedByVest(game, seats).length > 0 ? t('day.single.vest', { n: seats[0] ?? 0, night: day.n })
+          : rules.farewellAfterVote ? t('day.single', { n: seats[0] ?? 0, sec: t('unit.sec', { n: durations.farewell }) })
           : t('day.single.toNight', { n: seats[0] ?? 0, night: day.n }),
-        onPress: () => store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats }, afterExpelled(rules, day)]),
+        onPress: () => store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats }, afterExpelled(rules, day, game, seats)]),
       }
       : {
         label: t('vote.tie', { seats: seatList(lang, seats), sec: t('unit.sec', { n: durations.tiebreak }) }),
@@ -86,7 +87,7 @@ export function VotePanel({ game }: { game: GameState }) {
   const expelOther = () => askOnce({
     question: t('vote.other.question'), allowed: aliveOf(game),
     onPick: (seat) => {
-      if (seat !== null) store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats: [seat] }, afterExpelled(rules, day)])
+      if (seat !== null) store.dispatchAll([{ type: 'resolveVote', ballot: ballot.n, outcome: 'eliminated', seats: [seat] }, afterExpelled(rules, day, game, [seat])])
     },
   })
   const lastEntry = ballot.entries.at(-1)
@@ -160,7 +161,7 @@ export function VotePanel({ game }: { game: GameState }) {
       )}
 
       {decides
-        ? <TieDecision day={day} ballot={ballot} rules={rules} />
+        ? <TieDecision game={game} day={day} ballot={ballot} rules={rules} />
         : (
           <>
             {!ballot.complete && <p className="vote-pending">{t('vote.pending')}</p>}
