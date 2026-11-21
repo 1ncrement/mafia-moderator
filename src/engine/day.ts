@@ -43,6 +43,7 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
   // Круг речей.
   const circle = lastOf(events, 'circle_opened', (e) => isSeat(session, e.first))
   const opener = circle?.first ?? null
+  const openerRandom = circle?.random === true
   const yesterday = n > 1 ? lastOf(session.log, 'circle_opened', (e) => samePhase(e.phase, { kind: 'day', n: n - 1 })) : null
   const previousOpener = yesterday && isSeat(session, yesterday.first) ? yesterday.first : null
 
@@ -83,6 +84,18 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
   const waiting = [...ring.slice(frontier + 1), ...ring.slice(0, frontier + 1)]
     .filter((s) => alive.has(s) && !spoken.includes(s) && !skipped.includes(s) && s !== speakingSeat)
 
+  // Доп. речь первых двоих — только в День 1 и только когда круг пройден: начинавший и следующий за ним по кругу игрок в игре.
+  // Выбывший пропускается; речи считаются от последнего открытия круга — круг заново начинает и их заново.
+  const closingSeats = n === 1 && opener !== null && waiting.length === 0
+    ? circleOrder(opener, [...alive], session.config.playerCount).slice(0, 2)
+    : []
+  const closingStarted = new Set(starts.filter((e) => e.kind === 'closing' && e.seq > circleSeq).map((e) => e.seat))
+  const closingNow = speaking?.kind === 'closing' ? speaking.seat : null
+  const closing: SpeechQueue = {
+    done: closingSeats.filter((s) => closingStarted.has(s) && s !== closingNow),
+    waiting: closingSeats.filter((s) => !closingStarted.has(s)),
+  }
+
   // Выставление и голосование.
   const nominations = nominationsOf(session, phase, alive)
   const ballots = buildBallots(session, registry, events, nominations, now)
@@ -104,8 +117,8 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
   return {
     n,
     nominationsOpen: n >= session.config.rules.nominationsFromDay,
-    opener, previousOpener, spoken, skipped, waiting, speaking,
-    nominations, ballots,
+    opener, openerRandom, previousOpener, spoken, skipped, waiting, speaking,
+    nominations, ballots, closing,
     defense: queue(nominations.filter((x) => x.active).map((x) => x.target), 'defense'),
     tiebreak: queue(byNomination(tie.filter((s) => alive.has(s))), 'tiebreak'),
     // Прощание после голосования выключено правилами — очереди нет: выгнанный уходит без слова.

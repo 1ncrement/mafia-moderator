@@ -181,3 +181,34 @@ test('распределение и итоги правило не трогае�
   const id = app.getState().session!.id
   app.goHome(); app.openSession(id); expect(hidden(app)).toBe(false)
 })
+
+// ── Первый круг: случайный начинающий ───────────────────────────────────────
+
+test('начало Дня 1: начинающего выбирает случай — одной пачкой с началом дня, отмена одна', () => {
+  const env = testEnv(); const pick = vi.fn((max: number) => max - 7); env.randomInt = pick
+  const app = seeded(env); const undoBefore = app.getState().session!.undo.length
+  pick.mockClear()
+  expect(app.startFirstDay().ok).toBe(true)
+  // Случай выбирает среди игроков в игре: 11 за столом, индекс 4 — это №5.
+  expect(pick).toHaveBeenCalledExactlyOnceWith(11)
+  expect(app.getState().game).toMatchObject({ phase: { kind: 'day', n: 1 }, day: { opener: 5, openerRandom: true } })
+  expect(app.getState().session!.log.filter((e) => e.type === 'circle_opened')).toMatchObject([{ first: 5, random: true }])
+  expect(app.getState().session!.undo).toHaveLength(undoBefore + 1)
+  app.undo()
+  expect(app.getState().screen).toBe('deal'); expect(app.getState().session!.log.some((e) => e.type === 'circle_opened')).toBe(false)
+})
+test('начало Дня 1 вне распределения отклоняется и ничего не меняет', () => {
+  const app = seeded(testEnv()); app.startFirstDay(); const log = app.getState().session!.log
+  expect(app.startFirstDay()).toEqual({ ok: false, reason: 'wrong_phase' }); expect(app.getState().session!.log).toBe(log)
+})
+test('доп. речь первого круга получает таймер обычной речи; «Заново» берёт длительность из настроек', () => {
+  const app = seeded(testEnv()); app.startFirstDay(); app.updateConfig({ durations: { speech: 45, balagan: 60, defense: 30, tiebreak: 30, farewell: 30 } })
+  for (let seat = 1; seat <= 11; seat++) app.speak('speech', seat)
+  app.speak('closing', 1)
+  expect(app.getState().session!.timer).toMatchObject({ kind: 'closing', seat: 1, status: 'running', durationMs: 45_000 })
+  app.updateConfig({ durations: { speech: 50, balagan: 60, defense: 30, tiebreak: 30, farewell: 30 } }); app.timer({ type: 'reset' })
+  expect(app.getState().session!.timer).toMatchObject({ kind: 'closing', status: 'ready', durationMs: 50_000, remainingMs: 50_000 })
+  // Отмена передачи слова возвращает таймер тому, кто говорил до этого.
+  app.speak('closing', 2); app.undo()
+  expect(app.getState().session!.timer).toMatchObject({ kind: 'closing', seat: 1, status: 'ready', durationMs: 50_000 })
+})

@@ -59,7 +59,8 @@ export type PhaseRef = { kind: 'deal' } | { kind: 'day'; n: number } | { kind: '
 export type DayStep = 'balagan' | 'speeches' | 'defense' | 'vote' | 'tiebreak' | 'revote' | 'farewell'
 /** DayStep, id ночного шага или 'summary'. */
 export type StepId = string
-export type SpeechKind = 'balagan' | 'speech' | 'defense' | 'tiebreak' | 'farewell'
+/** closing — доп. речь первых двоих в конце первого круга: идёт внутри шага «Круг речей», длится как обычная речь. */
+export type SpeechKind = 'balagan' | 'speech' | 'closing' | 'defense' | 'tiebreak' | 'farewell'
 export type OutCause = 'shot' | 'voted'
 
 type Ev<T extends string, P> = {
@@ -81,7 +82,8 @@ export type GameEvent =
   | Ev<'night_action', { actionId: string; actor: Seat | null; target: Seat | null }>
   | Ev<'night_confirmed', { hinted: Seat | null; chosen: Seat | null }>
   | Ev<'status_set', { seat: Seat; status: 'alive' | 'out'; cause?: OutCause; source: 'night' | 'vote' | 'manual' }>
-  | Ev<'circle_opened', { first: Seat }>
+  /** random — начинающего выбрало приложение (первый круг), а не ведущий. */
+  | Ev<'circle_opened', { first: Seat; random?: true }>
   | Ev<'speech_started', { kind: SpeechKind; seat: Seat | null }>
   | Ev<'speech_ended', { startId: string }>
   | Ev<'speaker_skipped', { seat: Seat }>
@@ -171,7 +173,8 @@ export type Command =
   /** Правка записи ручного статуса на месте: запись остаётся там же и получает метку «испр.». */
   | { type: 'editStatus'; id: string; status: 'alive' | 'out'; cause?: OutCause }
   // день
-  | { type: 'openCircle'; first: Seat }
+  /** random — начинающий выбран случайно: запись журнала помечается «случайно». */
+  | { type: 'openCircle'; first: Seat; random?: true }
   /** Завершает идущую речь и начинает новую. */
   | { type: 'startSpeech'; kind: SpeechKind; seat: Seat | null }
   | { type: 'endSpeech' }
@@ -253,6 +256,8 @@ export type DayState = {
   n: number
   nominationsOpen: boolean
   opener: Seat | null
+  /** Начинающего выбрало приложение, а не ведущий. */
+  openerRandom: boolean
   previousOpener: Seat | null
   spoken: Seat[]
   skipped: Seat[]
@@ -260,6 +265,8 @@ export type DayState = {
   speaking: { kind: SpeechKind; seat: Seat | null; eventId: string } | null
   nominations: Nomination[]
   ballots: Ballot[]
+  /** Доп. речь первых двоих: в День 1 — когда в круге высказались все; в остальные дни пусто. */
+  closing: SpeechQueue
   defense: SpeechQueue
   tiebreak: SpeechQueue
   farewell: SpeechQueue
@@ -316,7 +323,7 @@ export type JournalEntry = { eventId: string | null; edited: boolean; manual: bo
   /** Шаг прошлой ночи без записи. */
   | { kind: 'night_missing'; actionId: string; actor: Seat | null; numbered?: true }
   | { kind: 'night_result'; dies: Seat | null; reason: NightOutcome['reason'] }
-  | { kind: 'circle'; first: Seat }
+  | { kind: 'circle'; first: Seat; random?: true }
   | { kind: 'nomination'; index: number; by: Seat | null; target: Seat }
   | { kind: 'votes'; ballot: 1 | 2; voters: number; entries: { candidate: Seat; count: number }[] }
   | { kind: 'vote_result'; ballot: 1 | 2; outcome: VoteOutcome; seats: Seat[] }

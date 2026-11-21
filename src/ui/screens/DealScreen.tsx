@@ -23,7 +23,7 @@ export function DealScreen() {
   // Двойной Enter на «Раздать роли» не должен тут же начать День 1.
   const openedAt = useRef(store.now())
   const start = () => {
-    if (store.now() - openedAt.current >= PRESS_GUARD_MS) store.dispatch({ type: 'startPhase', phase: { kind: 'day', n: 1 } })
+    if (store.now() - openedAt.current >= PRESS_GUARD_MS) store.startFirstDay()
   }
   // На этом экране вся раздача на виду — H прячет её так же, как на игровом экране.
   const hide = () => store.setSettings({ rolesHidden: !store.getState().settings.rolesHidden })

@@ -127,3 +127,77 @@ test('прощание выключено, выставлен один: «№9 �
   app.undo()
   expect(app.getState().game).toMatchObject({ phase: { kind: 'day', n: 2 }, step: 'defense' }); expect(app.getState().game!.players[8]!.status).toBe('alive')
 })
+
+// ── Первый круг: случайный начинающий и доп. речь первых двоих ──────────────
+
+const ORDER_FROM_5 = [5, 6, 7, 8, 9, 10, 11, 1, 2, 3, 4]
+
+test('«Город просыпается: День 1» сразу показывает случайного начинающего; «Выбрать другого…» заменяет его, отмена возвращает', async () => {
+  const { app, user, env } = renderApp((a) => { a.newGame(); a.dealDraft() })
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /Город просыпается: День 1/ }))
+  // randomInt в тестах всегда 0 — начинает №1.
+  expect(app.getState().game!.day).toMatchObject({ opener: 1, openerRandom: true })
+  expect(screen.getByText('День 1 · круг начал №1, выбран случайно')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Дать слово №1 · 60 с/ })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Выбрать, кто начинает' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Начать круг заново с №…' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Выбрать другого…' }))
+  await user.click(screen.getByRole('button', { name: 'Выбрать игрока №5' }))
+  expect(app.getState().game!.day).toMatchObject({ opener: 5, openerRandom: false })
+  expect(app.getState().session!.log.filter((e) => e.type === 'circle_opened')).toHaveLength(1)
+  expect(screen.queryByText(/выбран случайно/)).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Начать круг заново с №…' })).toBeInTheDocument()
+  // Одно нажатие «Отменить» возвращает к случайному выбору.
+  await user.click(screen.getByRole('button', { name: 'Отменить' }))
+  expect(app.getState().game!.day).toMatchObject({ opener: 1, openerRandom: true })
+  expect(screen.getByRole('button', { name: 'Выбрать другого…' })).toBeInTheDocument()
+  // Ещё одно — к распределению: начало дня и случайный выбор отменяются вместе.
+  await user.click(screen.getByRole('button', { name: 'Отменить' }))
+  expect(app.getState().screen).toBe('deal')
+})
+test('после первой речи «Выбрать другого…» сменяется на «Начать круг заново с №…»', async () => {
+  const { user, env } = renderApp((a) => { a.newGame(); a.dealDraft(); a.startFirstDay() })
+  expect(screen.getByRole('button', { name: 'Выбрать другого…' })).toBeInTheDocument()
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /Дать слово №1 · 60 с/ }))
+  expect(screen.queryByRole('button', { name: 'Выбрать другого…' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Начать круг заново с №…' })).toBeInTheDocument()
+})
+test('конец первого круга: «Доп. минута №5 · 60 с», затем №6, затем «Город засыпает: Ночь 1»', async () => {
+  const { app, user, env } = renderApp((a) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'openCircle', first: 5, random: true }); ORDER_FROM_5.forEach((s) => a.speak('speech', s)) })
+  expect(screen.getByText('Круг закрывают первые двое')).toBeInTheDocument()
+  expect(screen.getByText('Все высказались. №5 и №6 говорили первыми и получают ещё по минуте.')).toBeInTheDocument()
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /^Доп\. минута №5 · 60 с/ }))
+  expect(screen.getByText('Доп. минута №5', { selector: '.timer-label' })).toBeInTheDocument()
+  expect(app.getState().session!.timer).toMatchObject({ kind: 'closing', seat: 5, status: 'running', durationMs: 60_000 })
+  expect(app.getState().game!.step).toBe('speeches')
+  expect(within(screen.getByRole('button', { name: 'Игрок №5' })).getByText('говорит сейчас')).toBeInTheDocument()
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /^Доп\. минута №6 · 60 с/ }))
+  expect(app.getState().game!.day).toMatchObject({ speaking: { kind: 'closing', seat: 6 }, closing: { done: [5], waiting: [] } })
+  expect(screen.queryByRole('button', { name: 'Пропустить доп. минуту' })).not.toBeInTheDocument()
+  advance(env, 500); await user.click(screen.getByRole('button', { name: /Город засыпает: Ночь 1/ }))
+  expect(app.getState().game!.phase).toEqual({ kind: 'night', n: 1 })
+})
+test('«Пропустить доп. минуту» снимает следующую доп. речь без таймера', async () => {
+  const { app, user, env } = renderApp((a) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'openCircle', first: 5 }); ORDER_FROM_5.forEach((s) => a.speak('speech', s)); a.dispatch({ type: 'endSpeech' }) })
+  // Никто не говорит: таймер ждёт доп. минуту №5.
+  expect(screen.getByText('Доп. минута №5', { selector: '.timer-label' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Пропустить доп. минуту' }))
+  expect(app.getState().game!.day).toMatchObject({ speaking: null, closing: { done: [5], waiting: [6] } })
+  expect(app.getState().session!.timer).toBeNull()
+  expect(screen.getByRole('button', { name: /^Доп\. минута №6 · 60 с/ })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Пропустить доп. минуту' }))
+  expect(app.getState().game!.day!.closing).toEqual({ done: [5, 6], waiting: [] })
+  advance(env, 500); expect(screen.getByRole('button', { name: /Город засыпает: Ночь 1/ })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Пропустить доп. минуту' })).not.toBeInTheDocument()
+  // Пропуск — одно действие: отменяется одним нажатием.
+  app.undo(); expect(app.getState().game!.day!.closing).toEqual({ done: [5], waiting: [6] })
+})
+test('пробел запускает ожидаемую доп. минуту; со второго дня доп. минут нет', async () => {
+  const first = renderApp((a) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'openCircle', first: 5 }); ORDER_FROM_5.forEach((s) => a.speak('speech', s)); a.dispatch({ type: 'endSpeech' }) })
+  await first.user.keyboard(' ')
+  expect(first.app.getState().game!.day!.speaking).toMatchObject({ kind: 'closing', seat: 5 })
+  first.unmount()
+  renderApp((a) => { seedGame(a, TABLE_11, 2); a.dispatch({ type: 'enterStep', step: 'speeches' }); a.dispatch({ type: 'openCircle', first: 5 }); ORDER_FROM_5.forEach((s) => a.speak('speech', s)) })
+  expect(screen.queryByText(/Доп\. минута/)).not.toBeInTheDocument(); expect(screen.queryByText('Круг закрывают первые двое')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Никто не выставлен → Ночь 2/ })).toBeInTheDocument()
+})

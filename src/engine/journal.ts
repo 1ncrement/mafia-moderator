@@ -49,7 +49,7 @@ function dayEntries(session: Session, registry: Registry, n: number, events: Gam
   for (const e of events) {
     switch (e.type) {
       case 'circle_opened':
-        if (isSeat(session, e.first)) out.push({ ...flags(e), kind: 'circle', first: e.first })
+        if (isSeat(session, e.first)) out.push({ ...flags(e), kind: 'circle', first: e.first, ...(e.random === true ? { random: true as const } : {}) })
         break
       case 'nominated': {
         const index = day.nominations.findIndex((x) => x.eventId === e.id)

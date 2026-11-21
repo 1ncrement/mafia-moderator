@@ -424,6 +424,14 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+/* Полоса шагов дня и пометка справа от неё. */
+.steps-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
 .step {
   display: inline-flex;
   align-items: center;
@@ -835,6 +843,22 @@ button.journal-entry:hover {
 .step-warning {
   font-size: 14px;
   color: var(--alert);
+}
+/* Конец первого круга: первые двое получают доп. речь. */
+.closing-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--day);
+  background: var(--day-tint);
+  font-size: 14px;
+  color: #ffd27a;
+}
+.closing-note-title {
+  font-size: 15px;
+  font-weight: 600;
 }
 
 /* Голосование */

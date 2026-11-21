@@ -50,8 +50,8 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
         if (seat !== null) store.dispatch({ type: 'openCircle', first: seat })
       },
     })
-    /** Закончить очередь по 30 секунд без речи: кандидат отмечается высказавшимся. */
-    const skipIn = (kind: 'defense' | 'tiebreak' | 'farewell', seat: Seat) =>
+    /** Закончить очередь без речи: игрок отмечается высказавшимся. */
+    const skipIn = (kind: 'closing' | 'defense' | 'tiebreak' | 'farewell', seat: Seat) =>
       store.dispatchAll([{ type: 'startSpeech', kind, seat }, { type: 'endSpeech' }])
     const active = day.nominations.filter((x) => x.active)
 
@@ -71,10 +71,17 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
     if (step === 'speeches') {
       const started = day.opener !== null || day.spoken.length > 0 || speaking?.kind === 'speech'
       const next = day.waiting[0]
+      /** В круге ещё никто не говорил. */
+      const first = day.spoken.length === 0 && speaking?.kind !== 'speech'
+      // Доп. речи первых двоих: очередь появляется в День 1, когда в круге высказались все.
+      const closingNext = day.closing.waiting[0]
+      const closingNow = speaking?.kind === 'closing' ? speaking.seat : null
+      const closingOrder = [...day.closing.done, ...(closingNow !== null ? [closingNow] : []), ...day.closing.waiting]
       if (!started) main = { label: t('day.pickOpener'), onPress: askOpener }
       else if (next !== undefined) {
-        const first = day.spoken.length === 0 && speaking?.kind !== 'speech'
         main = { label: t(first ? 'day.give' : 'day.next', { n: next, sec: sec('speech') }), onPress: () => store.speak('speech', next) }
+      } else if (closingNext !== undefined) {
+        main = { label: t('day.closing', { n: closingNext, sec: sec('speech') }), onPress: () => store.speak('closing', closingNext) }
       } else if (!day.nominationsOpen) main = { label: t('day.toNight', { n: day.n }), onPress: () => store.dispatch(toNight) }
       else if (active.length > 0) main = { label: t('day.toDefense', { n: active.length }), onPress: () => go('defense') }
       else main = { label: t('day.noNominations', { n: day.n }), onPress: () => store.dispatch(toNight) }
@@ -99,9 +106,21 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
               <NominationList game={game} day={day} />
             </>
           )}
+          {closingOrder.length > 0 && (
+            <div className="closing-note">
+              <span className="closing-note-title">{t(closingOrder.length > 1 ? 'day.closing.title' : 'day.closing.title.one')}</span>
+              <span>{t(closingOrder.length > 1 ? 'day.closing.text' : 'day.closing.text.one', { seats: seatList(lang, closingOrder) })}</span>
+            </div>
+          )}
           <dl className="facts">
             <dt>{t('day.spoke')}</dt><dd>{day.spoken.join(' · ') || '—'}</dd>
             <dt>{t('day.waiting')}</dt><dd>{day.opener === null ? '—' : day.waiting.join(' · ') || '—'}</dd>
+            {closingOrder.length > 0 && (
+              <>
+                <dt>{t('day.closing.fact')}</dt>
+                <dd>{closingOrder.map((seat, i) => <span key={seat}>{i > 0 && ' · '}{seat === closingNow ? <strong>{seat}</strong> : seat}</span>)}</dd>
+              </>
+            )}
             {day.skipped.length > 0 && <><dt>{t('day.skipped')}</dt><dd>{day.skipped.join(' · ')}</dd></>}
             {day.previousOpener !== null && <><dt>{t('day.yesterday')}</dt><dd>{t('common.seat', { n: day.previousOpener })}</dd></>}
           </dl>
@@ -110,7 +129,11 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
       secondary = started && (
         <>
           {next !== undefined && <Button variant="outline" size="l" onClick={() => store.dispatch({ type: 'skipSpeaker', seat: next })}>{t('day.skipNext', { n: next })}</Button>}
-          <Button variant="outline" size="l" onClick={askOpener}>{t('day.restart')}</Button>
+          {next === undefined && closingNext !== undefined && (
+            <Button variant="outline" size="l" onClick={() => skipIn('closing', closingNext)}>{t('day.closing.skip')}</Button>
+          )}
+          {/* Случайный выбор, по которому ещё никто не говорил, ведущий заменяет своим; дальше это уже новый круг. */}
+          <Button variant="outline" size="l" onClick={askOpener}>{t(day.openerRandom && first ? 'day.pickOther' : 'day.restart')}</Button>
         </>
       )
     }

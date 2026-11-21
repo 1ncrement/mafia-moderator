@@ -124,7 +124,7 @@ export function testEnv(kv = fakeKV()) {
     time: 1_700_000_000_000,
     now: () => env.time,
     newId: () => `id${++n}`,
-    randomInt: () => 0,
+    randomInt: ((): number => 0) as (maxExclusive: number) => number,
     registry: DEFAULT_REGISTRY,
     beep: vi.fn(),
     keepAwake: vi.fn(),

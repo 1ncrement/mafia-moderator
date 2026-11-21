@@ -1,4 +1,4 @@
-import { translateKey } from '../../app/i18n'
+import { phaseLabel, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
 import { balaganInDay, SUMMARY_STEP } from '../../engine'
 import type { DayState, DayStep, GameState, Rules, StepId } from '../../engine'
@@ -29,17 +29,24 @@ export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
   if (game.day) {
     const steps = daySteps(game.day, game.step, rules)
     const at = steps.indexOf(game.step as DayStep)
+    const { opener, openerRandom, n } = game.day
     return (
-      <nav className="steps" aria-label={t('steps.day')}>
-        {steps.map((step, i) => (
-          <button
-            key={step} type="button" className="step" aria-current={step === game.step ? 'step' : undefined} data-done={i < at ? '' : undefined}
-            onClick={() => step !== game.step && store.dispatchAll([{ type: 'endSpeech' }, { type: 'enterStep', step }])}
-          >
-            {translateKey(lang, `step.${step}`)}
-          </button>
-        ))}
-      </nav>
+      <div className="steps-row">
+        <nav className="steps" aria-label={t('steps.day')}>
+          {steps.map((step, i) => (
+            <button
+              key={step} type="button" className="step" aria-current={step === game.step ? 'step' : undefined} data-done={i < at ? '' : undefined}
+              onClick={() => step !== game.step && store.dispatchAll([{ type: 'endSpeech' }, { type: 'enterStep', step }])}
+            >
+              {translateKey(lang, `step.${step}`)}
+            </button>
+          ))}
+        </nav>
+        {/* Начинающего первый круг выбрало приложение — ведущий видит это, пока не выберет сам. */}
+        {openerRandom && opener !== null && (
+          <span className="steps-note small muted">{t('day.opener.random', { phase: phaseLabel(lang, { kind: 'day', n }), n: opener })}</span>
+        )}
+      </div>
     )
   }
 

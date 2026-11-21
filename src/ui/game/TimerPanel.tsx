@@ -1,5 +1,5 @@
 import { useApp, useStore, useT } from '../../app/StoreContext'
-import { newTimer, timerView } from '../../engine'
+import { newTimer, speechSeconds, timerView } from '../../engine'
 import type { GameState, TimerState } from '../../engine'
 import { Button, cx } from '../common/Button'
 import { Close } from '../common/icons'
@@ -25,7 +25,7 @@ export function TimerPanel({ game, flash }: { game: GameState; flash?: boolean }
   const live = liveTimer(session, game)
   const next = expectedSpeech(game)
   // Нет идущей речи — показываем таймер следующей в состоянии «готов».
-  const timer: TimerState | null = live ?? (next ? newTimer(next.kind, next.seat, session.config.durations[next.kind] * 1000) : null)
+  const timer: TimerState | null = live ?? (next ? newTimer(next.kind, next.seat, speechSeconds(session.config.durations, next.kind) * 1000) : null)
   if (!timer) return null
 
   const view = timerView(timer, now)

@@ -108,7 +108,15 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
     case 'openCircle': {
       if (phase.kind !== 'day') return no('wrong_phase')
       if (!aliveFor(phase).has(cmd.first)) return no('not_alive')
-      return add(...endOpenSpeech(), { type: 'circle_opened', phase, first: cmd.first })
+      // Случайный выбор, по которому ещё никто не говорил, ведущий заменяет своим: запись «случайно» снимается.
+      // После первой речи это уже новый круг — прежняя запись остаётся в журнале.
+      const events = eventsOf(log, phase)
+      const current = lastOf(events, 'circle_opened')
+      const replaced = current?.random === true && !events.some((e) => e.type === 'speech_started' && e.seq > current.seq) ? [current.id] : []
+      return ok({
+        remove: replaced,
+        add: [...endOpenSpeech(), { type: 'circle_opened', phase, first: cmd.first, ...(cmd.random ? { random: true as const } : {}) }],
+      })
     }
 
     case 'startSpeech': {

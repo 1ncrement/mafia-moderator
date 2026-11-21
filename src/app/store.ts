@@ -1,7 +1,7 @@
 import {
-  applyPatch, applyUndo, checkComposition, dealRoles, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES,
+  aliveSeats, applyPatch, applyUndo, checkComposition, dealRoles, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES,
   defaultComposition, deriveState, execute, journal, MAX_CUSTOM_ROLES, newSession, newTimer, registryFor, samePhase, sanitizeCustomRoles,
-  timerReduce,
+  speechSeconds, timerReduce,
 } from '../engine'
 import type {
   Command, CommandResult, CustomRole, GameEvent, GameState, RandomInt, Registry, RoleId, Seat, Session, SessionConfig, SpeechKind,
@@ -48,6 +48,8 @@ export type AppStore = {
   dispatch(cmd: Command): CommandResult
   /** Несколько команд одной кнопки: применяются все или ни одна, отменяются одним нажатием. */
   dispatchAll(cmds: Command[]): CommandResult
+  /** Начало Дня 1: начинающего первый круг выбирает случай. Начало дня и выбор — одна пачка, отменяются вместе. */
+  startFirstDay(): CommandResult
   undo(): void
   canUndo(): boolean
   /** startSpeech + таймер нужной длительности. */
@@ -163,12 +165,12 @@ export function createAppStore(env: Env): AppStore {
     const speaking = game.day?.speaking
     if (!speaking) return idle
     if (timer && timer.kind === speaking.kind && timer.seat === speaking.seat) return timer
-    return newTimer(speaking.kind, speaking.seat, session.config.durations[speaking.kind] * 1000)
+    return newTimer(speaking.kind, speaking.seat, speechSeconds(session.config.durations, speaking.kind) * 1000)
   }
 
   /** Полная длительность таймера по текущим настройкам сессии: новые длительности действуют со следующего запуска. */
   const rebased = (session: Session, timer: NonNullable<Session['timer']>): NonNullable<Session['timer']> =>
-    (timer.kind === 'free' ? timer : { ...timer, durationMs: session.config.durations[timer.kind] * 1000 })
+    (timer.kind === 'free' ? timer : { ...timer, durationMs: speechSeconds(session.config.durations, timer.kind) * 1000 })
 
   /** Игры, которые не удалось сохранить: живут в памяти вкладки и остаются в списке на главной. */
   const unsaved = new Map<string, Session>()
@@ -298,6 +300,16 @@ export function createAppStore(env: Env): AppStore {
     dispatch: (cmd) => run([cmd]),
     dispatchAll: (cmds) => run(cmds),
 
+    startFirstDay() {
+      const game = state.game
+      if (!game || game.phase?.kind !== 'deal') return { ok: false, reason: 'wrong_phase' }
+      const start: Command = { type: 'startPhase', phase: { kind: 'day', n: 1 } }
+      // Случайность живёт здесь, а не в движке: команда получает уже выбранный номер.
+      const alive = aliveSeats(game.players)
+      const first = alive[env.randomInt(alive.length)] ?? alive[0]
+      return run(first === undefined ? [start] : [start, { type: 'openCircle', first, random: true }])
+    },
+
     canUndo: () => (state.session?.undo.length ?? 0) > 0,
     undo() {
       withSession((session) => {
@@ -314,7 +326,7 @@ export function createAppStore(env: Env): AppStore {
       const result = run([{ type: 'startSpeech', kind, seat }])
       if (!result.ok) return result
       withSession((session) => {
-        const fresh = newTimer(kind, seat, session.config.durations[kind] * 1000)
+        const fresh = newTimer(kind, seat, speechSeconds(session.config.durations, kind) * 1000)
         return { ...session, timer: session.config.separateTimerStart ? fresh : timerReduce(fresh, { type: 'start' }, env.now()) }
       })
       return result

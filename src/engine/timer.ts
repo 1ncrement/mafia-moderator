@@ -1,4 +1,4 @@
-import type { Seat, TimerKind, TimerState } from './types'
+import type { Durations, Seat, SpeechKind, TimerKind, TimerState } from './types'
 
 // Таймер по моменту окончания. Источник истины — endsAt по системным часам:
 // остаток каждый раз вычисляется заново, поэтому сон ноутбука и перезагрузка страницы его не сбивают.
@@ -6,6 +6,11 @@ import type { Seat, TimerKind, TimerState } from './types'
 
 export type TimerAction =
   | { type: 'start' } | { type: 'pause' } | { type: 'resume' } | { type: 'add'; ms: number } | { type: 'reset' }
+
+/** Длительность речи в секундах. Доп. речь первых двоих своей настройки не имеет: она длится как обычная речь. */
+export function speechSeconds(durations: Durations, kind: SpeechKind): number {
+  return durations[kind === 'closing' ? 'speech' : kind]
+}
 
 export function newTimer(kind: TimerKind, seat: Seat | null, durationMs: number): TimerState {
   return { kind, seat, durationMs, status: 'ready', endsAt: null, remainingMs: durationMs }
