@@ -69,7 +69,14 @@ export function NightSummary({ game }: { game: GameState }) {
   const blocked = [...new Set(night.steps.flatMap(blockedPerformers))].sort((a, b) => a - b)
   const quiet = quietNight(night.outcome)
   /** Строка по ключу, которого может не быть: причина и заметка описаны данными, новые роли добавляют свои. */
-  const text = (key: string) => (hasKey(key) ? translateKey(lang, key) : '')
+  const text = (key: string, params?: Record<string, string>) => (hasKey(key) ? translateKey(lang, key, params) : '')
+  // В игре есть защитник — под причиной смерти сказано, что жертву и не защищали.
+  const guardInGame = night.steps.some((s) => s.effect === 'guard')
+  const deathSub = (death: NightDeath) => {
+    const params = { sec: t('unit.sec', { n: session.config.durations.farewell }) }
+    const base = `night.death.${death.cause}.sub`
+    return guardInGame && hasKey(`${base}.unguarded`) ? text(`${base}.unguarded`, params) : text(base, params)
+  }
 
   const toggle = (seat: Seat) => setUnchecked((list) => (list.includes(seat) ? list.filter((s) => s !== seat) : [...list, seat]))
   const add = () => askOnce({
@@ -112,8 +119,10 @@ export function NightSummary({ game }: { game: GameState }) {
               {/* Причина выдала бы, чьих рук это дело: при скрытых ролях остаётся только номер. */}
               {!hidden && (
                 <span className="result-text">
-                  <span className="result-main">{death ? text(`night.death.${death.cause}`) : t('night.death.manual')}</span>
-                  <span className="result-note">{death ? text(`night.death.${death.cause}.sub`) : t('night.death.manual.sub')}</span>
+                  <span className="result-main">
+                    {death ? text(`night.death.${death.cause}`, { guarded: death.guarded === undefined ? '' : t('common.seat', { n: death.guarded }) }) : t('night.death.manual')}
+                  </span>
+                  <span className="result-note">{death ? deathSub(death) : t('night.death.manual.sub')}</span>
                 </span>
               )}
             </label>

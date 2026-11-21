@@ -253,7 +253,7 @@ export type Command =
 
 export type RejectCode =
   | 'redeal_closed' | 'wrong_phase' | 'not_alive' | 'unknown_event' | 'nominations_closed'
-  | 'already_nominated' | 'votes_exceed' | 'step_grey' | 'repeat_target'
+  | 'already_nominated' | 'votes_exceed' | 'step_grey' | 'repeat_target' | 'target_not_allowed'
 export type StateWarning =
   /** expected — кто должен выбыть по пересчитанной подсказке; пусто — никто. */
   | { code: 'night_outcome_changed'; night: number; expected: Seat[] }
@@ -362,6 +362,8 @@ export type NightStep = {
    * (рядовая мафия при живом лидере, опция «что отменяет блок лидера»), но показать игроку, что он заблокирован, надо.
    */
   blockedActors: Seat[]
+  /** Кого можно выбрать на этом шаге: игроки в игре, кроме тех, кого действие выбрать не даёт (себя — при noSelf). У серого шага пусто. */
+  allowed: Seat[]
   recorded: boolean
   target: Seat | null
   answer?: CheckAnswer

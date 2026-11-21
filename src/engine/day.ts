@@ -32,11 +32,16 @@ export function nominationsOf(session: Session, phase: PhaseRef, alive: Readonly
 }
 
 /**
- * Кто прощается со столом утром Дня n: выбывшие прошлой ночью по возрастанию номеров — если так задано правилами партии.
+ * Кто прощается со столом утром Дня n, по возрастанию номеров: выбывшие прошлой ночью — если так задано правилами партии;
+ * погибший вместо подзащитного (причина выбытия — от действия «защита») прощается всегда.
  * Возвращённый в игру из списка пропадает.
  */
-export function nightFarewellSeats(session: Session, players: readonly PlayerView[], n: number): Seat[] {
-  return n > 1 && session.config.rules.farewellAfterNight ? leftAtNight(players, n - 1) : []
+export function nightFarewellSeats(session: Session, registry: Registry, players: readonly PlayerView[], n: number): Seat[] {
+  if (n <= 1) return []
+  const left = leftAtNight(players, n - 1)
+  if (session.config.rules.farewellAfterNight) return left
+  const guardCauses = registry.nightActions.flatMap((a) => (a.effect === 'guard' && a.cause ? [a.cause] : []))
+  return left.filter((seat) => guardCauses.includes(players[seat - 1]?.cause ?? 'shot'))
 }
 
 /** Состояние дня n: круг речей, выставленные, туры голосования, очереди оправданий и прощаний. */
@@ -132,6 +137,6 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
     // Прощание после голосования выключено правилами — очереди нет: выгнанный уходит без слова.
     farewell: queue(session.config.rules.farewellAfterVote ? byNomination(expelled.filter((s) => isSeat(session, s) && !alive.has(s))) : [], 'farewell'),
     // Вид речи тот же, очереди различаются местами: выбывший ночью не может быть выгнан тем же днём.
-    nightFarewell: queue(nightFarewellSeats(session, now, n), 'farewell'),
+    nightFarewell: queue(nightFarewellSeats(session, registry, now, n), 'farewell'),
   }
 }

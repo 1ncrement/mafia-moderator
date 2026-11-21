@@ -14,11 +14,12 @@ test('без своих ролей справочник — тот же объе
   expect(registryFor(DEFAULT_REGISTRY, undefined)).toBe(DEFAULT_REGISTRY)
   expect(registryFor(DEFAULT_REGISTRY, ROLES)).toBe(R)
 })
-test('свои роли стоят после встроенных; ночная получает действие «запись» в конце очереди', () => {
+test('свои роли стоят после встроенных; ночная получает действие «запись» в конце очереди — перед охранником, который просыпается последним', () => {
   expect(configurableRoles(R).map((r) => r.id)).toEqual(['mafia', 'prostitute', 'sheriff', 'doctor', 'bodyguard', 'journalist', 'butcher', 'maniac', 'bulletproof', 'custom_j', 'custom_m'])
   expect(R.roles.find((r) => r.id === 'custom_j')).toMatchObject({ name: 'журналист', side: 'red', seenBySheriffAs: 'red', custom: true, defaultCount: 0 })
   expect(R.nightActions.at(-1)).toMatchObject({ id: 'act_custom_j', effect: 'note', performers: ['custom_j'], scope: 'each' })
-  expect(R.nightActions.at(-1)!.order).toBeGreaterThan(Math.max(...DEFAULT_REGISTRY.nightActions.map((a) => a.order)))
+  const byOrder = [...R.nightActions].sort((a, b) => a.order - b.order).map((a) => a.id)
+  expect(byOrder.slice(-3)).toEqual(['doctor_heal', 'act_custom_j', 'bodyguard_guard'])
   expect(R.nightActions.some((a) => a.performers.includes('custom_m'))).toBe(false)
 })
 test('негодные записи перечня пропускаются', () => {

@@ -263,6 +263,8 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       // Носителей в игре нет (или шага нет вовсе) — записывать некуда.
       if (!step || step.grey) return no('step_grey')
       if (cmd.target !== null && !aliveSeats(nightPlayers(session, registry, p.n)).includes(cmd.target)) return no('not_alive')
+      // Жёсткое ограничение действия: кого выбрать нельзя вовсе (себя — защитнику).
+      if (cmd.target !== null && !step.allowed.includes(cmd.target)) return no('target_not_allowed')
       // Мягкое ограничение: та же цель, что прошлой ночью, — предупреждение, force записывает всё равно.
       const def = registry.nightActions.find((a) => a.id === cmd.actionId)
       const repeats = cmd.target !== null && step.lastNight.recorded && step.lastNight.target === cmd.target

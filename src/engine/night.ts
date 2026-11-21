@@ -11,8 +11,8 @@ import type {
 
 type BareStep = Omit<NightStep, 'lastNight'>
 type Draft = { def: NightActionDef; step: BareStep; record: EventOf<'night_action'> | null }
-/** Нападение на игрока: причина — от действия, которым напали. */
-type Attack = { target: Seat; cause: OutCause }
+/** Нападение на игрока: причина — от действия, которым напали. guarded — нападение перешло с подзащитного на защитника. */
+type Attack = { target: Seat; cause: OutCause; guarded?: Seat }
 
 export function stepIdOf(actionId: string, actor: Seat | null): string {
   return actor === null ? actionId : `${actionId}:${actor}`
@@ -78,6 +78,7 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
       def, record,
       step: {
         id: stepIdOf(def.id, actor), actionId: def.id, effect: def.effect, actor, actors, performerRole, inherited, grey, blocked: false, blockedActors: [],
+        allowed: grey ? [] : alive.filter((seat) => !(def.noSelf && seat === actor)),
         recorded: record !== null, target: record?.target ?? null, eventId: record?.id ?? null, edited: record?.edited === true,
       },
     })
@@ -102,7 +103,11 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
   }
 
   // Все действия ночи одновременны. Заблокированные — цели всех блоков.
-  const targetOf = (d: Draft): Seat | null => d.record?.target ?? null
+  // Цель, выбывшая вручную посреди ночи, в расчёте не участвует: нападать, лечить и защищать уже некого.
+  const targetOf = (d: Draft): Seat | null => {
+    const target = d.record?.target ?? null
+    return target !== null && alive.includes(target) ? target : null
+  }
   const blocked = unique(drafts.flatMap((d) => (d.def.effect === 'block' && targetOf(d) !== null ? [targetOf(d) as Seat] : [])))
   /** Отменяет ли блок это действие по опции роли: что именно отменяет блок лидера, задано в настройках игры. */
   const cancelledByOption = (def: NightActionDef): boolean =>
@@ -124,15 +129,34 @@ function computeNight(session: Session, registry: Registry, n: number): { steps:
   const landed: Attack[] = attempts.filter((d) => !isBlocked(d)).map((d) => ({ target: targetOf(d) as Seat, cause: d.def.cause ?? 'shot' }))
   /** Первое по порядку ночи нападение на игрока: его причина и называется. */
   const firstOn = (attacks: Attack[], seat: Seat): Attack | undefined => attacks.find((a) => a.target === seat)
-  // Доктор срабатывает первым: нападения на вылеченного отменяются.
+  // Доктор срабатывает первым: нападения на вылеченного отменяются — и защитник, закрывавший его, остаётся жив.
   const afterHeal = landed.filter((a) => !healed.includes(a.target))
-  // Остальные, на кого напали, выбывают. Несколько нападений на одного — одна смерть.
-  const deaths: NightDeath[] = unique(afterHeal.map((a) => a.target))
-    .map((seat) => ({ seat, cause: (firstOn(afterHeal, seat) as Attack).cause }))
+  // Защитник (не заблокирован): оставшиеся нападения на подзащитного переходят на него. Защитников одного игрока
+  // несколько — на первого по номеру; перешедшее нападение дальше не переходит.
+  const guards = drafts
+    .flatMap((d) => {
+      const ward = targetOf(d)
+      return d.def.effect === 'guard' && ward !== null && d.step.actor !== null && !isBlocked(d) ? [{ seat: d.step.actor, ward, cause: d.def.cause }] : []
+    })
+    .sort(bySeat)
+  const moved: Attack[] = afterHeal.map((a) => {
+    const guard = guards.find((g) => g.ward === a.target && g.seat !== a.target)
+    return guard ? { target: guard.seat, cause: guard.cause ?? a.cause, guarded: a.target } : a
+  })
+  // Доктор лечил самого защитника — закрыв собой, он тоже выживает.
+  const final = moved.filter((a) => a.guarded === undefined || !healed.includes(a.target))
+  // Остальные, на кого напали, выбывают. Несколько нападений на одного — одна смерть; закрывший собой погиб «вместо подзащитного».
+  const deaths: NightDeath[] = unique(final.map((a) => a.target))
+    .map((seat): NightDeath => {
+      const own = final.filter((a) => a.target === seat)
+      const attack = own.find((a) => a.guarded !== undefined) ?? (own[0] as Attack)
+      return attack.guarded === undefined ? { seat, cause: attack.cause } : { seat, cause: attack.cause, guarded: attack.guarded }
+    })
     .sort(bySeat)
   const notes: NightNote[] = healed
     .map((seat): NightNote => {
-      const attack = firstOn(landed, seat)
+      // От чего спасён: от нападения на него самого или от того, что он принял на себя как защитник.
+      const attack = firstOn(landed, seat) ?? firstOn(moved, seat)
       return attack ? { seat, kind: 'healed', cause: attack.cause } : { seat, kind: 'healed' }
     })
     .sort(bySeat)

@@ -85,5 +85,11 @@ export const DEFAULT_REGISTRY: Registry = {
       noRepeatTarget: true,
       stepKey: 'action.doctor_heal.step', questionKey: 'action.doctor_heal.question',
     },
+    // Охранник просыпается последним — после своих ролей ведущего (см. AFTER_CUSTOM_ORDER в custom.ts).
+    {
+      id: 'bodyguard_guard', order: 900, effect: 'guard', cause: 'guard', performers: ['bodyguard'], scope: 'each',
+      noSelf: true, noRepeatTarget: true,
+      stepKey: 'action.bodyguard_guard.step', questionKey: 'action.bodyguard_guard.question',
+    },
   ],
 }

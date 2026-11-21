@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { answerText, cap, hasKey, roleName, roleText, seatList, stepQuestion, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { aliveSeats, nightPlayers, SUMMARY_STEP } from '../../engine'
+import { SUMMARY_STEP } from '../../engine'
 import type { GameState, NightState, NightStep, Seat } from '../../engine'
 import { Button } from '../common/Button'
 import { Blocked } from '../common/icons'
@@ -88,7 +88,7 @@ export function NightPanel({ game }: { game: GameState }) {
     }
     ask({
       question,
-      allowed: aliveSeats(nightPlayers(session, registry, night.n)),
+      allowed: step.allowed,
       // Роли скрыты — записанный выбор и цель прошлой ночи на столе не показываем.
       picked: hidden ? null : target,
       nobodyPicked: !hidden && recorded && target === null,

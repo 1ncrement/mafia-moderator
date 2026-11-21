@@ -7,6 +7,8 @@ export const MAX_CUSTOM_ROLES = 8
 export const MAX_ROLE_NAME = 24
 /** С этого места в ночном порядке идут шаги своих ролей — после всех встроенных. */
 const FIRST_CUSTOM_ORDER = 100
+/** С этого места — встроенные действия, которые идут после своих ролей (охранник просыпается последним). */
+const AFTER_CUSTOM_ORDER = 900
 
 /** Название роли: без пробелов по краям и не длиннее MAX_ROLE_NAME знаков. */
 export function cleanRoleName(name: string): string {
@@ -80,7 +82,7 @@ function withCustomRoles(base: Registry, custom: readonly CustomRole[] | undefin
   if (known) return known
 
   const list = sanitizeCustomRoles(base, custom)
-  const firstOrder = Math.max(FIRST_CUSTOM_ORDER, ...base.nightActions.map((a) => a.order + 1))
+  const firstOrder = Math.max(FIRST_CUSTOM_ORDER, ...base.nightActions.filter((a) => a.order < AFTER_CUSTOM_ORDER).map((a) => a.order + 1))
   const roles: RoleDef[] = list.map((role) => ({
     id: role.id, nameKey: '', name: role.name, side: role.side, defaultCount: 0, seenBySheriffAs: role.side, custom: true,
   }))

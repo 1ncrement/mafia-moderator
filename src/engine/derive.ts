@@ -39,7 +39,7 @@ export function deriveState(session: Session, registry: Registry): GameState {
   // Носитель шага сменился (выбыл, вернулся, поменял роль) — ведущий остаётся на шаге того же действия.
   // На первый шаг сбрасываемся, только если такого действия в ночи больше нет.
   // Список прощающихся — по статусам, а не по очереди: говорящий сейчас из очереди уже вышел, а шаг остаётся.
-  const farewell = day ? nightFarewellSeats(session, views, day.n) : []
+  const farewell = day ? nightFarewellSeats(session, registry, views, day.n) : []
   let step = entered?.step ?? defaultStep(session, phase, night, farewell.length > 0)
   if (night && step !== null && step !== SUMMARY_STEP && !night.steps.some((x) => x.id === step)) {
     const actionId = actionOfStepId(step)

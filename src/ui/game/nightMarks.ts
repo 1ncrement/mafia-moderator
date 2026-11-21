@@ -20,6 +20,10 @@ export function nightMarks(lang: Lang, registry: Registry, night: NightState, ac
   for (const s of night.steps) if (s.effect === 'kill' && s.target !== null) attacked.set(`${s.target}:${targetMark(s.actionId, s.effect)}`, s.target)
   for (const [key, seat] of attacked) add(seat, key.slice(key.indexOf(':') + 1))
   for (const seat of night.outcome.blocked) add(seat, mark('block'), 'block')
+  // Выбор защитника — на его собственной карточке: «защищает №5».
+  for (const s of night.steps) {
+    if (s.effect === 'guard' && s.target !== null && s.actor !== null) add(s.actor, translate(lang, 'effect.guard.mark', { target: translate(lang, 'common.seat', { n: s.target }) }))
+  }
   for (const seat of night.outcome.healed) add(seat, mark('heal'))
   // Запись своей роли в итог ночи не входит: метка только называет, чей это выбор.
   // У роли с несколькими носителями в метке есть номер носителя, как в названии шага: «выбор: журналист №6».

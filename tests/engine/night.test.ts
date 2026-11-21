@@ -154,13 +154,13 @@ test('несколько нападений за ночь (вымышленна�
 })
 test('вымышленная роль с существующим эффектом работает без правок движка', () => {
   const reg: Registry = { ...DEFAULT_REGISTRY,
-    roles: [...DEFAULT_REGISTRY.roles, { id: 'bodyguard', nameKey: 'role.bodyguard', side: 'red', defaultCount: 0, seenBySheriffAs: 'red' }],
-    nightActions: [...DEFAULT_REGISTRY.nightActions, { id: 'bodyguard_guard', order: 45, effect: 'heal', performers: ['bodyguard'], scope: 'each', stepKey: 'k', questionKey: 'q' }] }
-  const s = gameWith(reg, ['godfather', 'bodyguard', 'civilian', 'civilian'])
+    roles: [...DEFAULT_REGISTRY.roles, { id: 'medic', nameKey: 'role.medic', side: 'red', defaultCount: 0, seenBySheriffAs: 'red' }],
+    nightActions: [...DEFAULT_REGISTRY.nightActions, { id: 'medic_heal', order: 45, effect: 'heal', performers: ['medic'], scope: 'each', stepKey: 'k', questionKey: 'q' }] }
+  const s = gameWith(reg, ['godfather', 'medic', 'civilian', 'civilian'])
   const cmds: Command[] = [{ type: 'startPhase', phase: { kind: 'day', n: 1 } }, { type: 'startPhase', phase: { kind: 'night', n: 1 } },
-    act('mafia_shot', null, 3), act('bodyguard_guard', 2, 3)]
+    act('mafia_shot', null, 3), act('medic_heal', 2, 3)]
   const night = playWith(reg, s, ...cmds)
-  expect(nightState(night, reg, 1).steps.map((x) => x.id)).toEqual(['mafia_shot', 'godfather_search:1', 'bodyguard_guard:2'])
+  expect(nightState(night, reg, 1).steps.map((x) => x.id)).toEqual(['mafia_shot', 'godfather_search:1', 'medic_heal:2'])
   expect(nightState(night, reg, 1).outcome).toMatchObject({ deaths: [], noAttack: null })
 })
 
@@ -230,9 +230,9 @@ test('справочник по правилу собирается один р�
   const withCustom = registryFor(DEFAULT_REGISTRY, custom, DEFAULT_RULES)
   expect(registryFor(DEFAULT_REGISTRY, custom, { ...DEFAULT_RULES })).toBe(withCustom)
   expect(registryFor(DEFAULT_REGISTRY, custom, { ...DEFAULT_RULES, prostituteFirst: false })).toBe(registryFor(DEFAULT_REGISTRY, custom))
-  // Свои роли по-прежнему в конце очереди, проститутка — в начале.
+  // Свои роли по-прежнему в конце очереди (после них — только охранник), проститутка — в начале.
   const order = [...withCustom.nightActions].sort((a, b) => a.order - b.order).map((a) => a.id)
-  expect(order[0]).toBe('prostitute_block'); expect(order.at(-1)).toBe('act_custom_j')
+  expect(order[0]).toBe('prostitute_block'); expect(order.slice(-2)).toEqual(['act_custom_j', 'bodyguard_guard'])
   const { s } = customNight()
   expect(nightState(s, withCustom, 1).steps.map((x) => x.actionId)).toEqual(['prostitute_block', 'mafia_shot', 'godfather_search', 'sheriff_check', 'doctor_heal', 'act_custom_j'])
 })

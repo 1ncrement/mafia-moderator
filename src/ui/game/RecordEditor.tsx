@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FC, ReactNode } from 'react'
 import { entryText, hasKey, phaseLabel, translateKey } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { aliveSeats, currentPhase, dayState, maxVotesFor, nightPlayers, phaseOrder, playersAt } from '../../engine'
+import { aliveSeats, currentPhase, dayState, maxVotesFor, nightPlayers, nightState, phaseOrder, playersAt, stepIdOf } from '../../engine'
 import type { Command, CommandResult, JournalEntry, PhaseRef, Seat, Session } from '../../engine'
 import type { AppStore } from '../../app/store'
 import { Button } from '../common/Button'
@@ -105,10 +105,13 @@ export const RecordEditor: FC<{ entry: JournalEntry; phase: PhaseRef; onClose():
       if (!result.ok && result.reason === 'repeat_target' && target !== null) return setRepeat(target)
       if (attempt(result)) onClose()
     }
+    // Те же цели, что на шаге той ночи: кого действие выбрать не даёт (себя — охраннику), того нет и здесь.
+    const step = phase.kind === 'night' ? nightState(session, store.registry, phase.n).steps.find((s) => s.id === stepIdOf(entry.actionId, entry.actor)) : undefined
+    const nightTargets = step ? step.allowed : aliveIn(session, store, phase)
     body = (
       <>
         <p className="dialog-text">{t('edit.night')}</p>
-        <SeatGrid total={total} allowed={aliveIn(session, store, phase)} picked={entry.kind === 'night_action' ? entry.target : undefined} nobody onPick={(seat) => record(seat)} />
+        <SeatGrid total={total} allowed={nightTargets} picked={entry.kind === 'night_action' ? entry.target : undefined} nobody onPick={(seat) => record(seat)} />
         {repeat !== null && (
           <div className="night-repeat" role="alert">
             <span>{hasKey(`action.${entry.actionId}.repeat`) ? translateKey(lang, `action.${entry.actionId}.repeat`) : t('night.repeat')}</span>
