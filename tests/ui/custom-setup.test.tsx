@@ -58,10 +58,10 @@ test('изменить и удалить', async () => {
 test('ролей больше, чем игроков, — раздать нельзя; мирных 0 — можно', async () => {
   const { app, user } = renderApp((a) => { a.newGame(); a.editDraft({ playerCount: 4 }); a.addCustomRole({ name: 'Адвокат', side: a.registry.sides[1]!.id, night: true }) })
   expect(screen.getByRole('alert')).toHaveTextContent('ролей на 1 больше, чем игроков')
-  expect(screen.getByRole('button', { name: /Раздать роли/ })).toBeDisabled()
+  expect(screen.getByRole('button', { name: /^Раздать случайно/ })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'Больше игроков' }))
-  expect(screen.getByRole('button', { name: /Раздать роли/ })).toBeEnabled()
-  await user.click(screen.getByRole('button', { name: /Раздать роли/ }))
+  expect(screen.getByRole('button', { name: /^Раздать случайно/ })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: /^Раздать случайно/ }))
   expect(app.getState().screen).toBe('deal'); expect(app.getState().session!.config.customRoles).toHaveLength(1)
 })
 test('восемь ролей — кнопки добавления нет, есть строка о пределе', () => {

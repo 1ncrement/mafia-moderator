@@ -116,7 +116,7 @@ test('перераздача сохраняет свои роли в колод�
   const { app, user } = renderApp((a) => { seedCustomGame(a, [JOURNALIST, MANIAC], CUSTOM_TABLE, 0) })
   const dealt = app.getState().session!.log.find((e) => e.type === 'roles_dealt')!.id
   await user.click(screen.getByRole('button', { name: 'Перераздать' }))
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Перераздать роли' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Перераздать случайно' }))
   expect(app.getState().session!.log.find((e) => e.type === 'roles_dealt')!.id).not.toBe(dealt)
   expect(countBy(app.getState().game!.players.map((p) => p.roleId))).toEqual(countBy(CUSTOM_TABLE))
   expect(app.getState().session!.config.customRoles).toEqual([JOURNALIST, MANIAC])

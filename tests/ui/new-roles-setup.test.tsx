@@ -56,7 +56,7 @@ test('опции журналиста и маньяка раскрыты под 
   await user.click(row.getByRole('switch', { name: 'Не ходит к одной жертве две ночи подряд' }))
   expect(app.getState().draft.roleOptions).toMatchObject({ maniac_no_vote: true, maniac_no_repeat: false })
 
-  await user.click(screen.getByRole('button', { name: /Раздать роли/ }))
+  await user.click(screen.getByRole('button', { name: /^Раздать случайно/ }))
   expect(app.getState().session!.config.roleOptions).toEqual({ journalist_pace: 'alternate', maniac_no_vote: true, maniac_no_repeat: false })
   expect(app.getState().session!.config.composition).toMatchObject({ journalist: 1, maniac: 1 })
   expect(app.getState().game!.players.filter((p) => p.roleId === 'maniac')).toHaveLength(1)

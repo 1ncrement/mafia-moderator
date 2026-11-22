@@ -1,4 +1,5 @@
 import { dayState } from './day'
+import { dealtHistory } from './deal'
 import { foulOrdinal } from './fouls'
 import { currentPhase, eventsOf, phaseAt, phaseOrder, samePhase } from './log'
 import { nightState, quietNight } from './night'
@@ -40,7 +41,8 @@ function dealEntries(session: Session, events: GameEvent[]): JournalEntry[] {
     if (e.type === 'roles_dealt') {
       const counts: Record<RoleId, number> = {}
       for (const role of e.assignment) counts[role] = (counts[role] ?? 0) + 1
-      out.push({ ...flags(e), kind: 'deal', counts })
+      const history = dealtHistory(e.history)
+      out.push({ ...flags(e), kind: 'deal', counts, ...(history === undefined ? {} : { history }) })
     } else {
       const entry = commonEntry(session, e)
       if (entry) out.push(entry)

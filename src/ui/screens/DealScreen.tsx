@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
-import { cap, compositionText, hasKey, roleLabel, roleTitle, translateKey } from '../../app/i18n'
+import { cap, compositionText, hasKey, plural, roleLabel, roleTitle, translateKey } from '../../app/i18n'
 import { useApp, useStore, useT } from '../../app/StoreContext'
-import { checkComposition, dealRoles } from '../../engine'
+import { clockText } from '../../app/dealHistory'
+import type { DealMode } from '../../app/store'
+import { dealtHistory } from '../../engine'
 import type { PlayerView, RoleId, Seat } from '../../engine'
 import { Button, cx } from '../common/Button'
 import { Dialog } from '../common/Dialog'
@@ -20,7 +22,7 @@ export function DealScreen() {
   const [confirmRedeal, setConfirmRedeal] = useState(false)
   /** Режим обмена: null — выключен, { first: null } — ждём первый номер, { first: n } — ждём второй. */
   const [swap, setSwap] = useState<{ first: Seat | null } | null>(null)
-  // Двойной Enter на «Раздать роли» не должен тут же начать День 1.
+  // Двойной Enter на «Раздать случайно» не должен тут же начать День 1.
   const openedAt = useRef(store.now())
   const start = () => {
     if (store.now() - openedAt.current >= PRESS_GUARD_MS) store.startFirstDay()
@@ -57,11 +59,18 @@ export function DealScreen() {
     return `${i === 0 ? '№' : ''}${p.seat}${mark ? ` — ${mark}` : ''}`
   }).join(', ')
 
-  const redeal = () => {
-    const check = checkComposition(session.config.playerCount, session.config.composition, registry)
-    const deck = check.errors.length === 0 ? check.deck : players.map((p) => p.roleId)
-    store.dispatch({ type: 'deal', assignment: dealRoles(deck, store.randomInt) })
+  // Как роздано сейчас: случайно или с учётом прошлых игр — записано в самой раздаче.
+  const dealtWith = dealtHistory(session.log.findLast((e) => e.type === 'roles_dealt')?.history)
+  // Что учтёт перераздача: считается, когда открыто окно выбора способа.
+  const counted = confirmRedeal ? store.dealHistory() : null
+  // Окно закрыто — Enter снова ждёт 0,4 с: и после перераздачи (новый расклад надо успеть увидеть), и после «Отмена».
+  const closeRedeal = () => {
+    openedAt.current = store.now()
     setConfirmRedeal(false)
+  }
+  const redeal = (mode: DealMode) => {
+    store.redeal(mode)
+    closeRedeal()
   }
   const pick = (seat: Seat) => {
     if (!swap) return
@@ -136,6 +145,12 @@ export function DealScreen() {
               <span className="small muted">{t('deal.check', { list: compositionText(lang, registry, counts) })}</span>
             </div>
           )}
+          {/* Способ раздачи — сведения для ведущего: при скрытых ролях столу он не показывается. */}
+          {!hidden && (
+            <span className="small muted deal-how">
+              {dealtWith === undefined ? t('deal.how.random') : t('deal.how.history', { games: plural(lang, dealtWith, 'pastGames') })}
+            </span>
+          )}
           <div className="deal-actions">
             <Button size="l" onClick={() => setConfirmRedeal(true)}>{t('deal.redeal')}</Button>
             <Button size="l" onClick={() => setSwap(swap ? null : { first: null })}>{t('deal.swap')}</Button>
@@ -151,11 +166,18 @@ export function DealScreen() {
       </main>
 
       {confirmRedeal && (
-        <Dialog title={t('deal.redeal.title')} onClose={() => setConfirmRedeal(false)}>
+        <Dialog title={t('deal.redeal.title')} onClose={closeRedeal}>
           <p className="dialog-text">{t('deal.redeal.text')}</p>
-          <div className="dialog-actions">
-            <Button size="l" onClick={() => setConfirmRedeal(false)}>{t('common.cancel')}</Button>
-            <Button size="l" variant="primary" onClick={redeal}>{t('deal.redeal.confirm')}</Button>
+          {/* Способ выбирается кликом: у Enter в этом окне действия нет. */}
+          <div className="dialog-actions deal-redeal-actions">
+            <Button size="l" variant="primary" onClick={() => redeal('random')}>{t('deal.redeal.random')}</Button>
+            <Button size="l" disabled={!counted || counted.games.length === 0} onClick={() => redeal('history')}>{t('deal.redeal.history')}</Button>
+            <span className="small muted">
+              {counted && counted.games.length > 0 ? t('deal.redeal.count', { n: counted.games.length })
+                : counted && counted.resetAt !== null ? t('setup.history.resetAt', { time: clockText(counted.resetAt) })
+                  : t('setup.history.none')}
+            </span>
+            <Button size="l" variant="outline" onClick={closeRedeal}>{t('common.cancel')}</Button>
           </div>
         </Dialog>
       )}

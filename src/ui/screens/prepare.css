@@ -799,3 +799,28 @@ button.deal-card:hover:not(:disabled),
   color: var(--alert);
   font-weight: 500;
 }
+
+/* Раздача с учётом прошлых игр: вторая кнопка и строки учёта под ней. */
+.setup-deal-history {
+  margin-top: 8px;
+  width: 100%;
+}
+.setup-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.setup-history-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.setup-history-warn {
+  color: var(--alert);
+}
+.deal-redeal-actions {
+  flex-direction: column;
+  align-items: stretch;
+}

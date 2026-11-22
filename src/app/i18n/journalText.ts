@@ -48,7 +48,9 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
   const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(lang, key, params)
   switch (entry.kind) {
     case 'deal':
-      return t('journal.deal', { list: compositionText(lang, registry, entry.counts) })
+      return entry.history === undefined
+        ? t('journal.deal', { list: compositionText(lang, registry, entry.counts) })
+        : t('journal.deal.history', { games: plural(lang, entry.history, 'pastGames'), list: compositionText(lang, registry, entry.counts) })
 
     case 'night_action':
       // Действие с двумя целями: «Журналист: №1 и №2 — разные стороны».

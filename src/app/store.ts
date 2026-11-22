@@ -1,7 +1,7 @@
 import {
-  aliveSeats, applyPatch, applyUndo, checkComposition, dealRoles, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES,
-  defaultComposition, deriveState, execute, journal, MAX_CUSTOM_ROLES, newSession, newTimer, registryFor, samePhase, sanitizeCustomRoles,
-  speechSeconds, timerReduce,
+  aliveSeats, applyPatch, applyUndo, checkComposition, dealRoles, dealWithHistory, DEFAULT_DURATIONS, DEFAULT_REGISTRY, DEFAULT_RULES,
+  defaultComposition, deriveState, execute, journal, MAX_CUSTOM_ROLES, newSession, newTimer, registryFor, rolesBySeat, samePhase,
+  sanitizeCustomRoles, seatHistory, speechSeconds, timerReduce,
 } from '../engine'
 import type {
   Command, CommandResult, CustomRole, GameEvent, GameState, RandomInt, Registry, RoleId, Seat, Session, SessionConfig, SpeechKind,
@@ -11,6 +11,7 @@ import type { Signal } from '../platform/sound'
 import { createStorage, DEFAULT_SETTINGS } from '../platform/storage'
 import type { KV, SessionMeta, Settings } from '../platform/storage'
 import { checkRoleName, cleanRoleName, takenNames } from './customRoles'
+import { gameDayStart, reachedNight } from './dealHistory'
 import type { RoleInput, RoleIssue } from './customRoles'
 
 // Состояние приложения: один маленький store без библиотек. Журнал сессии — источник истины,
@@ -64,7 +65,16 @@ export type AppStore = {
   setSettings(patch: Partial<Settings>): void
   newGame(): void
   editDraft(patch: Partial<SessionConfig>): void
-  dealDraft(): void
+  /** Раздать роли по черновику состава: случайно или с учётом игр текущего игрового дня. Учитывать нечего — раздача случайная. */
+  dealDraft(mode?: DealMode): void
+  /** Перераздать роли идущей раздачи тем же составом; после начала Дня 1 закрыто. Отменяется, как любое действие. */
+  redeal(mode?: DealMode): CommandResult
+  /** Игры, которые учтёт раздача «с учётом прошлых игр», и начало отсчёта, если оно в силе. Считается на момент вызова. */
+  dealHistory(): DealHistory
+  /** Начать отсчёт заново: игры, созданные до этого момента, перестают учитываться. Сами игры остаются. */
+  resetDealHistory(): void
+  /** Вернуть прежнее начало отсчёта; если его не было — отсчёт снова идёт с начала игрового дня. */
+  restoreDealHistory(): void
   backToSetup(): void
   openSession(id: string): void
   deleteSession(id: string): void
@@ -86,6 +96,14 @@ export type AppStore = {
 }
 
 const UNDO_LIMIT = 50
+
+/** Способ раздачи: полный рандом или с учётом игр текущего игрового дня. */
+export type DealMode = 'random' | 'history'
+/**
+ * Учтённые игры от ранней к поздней: время создания, число мест и роли по номерам (с учётом обменов).
+ * resetAt — начало отсчёта, заданное ведущим, пока оно в силе; null — отсчёт с начала игрового дня.
+ */
+export type DealHistory = { games: { id: string; createdAt: number; playerCount: number; roles: RoleId[] }[]; resetAt: number | null }
 
 /** Справочник сессии: встроенный плюс свои роли, которые она запомнила при раздаче; порядок ночи — по её правилам партии. */
 const sessionRegistry = (base: Registry, session: Session): Registry => registryFor(base, session.config.customRoles, session.config.rules)
@@ -226,6 +244,41 @@ export function createAppStore(env: Env): AppStore {
     set({ session: null, game: null, sessions: listSessions(), ...patch })
   }
 
+  /**
+   * Игры, которые учитывает раздача «с учётом прошлых игр»: есть в списке на главной, дошли до Ночи 1, созданы в текущем
+   * игровом дне и не раньше начала отсчёта; игра, открытая сейчас, сама себя не учитывает. Нечитаемая игра пропускается.
+   * Отсюда берут и счётчик на экране, и сама раздача — она пересчитывает отбор в момент нажатия.
+   */
+  const countedGames = (): { games: (DealHistory['games'][number] & { registry: Registry })[]; resetAt: number | null } => {
+    const dayStart = gameDayStart(env.now())
+    const from = state.settings.dealHistoryFrom
+    // Начало отсчёта из прошлого игрового дня силы не имеет.
+    const resetAt = from !== null && from >= dayStart ? from : null
+    const since = resetAt ?? dayStart
+    const games: (DealHistory['games'][number] & { registry: Registry })[] = []
+    for (const meta of listSessions()) {
+      if (meta.id === state.session?.id || meta.createdAt < since || !reachedNight(meta.phase)) continue
+      const memory = unsaved.get(meta.id)
+      const loaded = memory ? { ok: true as const, session: memory } : storage.load(meta.id)
+      // Игра, которую приложение не может открыть (журнал записан не этой версией), в учёт не идёт — как и на главной.
+      if (!loaded?.ok || !tryDerive(loaded.session)) continue
+      const registry = regOf(loaded.session)
+      games.push({
+        id: meta.id, createdAt: loaded.session.createdAt, playerCount: loaded.session.config.playerCount,
+        roles: rolesBySeat(loaded.session, registry), registry,
+      })
+    }
+    return { games: games.sort((a, b) => a.createdAt - b.createdAt), resetAt }
+  }
+
+  /** Расклад по колоде: с учётом прошлых игр, если ведущий так выбрал и учитывать есть что; иначе полный рандом. */
+  const dealBy = (mode: DealMode, deck: RoleId[], seats: number, registry: Registry): Extract<Command, { type: 'deal' }> => {
+    const games = mode === 'history' ? countedGames().games : []
+    if (games.length === 0) return { type: 'deal', assignment: dealRoles(deck, env.randomInt) }
+    const history = seatHistory(games.map((g) => ({ roles: g.roles, registry: g.registry })), seats)
+    return { type: 'deal', assignment: dealWithHistory(deck, history, registry, env.randomInt), history: games.length }
+  }
+
   const run = (cmds: Command[]): CommandResult => {
     const start = state.session
     if (!start) return { ok: false, reason: 'wrong_phase' }
@@ -251,6 +304,11 @@ export function createAppStore(env: Env): AppStore {
 
   const withSession = (fn: (session: Session) => Session) => {
     if (state.session) commit(fn(state.session), 'keep')
+  }
+
+  const saveSettings = (settings: Settings) => {
+    storage.saveSettings(settings)
+    set({ settings })
   }
 
   /** Перечень своих ролей меняется только здесь: сразу в настройки браузера. */
@@ -396,14 +454,14 @@ export function createAppStore(env: Env): AppStore {
       set({ draft: { ...state.draft, ...patch } })
     },
 
-    dealDraft() {
+    dealDraft(mode = 'random') {
       const draft = state.draft
       const check = checkComposition(draft.playerCount, draft.composition, registryFor(base, state.settings.customRoles))
       if (check.errors.length > 0) return
       // Игра запоминает свои роли, которые в ней участвуют: потом их можно переименовать или удалить из перечня.
       const customRoles = state.settings.customRoles.filter((role) => check.deck.includes(role.id))
       const empty = newSession(env.newId(), env.now(), { ...draft, customRoles })
-      const dealt = execute(empty, { type: 'deal', assignment: dealRoles(check.deck, env.randomInt) }, regOf(empty))
+      const dealt = execute(empty, dealBy(mode, check.deck, draft.playerCount, regOf(empty)), regOf(empty))
       if (!dealt.ok) return
       // Сама раздача в стек отмены не входит: отменять её некуда.
       const applied = applyPatch(empty.log, dealt.patch, empty.nextSeq, env.newId)
@@ -416,6 +474,30 @@ export function createAppStore(env: Env): AppStore {
       storage.setActiveId(empty.id)
       set({ settings })
       commit({ ...empty, log: applied.log, nextSeq: applied.nextSeq })
+    },
+
+    redeal(mode = 'random') {
+      const session = state.session
+      if (!session) return { ok: false, reason: 'wrong_phase' }
+      const registry = regOf(session)
+      const check = checkComposition(session.config.playerCount, session.config.composition, registry)
+      // Состав сессии не сходится (записан другой версией) — перераздаются те роли, что уже на столе.
+      const deck = check.errors.length === 0 ? check.deck : rolesBySeat(session, registry)
+      return run([dealBy(mode, deck, session.config.playerCount, registry)])
+    },
+
+    dealHistory() {
+      const { games, resetAt } = countedGames()
+      return { games: games.map(({ id, createdAt, playerCount, roles }) => ({ id, createdAt, playerCount, roles })), resetAt }
+    },
+
+    resetDealHistory() {
+      // Прежнее начало отсчёта запоминается, пока оно в силе: «Вернуть» после сброса по ошибке возвращает его, а не снимает совсем.
+      saveSettings({ ...state.settings, dealHistoryFrom: env.now(), dealHistoryPrev: countedGames().resetAt })
+    },
+
+    restoreDealHistory() {
+      saveSettings({ ...state.settings, dealHistoryFrom: state.settings.dealHistoryPrev, dealHistoryPrev: null })
     },
 
     backToSetup() {

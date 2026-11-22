@@ -1,4 +1,5 @@
 import { dayState, nextOpener, nominationsOf } from './day'
+import { dealtHistory } from './deal'
 import { decisionLevel, foulCounts, foulLevel, penaltyDay, upcomingPenalties } from './fouls'
 import { currentPhase, EMPTY_PATCH, eventsOf, lastOf, nextPhase, samePhase } from './log'
 import { actorMapper, deathSeats, nightState, stepIdOf } from './night'
@@ -72,7 +73,9 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       if (phase.kind !== 'deal') return no('redeal_closed')
       // Новая раздача заменяет прежнюю вместе с обменами, сделанными по ней.
       const stale = log.filter((e) => e.type === 'roles_dealt' || e.type === 'roles_swapped').map((e) => e.id)
-      return ok({ remove: stale, add: [{ type: 'roles_dealt', phase: { kind: 'deal' }, assignment: [...cmd.assignment] }] })
+      const counted = dealtHistory(cmd.history)
+      const history = counted === undefined ? {} : { history: counted }
+      return ok({ remove: stale, add: [{ type: 'roles_dealt', phase: { kind: 'deal' }, assignment: [...cmd.assignment], ...history }] })
     }
 
     case 'swapRoles': {

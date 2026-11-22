@@ -1,5 +1,6 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { cap, hasKey, plural, roleName, roleText, roleTitle, stepName, translateKey } from '../../app/i18n'
+import { clockText, gameDayStart } from '../../app/dealHistory'
 import { useApp, useStore, useT } from '../../app/StoreContext'
 import {
   checkComposition, configurableRoles, DEFAULT_DURATIONS, DEFAULT_RULES, defaultComposition, MAX_CUSTOM_ROLES, MAX_PLAYERS, MIN_PLAYERS,
@@ -12,6 +13,7 @@ import { SideDot } from '../common/SideDot'
 import { Stepper } from '../common/Stepper'
 import { useHotkeys } from '../common/useHotkeys'
 import { PRESS_GUARD_MS } from '../game/MainButton'
+import { useNow } from '../game/useNow'
 import { CustomRoleForm } from './CustomRoleForm'
 import './prepare.css'
 
@@ -143,7 +145,7 @@ function RoleOptions({ role, values, blockFirst, onChange }: {
 }
 
 export function SetupScreen() {
-  const { draft, settings } = useApp()
+  const { draft, settings, sessions } = useApp()
   const store = useStore()
   const t = useT()
   const lang = settings.lang
@@ -194,9 +196,28 @@ export function SetupScreen() {
   }))
 
   const canDeal = check.errors.length === 0
+  // Игры текущего игрового дня, которые учтёт вторая кнопка раздачи. Список игр меняется при уходе из игры,
+  // начало отсчёта — кнопками под раздачей, сам игровой день — в шесть утра (часы сверяются раз в минуту и при возврате
+  // во вкладку). Саму раздачу хранилище пересчитает в момент нажатия.
+  const gameDay = gameDayStart(useNow(60_000))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const history = useMemo(() => store.dealHistory(), [store, sessions, settings.dealHistoryFrom, gameDay])
+  // «Начать отсчёт заново» и «Вернуть» сменяют друг друга на одном месте: второй клик двойного нажатия попал бы в другую кнопку,
+  // а второй Enter — в раздачу. Обе кнопки и Enter ждут те же 0,4 с, что главная кнопка.
+  const historyPressedAt = useRef(Number.NEGATIVE_INFINITY)
+  const pressHistory = (action: () => void) => {
+    if (store.now() - historyPressedAt.current < PRESS_GUARD_MS) return
+    historyPressedAt.current = store.now()
+    action()
+  }
+  // Судим только по номерам: другое число мест — номера могли достаться другим людям.
+  const seatsChanged = history.games.length > 0 && history.games.at(-1)?.playerCount !== draft.playerCount
   // Пока открыта форма роли, Enter принадлежит ей: карты он не раздаёт. Esc закрывает форму, где бы ни был фокус.
   useHotkeys(roleForm === null
-    ? { enter: () => canDeal && store.now() - formClosedAt.current >= PRESS_GUARD_MS && store.dealDraft() }
+    ? {
+        enter: () => canDeal && store.now() - formClosedAt.current >= PRESS_GUARD_MS
+          && store.now() - historyPressedAt.current >= PRESS_GUARD_MS && store.dealDraft('random'),
+      }
     : { escape: closeForm }, true)
 
   const extra = check.deck.length - draft.playerCount
@@ -393,9 +414,30 @@ export function SetupScreen() {
 
           {errorText && <p className="alert-line" role="alert">{errorText}</p>}
           {warnings.map((w) => <p key={w} className="alert-line">{t(`setup.warn.${w as 'no_killer' | 'black_not_less_than_red'}`)}</p>)}
-          <Button variant="primary" size="xl" className="setup-deal" kbd="Enter" disabled={!canDeal} onClick={() => store.dealDraft()}>
+          <Button variant="primary" size="xl" className="setup-deal" kbd="Enter" disabled={!canDeal} onClick={() => store.dealDraft('random')}>
             {t('setup.deal')}
           </Button>
+          {/* Вторая раздача — с учётом игр текущего игрового дня. Учитывать нечего — она недоступна, причина названа рядом. */}
+          <Button size="l" className="setup-deal-history" disabled={!canDeal || history.games.length === 0} onClick={() => store.dealDraft('history')}>
+            {t('setup.deal.history')}
+          </Button>
+          <div className="setup-history small muted">
+            <span>{t('setup.history.hint')}</span>
+            {history.games.length > 0 && (
+              <span className="setup-history-line">
+                <span>{t('setup.history.count', { n: history.games.length, times: history.games.map((g) => clockText(g.createdAt)).join(', ') })}</span>
+                <Button variant="ghost" onClick={() => pressHistory(() => store.resetDealHistory())}>{t('setup.history.reset')}</Button>
+              </span>
+            )}
+            {history.games.length === 0 && history.resetAt === null && <span>{t('setup.history.none')}</span>}
+            {history.resetAt !== null && (
+              <span className="setup-history-line">
+                <span>{t('setup.history.resetAt', { time: clockText(history.resetAt) })}</span>
+                <Button variant="ghost" onClick={() => pressHistory(() => store.restoreDealHistory())}>{t('setup.history.restore')}</Button>
+              </span>
+            )}
+            {seatsChanged && <span className="setup-history-warn">{t('setup.history.seats')}</span>}
+          </div>
           <Button
             variant="ghost" className="setup-reset"
             onClick={() => store.editDraft({ composition: defaultComposition(registry), durations: DEFAULT_DURATIONS, separateTimerStart: false, rules: DEFAULT_RULES, roleOptions: {} })}

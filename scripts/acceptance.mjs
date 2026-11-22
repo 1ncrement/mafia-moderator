@@ -1,5 +1,6 @@
 // Приёмочный сценарий из раздела 8 спецификации, раздела 8 дополнения «Свои роли» (шаг 12)
-// трёх этапов дополнения «Механики партии и новые роли» (шаги 13, 14 и 15) и дополнения «Сигналы таймера и фолы» (шаг 16)
+// трёх этапов дополнения «Механики партии и новые роли» (шаги 13, 14 и 15), дополнения «Сигналы таймера и фолы» (шаг 16)
+// и дополнения «Раздача с учётом прошлых игр» (шаг 17)
 // на собранном dist/index.html, открытом с диска (file://).
 // Запуск: npm run build && npm run acceptance
 // Управляет установленным Chrome без окна через протокол DevTools: настоящие клики мыши и клавиши.
@@ -168,7 +169,7 @@ async function run() {
   while (Number(await txt('.stepper-big .stepper-value')) > 11) await click('Меньше игроков')
   await click('Мафия: больше')
   check(1, 'состав: 11 игроков, чёрных 3, красных 8', (await has('чёрных 3')) && (await has('красных 8')) && (await has('из них крёстный отец: 1')))
-  await click('Раздать роли')
+  await click('Раздать случайно')
   const dealt = () => js(`[...document.querySelectorAll('.deal-card')].map((c) => c.querySelector('.deal-card-name')?.innerText.trim() + (c.innerText.includes('глава') ? ' · глава' : ''))`)
   const before = await dealt()
   const count = (list, role) => list.filter((r) => r === role).length
@@ -423,7 +424,7 @@ async function run() {
     rows3.length === 2 && rows3.every((r) => r.endsWith(' 1')) && (await has('чёрных 4')) && (await texts('.setup-total .chips li')).includes('оборотень'), rows3.join(' | '))
 
   // 8.4: раздать.
-  await click('Раздать роли')
+  await click('Раздать случайно')
   const dealt12 = await dealt()
   check(12, 'распределение называет обе роли, состав сошёлся',
     dealt12.length === 11 && count(dealt12, 'адвокат') === 1 && count(dealt12, 'оборотень') === 1 && (await has('адвокат 1, оборотень 1, мирных 4')), dealt12.join(', '))
@@ -543,7 +544,7 @@ async function run() {
   await click('Первой')
   check(13, 'проститутка «первой»: предупреждение ушло, она снова первая', !(await has(LATE)) && (await nightOrderChips())[0] === '1 · проститутка'
     && !(await switchOn('Балаган перед кругом речей')) && !(await switchOn('Прощание после голосования')) && (await radioOn('Выстрел и поиск')))
-  await click('Раздать роли')
+  await click('Раздать случайно')
 
   // День 1: случайный начинающий, роли скрыты, доп. минуты первых двоих.
   await main('Город просыпается: День 1')
@@ -643,7 +644,7 @@ async function run() {
   await click('Новая игра'); await click('Сбросить к стандарту'); await click('Мафия: больше')
   await click('Прощание после ночной смерти')
   check(14, 'правило «Прощание после ночной смерти» включено на экране состава', await switchOn('Прощание после ночной смерти'))
-  await click('Раздать роли')
+  await click('Раздать случайно')
   await main('Город просыпается: День 1')
   const opener14 = Number(/круг начал №(\d+)/.exec(await txt('.steps-note'))?.[1] ?? 0)
   await main(`Дать слово №${opener14}`); for (let i = 0; i < 10; i++) await enter()
@@ -787,7 +788,7 @@ async function run() {
     (await radioOn('Через ночь')) && (await switchOn('Жертва не голосует')) && (await switchOn('Не ходит к одной жертве две ночи подряд'))
     && (await nightOrderChips()).join(', ') === '1 · проститутка, 2 · мафия, 3 · крёстный отец, 4 · мясник, 5 · маньяк, 6 · шериф, 7 · журналист, 8 · доктор, 9 · охранник',
     (await nightOrderChips()).join(', '))
-  await click('Раздать роли')
+  await click('Раздать случайно')
   await main('Город просыпается: День 1')
   const opener15 = Number(/круг начал №(\d+)/.exec(await txt('.steps-note'))?.[1] ?? 0)
   await main(`Дать слово №${opener15}`); for (let i = 0; i < 12; i++) await enter()
@@ -905,7 +906,7 @@ async function run() {
   const giveFoul = async (seat) => { await click(`Игрок №${seat}`); await click('Фол') }
   const foulsOf = async (seat) => (await card15(seat)).marks.filter((m) => m.startsWith('фолы')).join()
   await click('Новая игра'); await click('Сбросить к стандарту'); await click('Мафия: больше')
-  await click('Раздать роли')
+  await click('Раздать случайно')
   await main('Город просыпается: День 1')
   const opener16 = Number(/круг начал №(\d+)/.exec(await txt('.steps-note'))?.[1] ?? 0)
   const count16 = (await table()).length                            // за столом столько мест, сколько оставил прошлый шаг
@@ -994,6 +995,71 @@ async function run() {
   await cdp('Page.reload'); await sleep(900); await js(HELPERS)
   check(16, 'после обновления страницы фолы и наказание на месте',
     (await foulsOf(D16)) === 'фолы: 3' && (await card15(C16)).marks.includes('молчит') && (await foulDialog()) === null, `${await foulsOf(D16)} · ${(await card15(C16)).marks.join()}`)
+
+  // ── Шаг 17: раздача с учётом прошлых игр (дополнение от 2026-11-22): две кнопки, счётчик, начало отсчёта, перераздача ──
+  const isActive17 = (name) => !String(name).startsWith('мирн')
+  const showRoles17 = async () => { if (await exists('Показать роли')) await click('Показать роли') }
+  await click('Меню'); await click('На главную'); await click('Новая игра')
+  // Игры прошлых шагов попали в тот же игровой день: счётчик называет их время.
+  const counted17 = await txt('.setup-history')
+  check(17, 'экран состава: две кнопки раздачи и счётчик учтённых игр со временем каждой',
+    (await exists('Раздать случайно')) && (await exists('Раздать с учётом прошлых игр')) && /Учтено игр: \d+ \(\d{1,2}:\d{2}/.test(counted17), counted17)
+  await click('Начать отсчёт заново')
+  const reset17 = await txt('.setup-history')
+  check(17, '«Начать отсчёт заново»: окна нет, счётчик пропал, раздача с учётом игр недоступна, есть «Вернуть»',
+    /Отсчёт начат заново в \d{1,2}:\d{2}/.test(reset17) && !reset17.includes('Учтено игр') && !(await exists('Раздать с учётом прошлых игр'))
+    && (await exists('Вернуть')) && !(await js(`!!document.querySelector('[role=dialog]')`)), reset17)
+  await main('Вернуть')                                            // кнопки ждут 0,4 с друг после друга — ждём, как ждал бы ведущий
+  check(17, '«Вернуть» возвращает учёт прежних игр', (await txt('.setup-history')).includes('Учтено игр') && (await exists('Раздать с учётом прошлых игр')), await txt('.setup-history'))
+  // Двойной клик: сброс и через 60 мс клик по «Вернуть», которая встала на то же место. Оба клика — в одном вызове,
+  // чтобы пауза между ними не зависела от скорости машины. Дальше шаг считает только свои игры.
+  await sleep(460)
+  await js(`(async () => { __find('Начать отсчёт заново').click(); await new Promise((r) => setTimeout(r, 60)); const back = __find('Вернуть'); if (back) back.click(); return true })()`)
+  await sleep(90)
+  check(17, 'двойной клик сброс не отменяет: «Вернуть» сразу после «Начать отсчёт заново» не срабатывает',
+    !(await txt('.setup-history')).includes('Учтено игр') && (await exists('Вернуть')), await txt('.setup-history'))
+
+  // Игра А: случайная раздача, до Ночи 1 — с этого момента она учитывается.
+  await click('Сбросить к стандарту')
+  await click('Раздать случайно')
+  await showRoles17()
+  const first17 = await dealt()
+  check(17, 'экран раздачи называет способ: «Роздано случайно»', await has('Роздано случайно'), await txt('.deal-how'))
+  await main('Город просыпается: День 1')
+  const opener17 = Number(/круг начал №(\d+)/.exec(await txt('.steps-note'))?.[1] ?? 0)
+  await main(`Дать слово №${opener17}`); for (let i = 0; i < first17.length - 1; i++) await enter()
+  await click('Пропустить доп. минуту'); await click('Пропустить доп. минуту')
+  await main('Город засыпает: Ночь 1')
+  await click('Меню'); await click('На главную'); await click('Новая игра')
+  const one17 = await txt('.setup-history')
+  check(17, 'игра, дошедшая до ночи, учтена: «Учтено игр: 1», раздача с учётом игр доступна',
+    /Учтено игр: 1 \(\d{1,2}:\d{2}\)/.test(one17) && (await exists('Раздать с учётом прошлых игр')), one17)
+
+  // Игра Б: раздача с учётом игры А.
+  await click('Раздать с учётом прошлых игр')
+  await showRoles17()
+  const second17 = await dealt()
+  check(17, 'раздача с учётом игр: «Роздано с учётом 1 прошлой игры», колода та же',
+    (await has('Роздано с учётом 1 прошлой игры')) && [...second17].sort().join() === [...first17].sort().join(), `${await txt('.deal-how')} · ${second17.join(', ')}`)
+  await click('Перераздать')
+  const dialog17 = await txt('[role=dialog]')
+  await click('Перераздать случайно')
+  const random17 = await txt('.deal-how')
+  await click('Перераздать'); await click('Перераздать с учётом прошлых игр')
+  check(17, 'окно «Перераздать» предлагает оба способа и называет число учтённых игр; способ виден после каждой перераздачи',
+    dialog17.includes('Перераздать случайно') && dialog17.includes('Перераздать с учётом прошлых игр') && dialog17.includes('Учтено игр: 1')
+    && random17 === 'Роздано случайно' && (await txt('.deal-how')) === 'Роздано с учётом 1 прошлой игры', `${dialog17} · ${random17}`)
+  // На частотах: за 30 перераздач активные роли достаются номерам, игравшим их в игре А, заметно реже, чем при полном рандоме.
+  const played17 = first17.map(isActive17)
+  const roles17 = played17.filter(Boolean).length
+  let again17 = 0
+  for (let i = 0; i < 30; i++) {
+    await click('Перераздать'); await click('Перераздать с учётом прошлых игр')
+    again17 += (await dealt()).filter((name, s) => isActive17(name) && played17[s]).length
+  }
+  const byChance17 = 30 * roles17 * roles17 / first17.length         // столько вышло бы при полном рандоме
+  check(17, 'по весам: игравшие активную роль получают её заметно реже, чем при полном рандоме, но шанс у них есть',
+    again17 < byChance17 * 0.8 && again17 > 0, `повторно активных: ${again17} из ${30 * roles17}, при полном рандоме ожидалось ${byChance17.toFixed(1)}`)
 
   check('—', 'за весь сценарий нет ошибок в консоли и исключений', problems.length === 0, problems.slice(0, 3).join(' | '))
   check('—', 'страница не сделала ни одного сетевого запроса', network.length === 0, network.slice(0, 3).join(' | '))

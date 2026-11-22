@@ -126,7 +126,8 @@ type Ev<T extends string, P> = {
 } & P
 
 export type GameEvent =
-  | Ev<'roles_dealt', { assignment: RoleId[] }>
+  /** history — сколько прошлых игр учла раздача «с учётом прошлых игр»; поля нет — раздача случайная. */
+  | Ev<'roles_dealt', { assignment: RoleId[]; history?: number }>
   | Ev<'roles_swapped', { a: Seat; b: Seat }>
   | Ev<'phase_started', object>
   | Ev<'step_entered', { step: StepId }>
@@ -239,7 +240,8 @@ export type Session = {
 // ── Команды ведущего ────────────────────────────────────────────────────────
 
 export type Command =
-  | { type: 'deal'; assignment: RoleId[] }
+  /** history — раздача с учётом стольких прошлых игр; без поля — случайная. Само поле на расклад не влияет: его только записывают. */
+  | { type: 'deal'; assignment: RoleId[]; history?: number }
   | { type: 'swapRoles'; a: Seat; b: Seat }
   | { type: 'startPhase'; phase: PhaseRef }
   | { type: 'enterStep'; step: StepId }
@@ -504,7 +506,8 @@ export type NightState = {
 // ── Журнал для показа ───────────────────────────────────────────────────────
 
 export type JournalEntry = { eventId: string | null; edited: boolean; manual: boolean } & (
-  | { kind: 'deal'; counts: Record<RoleId, number> }
+  /** history — сколько прошлых игр учла раздача; поля нет — раздача случайная. */
+  | { kind: 'deal'; counts: Record<RoleId, number>; history?: number }
   /** numbered — у действия этой ночью несколько исполнителей, в подписи нужен номер. */
   | { kind: 'night_action'; actionId: string; performerRole: RoleId; actor: Seat | null; target: Seat | null; target2?: Seat | null; answer?: CheckAnswer; numbered?: true }
   /** Шаг прошлой ночи без записи. */

@@ -15,7 +15,7 @@ test('от главной до Дня 1', async () => {
   await user.click(screen.getByRole('button', { name: 'Мафия: больше' }))
   expect(screen.getByText('из них крёстный отец: 1', { exact: false })).toBeInTheDocument()
   expect(screen.getByText('чёрных 3', { exact: false })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: /Раздать роли/ }))
+  await user.click(screen.getByRole('button', { name: /^Раздать случайно/ }))
   expect(app.getState().screen).toBe('deal'); expect(app.getState().game!.players.filter((p) => p.side === 'black')).toHaveLength(3)
   expect(screen.getAllByText(/глава/).length).toBeGreaterThan(0)
   advance(env, 500)   // главная кнопка не реагирует 0,4 с после появления экрана (задача 14)
@@ -24,7 +24,7 @@ test('от главной до Дня 1', async () => {
 })
 test('ролей больше, чем игроков: раздать нельзя, причина видна', async () => {
   renderApp((app) => { app.newGame(); app.editDraft({ playerCount: 4, composition: { mafia: 2, prostitute: 1, sheriff: 1, doctor: 1 } }) })
-  expect(screen.getByRole('button', { name: /Раздать роли/ })).toBeDisabled()
+  expect(screen.getByRole('button', { name: /^Раздать случайно/ })).toBeDisabled()
   expect(screen.getByText(/ролей на 1 больше, чем игроков/)).toBeInTheDocument()
 })
 test('перераздать и удалить игру — только через подтверждение', async () => {
@@ -35,7 +35,7 @@ test('перераздать и удалить игру — только чер�
   expect(app.getState().session!.log.filter((e) => e.type === 'roles_dealt')).toHaveLength(1)
   const dealt = app.getState().session!.log.find((e) => e.type === 'roles_dealt')!.id
   await user.click(screen.getByRole('button', { name: 'Перераздать' }))
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Перераздать роли' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Перераздать случайно' }))
   expect(app.getState().session!.log.find((e) => e.type === 'roles_dealt')!.id).not.toBe(dealt)
   const id = app.getState().session!.id
   await user.click(screen.getByRole('button', { name: 'Назад к составу' })); await user.click(screen.getByRole('button', { name: 'На главную' }))
@@ -86,7 +86,7 @@ test('выключатели и выбор меняют правила черн�
   const chosen = { ...DEFAULT_RULES, balagan: false, farewellAfterVote: false, farewellAfterNight: true, prostituteFirst: false }
   expect(app.getState().draft.rules).toEqual(chosen)
   expect(rulesBlock().getByRole('radio', { name: 'После мафии' })).toBeChecked()
-  await user.click(screen.getByRole('button', { name: /Раздать роли/ }))
+  await user.click(screen.getByRole('button', { name: /^Раздать случайно/ }))
   expect(app.getState().session!.config.rules).toEqual(chosen)
   // Следующая игра начинается с тех же правил: последний состав запоминается целиком.
   app.goHome(); app.newGame()
@@ -131,7 +131,7 @@ test('выбор опции пишется в черновик и попадае
   await user.click(within(blockOption()!).getByRole('radio', { name: 'Выстрел и поиск' }))
   expect(app.getState().draft.roleOptions).toEqual({ leader_block: 'both' })
   expect(within(blockOption()!).getByRole('radio', { name: 'Выстрел и поиск' })).toBeChecked()
-  await user.click(screen.getByRole('button', { name: /Раздать роли/ }))
+  await user.click(screen.getByRole('button', { name: /^Раздать случайно/ }))
   expect(app.getState().session!.config.roleOptions).toEqual({ leader_block: 'both' })
 })
 test('отмена поиска при проститутке «после мафии» — предупреждение под опцией; появляется и исчезает', async () => {
@@ -148,7 +148,7 @@ test('отмена поиска при проститутке «после ма�
   expect(screen.queryByText(LATE)).not.toBeInTheDocument()
   // Предупреждение — не запрет: раздать можно.
   await user.click(screen.getByRole('radio', { name: 'После мафии' }))
-  expect(screen.getByRole('button', { name: /Раздать роли/ })).toBeEnabled()
+  expect(screen.getByRole('button', { name: /^Раздать случайно/ })).toBeEnabled()
 })
 test('«Сбросить к стандарту» возвращает опцию роли к умолчанию', async () => {
   const { app, user } = renderApp((a) => { a.newGame(); a.editDraft({ roleOptions: { leader_block: 'search' } }) })

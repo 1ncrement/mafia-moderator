@@ -19,8 +19,18 @@ export type SessionMeta = {
 
 export type Lang = 'ru' | 'uk'
 /** customRoles — перечень своих ролей ведущего: хранится отдельно от игр. */
-export type Settings = { lang: Lang; sound: boolean; rolesHidden: boolean; lastConfig: SessionConfig | null; customRoles: CustomRole[] }
-export const DEFAULT_SETTINGS: Settings = { lang: 'ru', sound: true, rolesHidden: false, lastConfig: null, customRoles: [] }
+export type Settings = {
+  lang: Lang
+  sound: boolean
+  rolesHidden: boolean
+  lastConfig: SessionConfig | null
+  customRoles: CustomRole[]
+  /** Начало отсчёта для раздачи с учётом прошлых игр: игры, созданные раньше, не учитываются. null — отсчёт с начала игрового дня. */
+  dealHistoryFrom: number | null
+  /** Начало отсчёта, которое было до последнего «Начать отсчёт заново»: к нему возвращает «Вернуть». */
+  dealHistoryPrev: number | null
+}
+export const DEFAULT_SETTINGS: Settings = { lang: 'ru', sound: true, rolesHidden: false, lastConfig: null, customRoles: [], dealHistoryFrom: null, dealHistoryPrev: null }
 
 /** null — такой сессии нет; ok: false — данные есть, но прочитать их нельзя (они не затираются). */
 export type Loaded = { ok: true; session: Session } | { ok: false; raw: string } | null
@@ -99,6 +109,9 @@ function looksLikeSession(v: unknown): v is Session {
     && Array.isArray(v.undo) && typeof v.nextSeq === 'number' && looksLikeConfig(v.config)
     && v.log.every(looksLikeEvent)
 }
+
+/** Момент времени из сохранённых настроек; всё, что не конечное число, — «не задан». */
+const moment = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
 export function createStorage(kv: KV) {
   const read = (key: string): string | null => {
@@ -182,6 +195,8 @@ export function createStorage(kv: KV) {
         // Последний состав — черновик новой игры: правил, которых в нём ещё нет, ведущий не выбирал — берём умолчания новой игры.
         lastConfig: looksLikeConfig(data.lastConfig) ? withRules(data.lastConfig, DEFAULT_RULES) : null,
         customRoles: Array.isArray(data.customRoles) ? (data.customRoles as unknown[]).filter(looksLikeRole) : [],
+        dealHistoryFrom: moment(data.dealHistoryFrom),
+        dealHistoryPrev: moment(data.dealHistoryPrev),
       }
     },
 
