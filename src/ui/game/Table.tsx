@@ -26,7 +26,8 @@ function useCards(game: GameState): CardView[] {
     else {
       const parts: string[] = []
       if (day?.spoken.includes(seat)) parts.push(t('card.spoke'))
-      if (day?.opener === seat) parts.push(t('card.opener'))
+      // Начинающий круг известен заранее (случайно в День 1, по очереди дальше): пока он ждёт слова — «начинает».
+      if (day?.opener === seat) parts.push(t(day.waiting.includes(seat) ? 'card.opens' : 'card.opener'))
       if (day?.skipped.includes(seat)) parts.push(t('card.skipped'))
       if (parts.length > 0) marks.push({ text: parts.join(' · '), tone: 'plain' })
     }

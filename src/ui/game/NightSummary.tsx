@@ -60,7 +60,8 @@ export function NightSummary({ game }: { game: GameState }) {
   useMainAction(night ? {
     // Роли скрыты — подпись не называет, кто выбывает.
     label: hidden ? t('night.confirm.hidden', { day }) : confirmLabel(lang, died, day),
-    onPress: () => store.dispatch({ type: 'confirmNight', died }),
+    // Подтверждение ночи начинает день; тем же действием ставится начинающий круг по очереди.
+    onPress: () => store.dispatchAll([{ type: 'confirmNight', died }, { type: 'openNextCircle' }]),
   } : null)
 
   if (!night || !session) return null

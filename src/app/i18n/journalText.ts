@@ -67,7 +67,7 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
     }
 
     case 'circle':
-      return t(entry.random ? 'journal.circle.random' : 'journal.circle', { n: entry.first })
+      return t(entry.random ? 'journal.circle.random' : entry.queued ? 'journal.circle.queued' : 'journal.circle', { n: entry.first })
 
     case 'nomination':
       return entry.by === null

@@ -34,7 +34,7 @@ export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
   if (game.day) {
     const steps = daySteps(game.day, game.step, rules)
     const at = steps.indexOf(game.step as DayStep)
-    const { opener, openerRandom, n } = game.day
+    const { opener, openerRandom, openerQueued, n } = game.day
     return (
       <div className="steps-row">
         <nav className="steps" aria-label={t('steps.day')}>
@@ -50,6 +50,10 @@ export function StepNav({ game, rules }: { game: GameState; rules: Rules }) {
         {/* Начинающего первый круг выбрало приложение — ведущий видит это, пока не выберет сам. */}
         {openerRandom && opener !== null && (
           <span className="steps-note small muted">{t('day.opener.random', { phase: phaseLabel(lang, { kind: 'day', n }), n: opener })}</span>
+        )}
+        {/* Со второго дня начинающий — следующий по очереди; так же виден, пока ведущий не выберет сам. */}
+        {openerQueued && opener !== null && (
+          <span className="steps-note small muted">{t('day.opener.queued', { phase: phaseLabel(lang, { kind: 'day', n }), n: opener })}</span>
         )}
       </div>
     )

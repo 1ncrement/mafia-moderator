@@ -69,7 +69,8 @@ export function deriveState(session: Session, registry: Registry): GameState {
     deaths: leftAtNight(views, day.n - 1), farewell, spared: sparedAt(day.n - 1), silenced: day.silenced, silence: day.silence,
     // В сохранении до обновления события «объявил» нет: если день уже идёт (в нём есть что-то, кроме его начала),
     // утро считается объявленным — окно само посреди дня не открывается.
-    announced: session.log.some((e) => e.type !== 'phase_started' && samePhase(e.phase, phase)),
+    // Начинающий круг по очереди ставится вместе с началом дня — это ещё не «день идёт».
+    announced: session.log.some((e) => e.type !== 'phase_started' && !(e.type === 'circle_opened' && e.queued === true) && samePhase(e.phase, phase)),
   } : null
 
   return {

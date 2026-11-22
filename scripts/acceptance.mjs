@@ -116,6 +116,10 @@ const exists = (name) => js(`!!__find(${JSON.stringify(name)})`)
 const txt = (selector) => js(`(document.querySelector(${JSON.stringify(selector)})?.textContent ?? '').trim()`)
 /** Кто начинает круг: №5, а если он к этому дню выбыл — следующий по кругу игрок в игре. Раздача случайная. */
 const firstFrom5 = (alive) => alive.find((s) => s >= 5) ?? alive[0]
+/** Очередь начинающих: первый игрок в игре, считая по кругу от места from (мест за столом count). */
+const queueFrom = (alive, from, count) => Array.from({ length: count }, (_, i) => ((from - 1 + i) % count) + 1).find((s) => alive.includes(s))
+/** Со второго дня начинающий выбран по очереди; сценарию нужен свой — ведущий выбирает другого. */
+async function openWith(seat) { await click('Выбрать другого…'); await click(`Выбрать игрока №${seat}`) }
 const where = async () => `${await txt('.game-phase .page-name')} · ${await txt('.game-phase .page-step')}`
 const seconds = async () => { const [m, s] = (await txt('.timer-digits span')).split(':').map(Number); return m * 60 + s }
 /** Роли и статусы со стола игрового экрана. */
@@ -225,10 +229,18 @@ async function run() {
   // ── Шаг 3: День 2 ──
   await main('Запустить балаган')
   check(3, 'балаган: таймер 60 с идёт', (await txt('.timer-label')) === 'Балаган' && (await txt('.timer-state')).startsWith('идёт'))
-  await main('Выбрать, кто начинает круг')
   const alive2 = (await table()).filter((p) => !p.out).map((p) => p.seat)
+  // День 1 начинал №5, закрывали №5 и №6 — День 2 по очереди начинает следующий игрок в игре, считая от №7.
+  const queued2 = queueFrom(alive2, 7, 11)
+  check(3, 'после балагана приложение не спрашивает, кто начинает: кнопка называет следующего по очереди',
+    (await exists(`К кругу речей · начинает №${queued2}`)) && !(await exists('Выбрать, кто начинает')), await txt('.main-button'))
+  await main(`К кругу речей · начинает №${queued2}`)
+  check(3, 'День 2: круг начинает следующий после закрывавших День 1, есть «Выбрать другого…»',
+    (await where()) === 'День 2 · Круг речей' && (await txt('.steps-note')) === `День 2 · круг начинает №${queued2}, по очереди`
+    && (await exists(`Дать слово №${queued2}`)) && (await exists('Выбрать другого…')), await txt('.steps-note'))
   const first2 = firstFrom5(alive2)
-  await click(`Выбрать игрока №${first2}`)
+  await openWith(first2)
+  check(3, 'ведущий выбрал другого: пометка «по очереди» снята', (await exists(`Дать слово №${first2}`)) && (await txt('.steps-note')) === '', await txt('.steps-note'))
   const circle = [...alive2.filter((s) => s >= first2), ...alive2.filter((s) => s < first2)]
   const nominees = [C[0], M, P, C[1], C[2]]                         // пятеро выставленных, порядок важен
   const speak = async (i) => main(i === 0 ? 'Дать слово' : 'Следующий')
@@ -303,8 +315,13 @@ async function run() {
 
   // ── Шаг 7: День 3 — выставлен один игрок, шериф ──
   await click('Пропустить балаган')
-  const first3 = firstFrom5((await table()).filter((p) => !p.out).map((p) => p.seat))
-  await click(`Выбрать игрока №${first3}`)
+  const alive3 = (await table()).filter((p) => !p.out).map((p) => p.seat)
+  const queued3 = queueFrom(alive3, first2 + 1, 11)
+  check(7, 'День 3: «Пропустить балаган» сразу открывает круг — начинает следующий после вчерашнего начинавшего',
+    (await where()) === 'День 3 · Круг речей' && (await txt('.steps-note')) === `День 3 · круг начинает №${queued3}, по очереди` && (await exists(`Дать слово №${queued3}`)),
+    `${await where()} · ${await txt('.steps-note')}`)
+  const first3 = firstFrom5(alive3)
+  await openWith(first3)
   await main('Дать слово'); await click(`№${first3} выставляет…`); await click(`Выбрать игрока №${S}`)
   await stepNav('Оправдания'); await sleep(200)
   await main(`Оправдание №${S}`)
@@ -324,7 +341,8 @@ async function run() {
   await announce()
   await click('Пропустить балаган')
   const seats4 = (await table()).filter((p) => !p.out).map((p) => p.seat)
-  await click(`Выбрать игрока №${firstFrom5(seats4)}`)
+  const queued4 = queueFrom(seats4, first3 + 1, 11)
+  check(8, 'День 4: круг начинает следующий после начинавшего День 3 — выбывшие пропущены', await exists(`Дать слово №${queued4}`), await txt('.steps-note'))
   const alive4 = seats4.length
   await main('Дать слово'); for (let i = 1; i < alive4; i++) await enter()
   check(8, 'День 4: никто не выставлен — главная кнопка сразу ведёт в Ночь 4', await exists('Никто не выставлен → Ночь 4'))
@@ -440,7 +458,7 @@ async function run() {
     (await where()) === 'Ночь 1 · Итог ночи' && (await has(`Адвокат → №${X}`)) && (await table()).find((p) => p.seat === J).role === 'адвокат', await where())
   await main(`№${C12[0]} выбывает · начать День 2`)
   await announce()
-  await click('Пропустить балаган'); await click(`Выбрать игрока №${J}`)
+  await click('Пропустить балаган'); await openWith(J)
   const alive12 = (await table()).filter((p) => !p.out).length
   await main('Дать слово'); for (let i = 1; i < alive12; i++) await enter()
   await main('Никто не выставлен → Ночь 2')
@@ -570,11 +588,14 @@ async function run() {
 
   // День 2: балагана нет, роли снова скрыты, выгнанный уходит без прощания.
   const steps13 = await texts('.steps .step')
-  check(13, 'День 2 без балагана: сразу круг речей, начинающего выбирает ведущий, роли снова скрыты',
-    (await where()) === 'День 2 · Круг речей' && !steps13.includes('Балаган') && (await exists('Выбрать, кто начинает')) && (await has('роль скрыта')), steps13.join(' · '))
   const alive13 = (await table()).filter((p) => !p.out).map((p) => p.seat)
+  // День 1 закрывали начинавший и следующий за ним — очередь Дня 2 идёт от места после второго из них.
+  const queued13 = queueFrom(alive13, second13 + 1, 11)
+  check(13, 'День 2 без балагана: сразу круг речей, начинающий выбран по очереди, роли снова скрыты',
+    (await where()) === 'День 2 · Круг речей' && !steps13.includes('Балаган') && (await exists(`Дать слово №${queued13}`)) && !(await exists('Выбрать, кто начинает'))
+    && (await txt('.steps-note')) === `День 2 · круг начинает №${queued13}, по очереди` && (await has('роль скрыта')), `${steps13.join(' · ')} · ${await txt('.steps-note')}`)
   const first13 = firstFrom5(alive13)
-  await main('Выбрать, кто начинает'); await click(`Выбрать игрока №${first13}`)
+  await openWith(first13)
   await main('Дать слово'); await click(`№${first13} выставляет…`); await click(`Выбрать игрока №${C13[1]}`)
   await stepNav('Оправдания'); await sleep(200)
   await main(`Оправдание №${C13[1]}`)
@@ -688,7 +709,7 @@ async function run() {
   // Ночь 2 без смертей: «Город просыпается в полном составе», шага прощания нет.
   await click('Пропустить балаган')
   const alive14 = (await table()).filter((p) => !p.out).map((p) => p.seat)
-  await click(`Выбрать игрока №${alive14[0]}`)
+  await openWith(alive14[0])
   await main('Дать слово'); for (let i = 1; i < alive14.length; i++) await enter()
   await main('Никто не выставлен → Ночь 2')
   await click('Никого'); await stepNav('Мафия'); await sleep(200); await click('Никого')
@@ -830,12 +851,14 @@ async function run() {
 
   // День 2: роли скрыты; метки «молчит» и «жилет снят · открыт» видны, причины смерти — нет.
   const b15 = await card15(B15), v15 = await card15(V15), g15 = await card15(G15)
+  // Начинающим по очереди может оказаться любой из них: его метку «начинает день» эта проверка не считает.
+  const own15 = (card) => card.marks.filter((m) => m !== 'начинает день').join()
   check(15, 'День 2 начинается прощанием охранника; при скрытых ролях видны «молчит» и «жилет снят · открыт», причина смерти — нет',
-    (await where()) === 'День 2 · Прощание' && (await has('роль скрыта')) && b15.marks.join() === 'молчит' && b15.cls.includes('card-silenced')
-    && v15.marks.join() === 'жилет снят · открыт' && g15.status === 'выбыл · Ночь 1' && b15.role === '', `${b15.marks.join()} · ${v15.marks.join()} · ${g15.status}`)
+    (await where()) === 'День 2 · Прощание' && (await has('роль скрыта')) && own15(b15) === 'молчит' && b15.cls.includes('card-silenced')
+    && own15(v15) === 'жилет снят · открыт' && g15.status === 'выбыл · Ночь 1' && b15.role === '', `${b15.marks.join()} · ${v15.marks.join()} · ${g15.status}`)
   await main(`Прощание №${G15} · 30 с`)
-  await main('Дальше: балаган'); await main('Запустить балаган · 60 с'); await main('Выбрать, кто начинает круг')
-  await click(`Выбрать игрока №${B15}`)
+  await main('Дальше: балаган'); await main('Запустить балаган · 60 с'); await main('К кругу речей · начинает №')
+  await openWith(B15)
   await main(`№${B15} молчит · ход без речи`)
   check(15, 'очередь жертвы в круге — без таймера; в свой ход она может выставить',
     (await has(`№${B15} сегодня молчит`)) && !(await js(`!!document.querySelector('[role=timer]')`)) && (await exists(`№${B15} выставляет…`)), await txt('.speech'))

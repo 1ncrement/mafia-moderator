@@ -2,7 +2,7 @@ import { currentPhase, eventsOf, lastOf, nextPhase, samePhase } from './log'
 import { visitsAt } from './night'
 import { aliveSeats, isSeat, leftAtNight, playersAt, playersBefore, playersNow } from './players'
 import { roleOption } from './setup'
-import type { DayState, EventOf, Nomination, PhaseRef, PlayerView, Registry, Seat, Session, Silence, SpeechKind, SpeechQueue } from './types'
+import type { DayState, EventOf, GameEvent, Nomination, PhaseRef, PlayerView, Registry, Seat, Session, Silence, SpeechKind, SpeechQueue } from './types'
 import { buildBallots } from './vote'
 
 /** Круг: по возрастанию номеров от начинающего, после последнего — первый; выбывшие пропускаются. */
@@ -19,6 +19,56 @@ export function circleOrder(first: Seat, alive: Seat[], playerCount: number): Se
 }
 
 const unique = (seats: Seat[]): Seat[] => [...new Set(seats)]
+
+/** Кто закрывает первый круг доп. речью: начинавший и следующий за ним по кругу игрок в игре. */
+function closingPair(opener: Seat, alive: Seat[], playerCount: number): Seat[] {
+  return circleOrder(opener, alive, playerCount).slice(0, 2)
+}
+
+/** Ход в круге — речь или ход без речи (молчащий). */
+const isTurn = (e: GameEvent): boolean => e.type === 'speech_started' && (e.kind === 'speech' || e.kind === 'silent')
+
+/**
+ * С какого места идёт очередь Дня n: следующее за тем, кто закрывал прошлый день.
+ * День 1 закрывали первые двое — очередь идёт от второго из них; дальше — от вчерашнего начинавшего
+ * (последнего, кто открывал круг вчера: ведущий мог выбрать другого). Вчера круг не открывали — очереди нет.
+ */
+function queueFrom(session: Session, registry: Registry, n: number): Seat | null {
+  if (n <= 1) return null
+  const before: PhaseRef = { kind: 'day', n: n - 1 }
+  const events = eventsOf(session.log, before)
+  const circle = lastOf(events, 'circle_opened', (e) => isSeat(session, e.first))
+  if (!circle) return null
+  const after = playersAt(session, registry, nextPhase(before))
+  if (n - 1 > 1) return circleStarter(session, registry, n - 1, events, circle, after) + 1
+  // Первых двоих считаем на момент последней доп. речи — как их видел ведущий: выбывший позже остаётся закрывавшим.
+  const closing = events.findLast((e) => e.type === 'speech_started' && e.kind === 'closing' && e.seq > circle.seq)
+  const then = closing ? playersBefore(session, registry, closing) : after
+  return (closingPair(circle.first, aliveSeats(then), session.config.playerCount).at(-1) ?? circle.first) + 1
+}
+
+/**
+ * Кто на деле открыл круг дня: первый по кругу игрок в игре на момент первого хода круга.
+ * Запись «по очереди» хранит правило, а не номер: пока круг не начался, очередь идёт по нынешним статусам —
+ * ведущий поправил итог ночи, и начинающий сменился сам. Ходов в круге не было — статусы берутся из fallback.
+ */
+function circleStarter(
+  session: Session, registry: Registry, n: number, events: readonly GameEvent[], circle: EventOf<'circle_opened'>, fallback: readonly PlayerView[],
+): Seat {
+  const turn = events.find((e) => isTurn(e) && e.seq > circle.seq)
+  const then = turn ? playersBefore(session, registry, turn) : fallback
+  const from = (circle.queued ? queueFrom(session, registry, n) : null) ?? circle.first
+  return circleOrder(from, aliveSeats(then), session.config.playerCount)[0] ?? circle.first
+}
+
+/** Кто начинает круг Дня n по очереди: первый игрок в игре, считая от места очереди. Очереди нет — null. */
+export function nextOpener(session: Session, registry: Registry, n: number): Seat | null {
+  const from = queueFrom(session, registry, n)
+  if (from === null) return null
+  const phase: PhaseRef = { kind: 'day', n }
+  const now = samePhase(currentPhase(session.log), phase) ? playersNow(session, registry) : playersAt(session, registry, phase)
+  return circleOrder(from, aliveSeats(now), session.config.playerCount)[0] ?? null
+}
 
 /** Выставленные дня в порядке выставления; повтор цели не учитывается. */
 export function nominationsOf(session: Session, phase: PhaseRef, alive: ReadonlySet<Seat>): Nomination[] {
@@ -64,10 +114,14 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
 
   // Круг речей.
   const circle = lastOf(events, 'circle_opened', (e) => isSeat(session, e.first))
-  const opener = circle?.first ?? null
+  const opener = circle ? circleStarter(session, registry, n, events, circle, now) : null
   const openerRandom = circle?.random === true
-  const yesterday = n > 1 ? lastOf(session.log, 'circle_opened', (e) => samePhase(e.phase, { kind: 'day', n: n - 1 })) : null
-  const previousOpener = yesterday && isSeat(session, yesterday.first) ? yesterday.first : null
+  const openerQueued = circle?.queued === true
+  const before: PhaseRef = { kind: 'day', n: n - 1 }
+  const yesterday = n > 1 ? lastOf(session.log, 'circle_opened', (e) => samePhase(e.phase, before)) : null
+  const previousOpener = yesterday && isSeat(session, yesterday.first)
+    ? circleStarter(session, registry, n - 1, eventsOf(session.log, before), yesterday, playersAt(session, registry, nextPhase(before)))
+    : null
 
   const ended = new Set(events.flatMap((e) => (e.type === 'speech_ended' ? [e.startId] : [])))
   const starts = events.filter((e): e is EventOf<'speech_started'> => e.type === 'speech_started')
@@ -111,7 +165,7 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
   // Доп. речь первых двоих — только в День 1 и только когда круг пройден: начинавший и следующий за ним по кругу игрок в игре.
   // Выбывший пропускается; речи считаются от последнего открытия круга — круг заново начинает и их заново.
   const closingSeats = n === 1 && opener !== null && waiting.length === 0
-    ? circleOrder(opener, [...alive], session.config.playerCount).slice(0, 2)
+    ? closingPair(opener, [...alive], session.config.playerCount)
     : []
   const closingStarted = new Set(starts.filter((e) => e.kind === 'closing' && e.seq > circleSeq).map((e) => e.seat))
   const closingNow = speaking?.kind === 'closing' ? speaking.seat : null
@@ -147,7 +201,7 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
   return {
     n,
     nominationsOpen: n >= session.config.rules.nominationsFromDay,
-    opener, openerRandom, previousOpener, spoken, skipped, waiting, speaking,
+    opener, openerRandom, openerQueued, previousOpener, spoken, skipped, waiting, speaking,
     nominations, ballots, closing, silenced, silence,
     defense: queue(nominations.filter((x) => x.active).map((x) => x.target), 'defense'),
     tiebreak: queue(byNomination(tie.filter((s) => alive.has(s))), 'tiebreak'),

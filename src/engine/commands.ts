@@ -1,4 +1,4 @@
-import { dayState, nominationsOf } from './day'
+import { dayState, nextOpener, nominationsOf } from './day'
 import { currentPhase, EMPTY_PATCH, eventsOf, lastOf, nextPhase, samePhase } from './log'
 import { actorMapper, deathSeats, nightState, stepIdOf } from './night'
 import { aliveSeats, isSeat, nightPlayers, playersAt, playersNow, seatsOf } from './players'
@@ -129,11 +129,19 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       // После первой речи это уже новый круг — прежняя запись остаётся в журнале.
       const events = eventsOf(log, phase)
       const current = lastOf(events, 'circle_opened')
-      const replaced = current?.random === true && !events.some((e) => e.type === 'speech_started' && e.seq > current.seq) ? [current.id] : []
+      const automatic = current !== null && (current.random === true || current.queued === true)
+      const replaced = current && automatic && !events.some((e) => e.type === 'speech_started' && e.seq > current.seq) ? [current.id] : []
       return ok({
         remove: replaced,
         add: [...endOpenSpeech(), { type: 'circle_opened', phase, first: cmd.first, ...(cmd.random ? { random: true as const } : {}) }],
       })
+    }
+
+    case 'openNextCircle': {
+      // Начинающий по очереди ставится один раз, в начале дня; выбранного ведущим или случаем он не заменяет.
+      if (phase.kind !== 'day' || lastOf(eventsOf(log, phase), 'circle_opened')) return ok({})
+      const first = nextOpener(session, registry, phase.n)
+      return first === null ? ok({}) : add({ type: 'circle_opened', phase, first, queued: true })
     }
 
     case 'startSpeech': {

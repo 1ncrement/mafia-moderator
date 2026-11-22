@@ -48,10 +48,12 @@ function dayEntries(session: Session, registry: Registry, n: number, events: Gam
   const day = dayState(session, registry, n)
   const out: JournalEntry[] = []
   const votesShown = new Set<number>()
+  const lastCircle = events.findLast((e) => e.type === 'circle_opened' && isSeat(session, e.first))
   for (const e of events) {
     switch (e.type) {
       case 'circle_opened':
-        if (isSeat(session, e.first)) out.push({ ...flags(e), kind: 'circle', first: e.first, ...(e.random === true ? { random: true as const } : {}) })
+        // Запись «по очереди» называет того, кто на деле открыл круг: до первого хода очередь идёт по нынешним статусам.
+        if (isSeat(session, e.first)) out.push({ ...flags(e), kind: 'circle', first: e.queued === true && e.id === lastCircle?.id ? day.opener ?? e.first : e.first, ...(e.random === true ? { random: true as const } : {}), ...(e.queued === true ? { queued: true as const } : {}) })
         break
       case 'nominated': {
         const index = day.nominations.findIndex((x) => x.eventId === e.id)

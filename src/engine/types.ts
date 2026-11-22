@@ -139,7 +139,8 @@ export type GameEvent =
   | Ev<'night_confirmed', { hinted: Seat[] | Seat | null; chosen: Seat[] | Seat | null }>
   | Ev<'status_set', { seat: Seat; status: 'alive' | 'out'; cause?: OutCause; source: 'night' | 'vote' | 'manual' }>
   /** random — начинающего выбрало приложение (первый круг), а не ведущий. */
-  | Ev<'circle_opened', { first: Seat; random?: true }>
+  /** random — начинающего выбрал случай (День 1); queued — он следующий по очереди после вчерашнего (со Дня 2). */
+  | Ev<'circle_opened', { first: Seat; random?: true; queued?: true }>
   | Ev<'speech_started', { kind: SpeechKind; seat: Seat | null }>
   | Ev<'speech_ended', { startId: string }>
   | Ev<'speaker_skipped', { seat: Seat }>
@@ -240,6 +241,8 @@ export type Command =
   // день
   /** random — начинающий выбран случайно: запись журнала помечается «случайно». */
   | { type: 'openCircle'; first: Seat; random?: true }
+  /** Начало дня со второго: круг открывает следующий по очереди после того, кто закрывал прошлый день. Нет очереди — ничего не делает. */
+  | { type: 'openNextCircle' }
   /** Завершает идущую речь и начинает новую. */
   | { type: 'startSpeech'; kind: SpeechKind; seat: Seat | null }
   | { type: 'endSpeech' }
@@ -346,6 +349,8 @@ export type DayState = {
   opener: Seat | null
   /** Начинающего выбрало приложение, а не ведущий. */
   openerRandom: boolean
+  /** Начинающий выбран по очереди, ведущий его ещё не менял. */
+  openerQueued: boolean
   previousOpener: Seat | null
   spoken: Seat[]
   skipped: Seat[]
@@ -461,7 +466,7 @@ export type JournalEntry = { eventId: string | null; edited: boolean; manual: bo
    * reason — почему по подсказке никто не выбывает (null — по подсказке кто-то выбывает).
    */
   | { kind: 'night_result'; died: Seat[]; causes: (OutCause | undefined)[]; reason: QuietNight | null }
-  | { kind: 'circle'; first: Seat; random?: true }
+  | { kind: 'circle'; first: Seat; random?: true; queued?: true }
   | { kind: 'nomination'; index: number; by: Seat | null; target: Seat }
   | { kind: 'votes'; ballot: 1 | 2; voters: number; entries: { candidate: Seat; count: number }[] }
   | { kind: 'vote_result'; ballot: 1 | 2; outcome: VoteOutcome; seats: Seat[] }

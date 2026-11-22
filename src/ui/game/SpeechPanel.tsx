@@ -55,15 +55,18 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
     const skipIn = (kind: 'closing' | 'defense' | 'tiebreak' | 'farewell', seat: Seat) =>
       store.dispatchAll([{ type: 'startSpeech', kind, seat }, { type: 'endSpeech' }])
     const active = day.nominations.filter((x) => x.active)
+    // Начинающий уже стоит (по очереди со вчерашнего дня) — приложение не переспрашивает, а сразу открывает круг.
+    const opensCircle = day.opener === null ? null : day.waiting[0] ?? day.opener
     const toCircle = () => {
       go('speeches')
-      askOpener()
+      if (opensCircle === null) askOpener()
     }
+    const toCircleLabel = opensCircle === null ? t('day.pickOpener.afterBalagan') : t('day.toCircle', { n: opensCircle })
 
     if (step === 'balagan') {
       const running = speaking?.kind === 'balagan'
       main = running
-        ? { label: t('day.pickOpener.afterBalagan'), onPress: toCircle }
+        ? { label: toCircleLabel, onPress: toCircle }
         : { label: t('day.balagan.start', { sec: sec('balagan') }), onPress: () => store.speak('balagan', null) }
       body = <p className="muted">{t('day.balagan.hint')}</p>
       secondary = !running && <Button variant="outline" size="l" onClick={toCircle}>{t('day.balagan.skip')}</Button>
@@ -138,7 +141,7 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
             <Button variant="outline" size="l" onClick={() => skipIn('closing', closingNext)}>{t('day.closing.skip')}</Button>
           )}
           {/* Случайный выбор, по которому ещё никто не говорил, ведущий заменяет своим; дальше это уже новый круг. */}
-          <Button variant="outline" size="l" onClick={askOpener}>{t(day.openerRandom && first ? 'day.pickOther' : 'day.restart')}</Button>
+          <Button variant="outline" size="l" onClick={askOpener}>{t((day.openerRandom || day.openerQueued) && first ? 'day.pickOther' : 'day.restart')}</Button>
         </>
       )
     }
@@ -180,11 +183,11 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
           : { label: t('day.toRevote'), onPress: () => go('revote') }
       }
       if (step === 'night_farewell') {
-        // После прощаний день идёт своим чередом: балаган, а если его нет — выбор начинающего круг.
+        // После прощаний день идёт своим чередом: балаган, а если его нет — круг речей (начинающего спросят, если он не выбран).
         main = next !== undefined
           ? { label: t('day.farewell', { n: next, sec: sec('farewell') }), onPress: () => store.speak('farewell', next) }
           : balaganInDay(rules, day.n) ? { label: t('day.toBalagan'), onPress: () => go('balagan') }
-          : { label: t('day.pickOpener.afterBalagan'), onPress: toCircle }
+          : { label: toCircleLabel, onPress: toCircle }
       }
       if (step === 'farewell') {
         main = next !== undefined
