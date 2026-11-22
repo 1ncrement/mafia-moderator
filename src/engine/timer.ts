@@ -55,3 +55,17 @@ export function timerView(
 export function crossedZero(state: TimerState, prevNow: number, now: number): boolean {
   return state.status === 'running' && state.endsAt !== null && prevNow < state.endsAt && state.endsAt <= now
 }
+
+/** За сколько до конца таймера звучит предупреждение. */
+export const WARNING_MS = 10_000
+
+/**
+ * Момент «осталось 10 секунд» попал в (prevNow, now], а ноль ещё впереди — предупреждение звучит один раз.
+ * Проскочили и отметку, и ноль (сон ноутбука) — звучит только сигнал конца. Добавили время — отметка снова впереди.
+ * Таймер не длиннее самой отметки не предупреждает: он весь — последние секунды.
+ */
+export function crossedWarning(state: TimerState, prevNow: number, now: number): boolean {
+  if (state.status !== 'running' || state.endsAt === null || state.durationMs <= WARNING_MS) return false
+  const at = state.endsAt - WARNING_MS
+  return prevNow < at && at <= now && now < state.endsAt
+}

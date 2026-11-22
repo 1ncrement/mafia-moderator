@@ -4,20 +4,49 @@ import { TABLE_11 } from '../helpers'
 import { advance, renderApp, seedGame, sleep } from './helpers'
 
 const speaking = (a: AppStore) => { seedGame(a, TABLE_11, 1); a.dispatch({ type: 'openCircle', first: 5 }); a.speak('speech', 5) }
-test('сигнал звучит один раз на нуле и не повторяется', () => {
+test('за 10 секунд до конца звучит предупреждение, на нуле — сигнал конца; каждый один раз', () => {
   const { env } = renderApp(speaking)
-  advance(env, 59_000); expect(env.beep).not.toHaveBeenCalled()
-  advance(env, 1_500); expect(env.beep).toHaveBeenCalledTimes(1)
-  advance(env, 30_000); expect(env.beep).toHaveBeenCalledTimes(1)
+  advance(env, 49_000); expect(env.beep).not.toHaveBeenCalled()
+  advance(env, 1_500); expect(env.beep.mock.calls).toEqual([['warn']])
+  advance(env, 8_000); expect(env.beep.mock.calls).toEqual([['warn']])
+  advance(env, 1_500); expect(env.beep.mock.calls).toEqual([['warn'], ['end']])
+  advance(env, 30_000); expect(env.beep).toHaveBeenCalledTimes(2)
 })
-test('после сна таймер сразу показывает перерасход, сигнал один', () => {
+test('после сна таймер сразу показывает перерасход, сигнал один — сигнал конца', () => {
   const { env } = renderApp(speaking)
   sleep(env, 300_000)
-  expect(screen.getByText('+4:00')).toBeInTheDocument(); expect(env.beep.mock.calls.length).toBeLessThanOrEqual(1)
+  expect(screen.getByText('+4:00')).toBeInTheDocument(); expect(env.beep.mock.calls).toEqual([['end']])
 })
-test('звук выключен — сигнала нет', () => {
+test('звук выключен — нет ни предупреждения, ни сигнала конца', () => {
   const { env } = renderApp((a) => { speaking(a); a.setSettings({ sound: false }) })
-  advance(env, 61_000); expect(env.beep).not.toHaveBeenCalled()
+  advance(env, 51_000); advance(env, 10_000); expect(env.beep).not.toHaveBeenCalled()
+})
+test('предупреждение за 10 секунд есть у каждого таймера: оправдание, речь при ничьей, прощание, доп. минута, балаган, свободный', () => {
+  for (const [kind, total] of [['defense', 30_000], ['tiebreak', 30_000], ['farewell', 30_000], ['closing', 60_000], ['balagan', 60_000]] as const) {
+    const { env, unmount } = renderApp((a) => { seedGame(a, TABLE_11, 2); a.speak(kind, kind === 'balagan' ? null : 5) })
+    advance(env, total - 10_500); expect(env.beep).not.toHaveBeenCalled()
+    advance(env, 1_000); expect(env.beep.mock.calls).toEqual([['warn']])
+    advance(env, 10_000); expect(env.beep.mock.calls).toEqual([['warn'], ['end']])
+    unmount()
+  }
+  const { env } = renderApp((a) => { seedGame(a, TABLE_11, 2); a.freeTimer(120) })
+  advance(env, 109_500); expect(env.beep).not.toHaveBeenCalled()
+  advance(env, 1_000); expect(env.beep.mock.calls).toEqual([['warn']])
+})
+test('«+10 с», когда осталось меньше 10 секунд: предупреждение прозвучит ещё раз на новой отметке', async () => {
+  const { env, user } = renderApp(speaking)
+  advance(env, 55_000); expect(env.beep.mock.calls).toEqual([['warn']])
+  await user.click(screen.getByRole('button', { name: '+10 с' }))                   // осталось 15 с
+  advance(env, 4_000); expect(env.beep.mock.calls).toEqual([['warn']])
+  advance(env, 1_500); expect(env.beep.mock.calls).toEqual([['warn'], ['warn']])
+})
+test('пауза перед отметкой: пока таймер стоит, предупреждения нет; после продолжения оно звучит в свой момент', async () => {
+  const { env, user } = renderApp(speaking)
+  advance(env, 45_000); await user.keyboard(' ')
+  advance(env, 60_000); expect(env.beep).not.toHaveBeenCalled()
+  await user.keyboard(' ')
+  advance(env, 4_000); expect(env.beep).not.toHaveBeenCalled()
+  advance(env, 1_500); expect(env.beep.mock.calls).toEqual([['warn']])
 })
 test('двойное нажатие и автоповтор Enter не проскакивают шаг', async () => {
   const { app, user, env } = renderApp(speaking)

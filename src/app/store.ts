@@ -7,6 +7,7 @@ import type {
   Command, CommandResult, CustomRole, GameEvent, GameState, RandomInt, Registry, RoleId, Seat, Session, SessionConfig, SpeechKind,
   TimerAction, UndoEntry,
 } from '../engine'
+import type { Signal } from '../platform/sound'
 import { createStorage, DEFAULT_SETTINGS } from '../platform/storage'
 import type { KV, SessionMeta, Settings } from '../platform/storage'
 import { checkRoleName, cleanRoleName, takenNames } from './customRoles'
@@ -25,7 +26,7 @@ export type Env = {
   randomInt: RandomInt
   registry: Registry
   /** Один звуковой сигнал по нулю таймера. */
-  beep: () => void
+  beep: (signal: Signal) => void
   /** Просить браузер не гасить экран, пока идёт игра. */
   keepAwake: (active: boolean) => void
 }
@@ -77,7 +78,8 @@ export type AppStore = {
   /** Сырые данные сессии, которую не удалось прочитать, — чтобы ведущий мог их скопировать. */
   rawSession(id: string): string | null
   now(): number
-  beep(): void
+  /** Звуковой сигнал таймера: «осталось 10 секунд» или «время вышло». */
+  beep(signal: Signal): void
   randomInt: RandomInt
   /** Справочник идущей сессии; без сессии — встроенный справочник плюс перечень своих ролей из настроек, порядок ночи — по правилам черновика. */
   readonly registry: Registry

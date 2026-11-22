@@ -2,11 +2,21 @@
 
 type AudioCtor = typeof AudioContext
 
+/** Сигнал таймера: warn — осталось 10 секунд, end — время вышло. */
+export type Signal = 'warn' | 'end'
+
+type Tone = { at: number; hz: number; len: number }
+/** Сигналы различимы на слух: предупреждение — два коротких низких тона потише, конец — три тона, последний выше и длиннее. */
+const SIGNALS: Record<Signal, { volume: number; tones: Tone[] }> = {
+  warn: { volume: 0.28, tones: [{ at: 0, hz: 660, len: 0.12 }, { at: 0.2, hz: 660, len: 0.12 }] },
+  end: { volume: 0.35, tones: [{ at: 0, hz: 880, len: 0.22 }, { at: 0.3, hz: 880, len: 0.22 }, { at: 0.6, hz: 1175, len: 0.4 }] },
+}
+
 /**
- * Возвращает функцию «подать сигнал»: три коротких тона, около секунды.
+ * Возвращает функцию «подать сигнал»: короткие тоны, не дольше секунды.
  * Контекст создаётся при первом жесте ведущего — браузеры не дают звучать странице, с которой не взаимодействовали.
  */
-export function createBeeper(): () => void {
+export function createBeeper(): (signal: Signal) => void {
   let ctx: AudioContext | null = null
 
   const ensure = (): AudioContext | null => {
@@ -32,23 +42,23 @@ export function createBeeper(): () => void {
   document.addEventListener('pointerdown', unlock, true)
   document.addEventListener('keydown', unlock, true)
 
-  return () => {
+  return (signal) => {
     const audio = ensure()
     if (!audio) return
     try {
       const start = audio.currentTime + 0.02
-      const tones: [number, number][] = [[0, 880], [0.3, 880], [0.6, 1175]]
-      for (const [offset, frequency] of tones) {
+      const { volume, tones } = SIGNALS[signal]
+      for (const { at, hz, len } of tones) {
         const osc = audio.createOscillator()
         const gain = audio.createGain()
         osc.type = 'sine'
-        osc.frequency.value = frequency
-        gain.gain.setValueAtTime(0.0001, start + offset)
-        gain.gain.exponentialRampToValueAtTime(0.35, start + offset + 0.02)
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + (offset === 0.6 ? 0.4 : 0.22))
+        osc.frequency.value = hz
+        gain.gain.setValueAtTime(0.0001, start + at)
+        gain.gain.exponentialRampToValueAtTime(volume, start + at + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + at + len)
         osc.connect(gain).connect(audio.destination)
-        osc.start(start + offset)
-        osc.stop(start + offset + 0.45)
+        osc.start(start + at)
+        osc.stop(start + at + len + 0.05)
       }
     } catch {
       // звук — не причина ронять игру
