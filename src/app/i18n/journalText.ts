@@ -96,7 +96,7 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
       return t('journal.swap', { a: entry.a, b: entry.b })
 
     case 'foul':
-      return t('journal.foul', { n: entry.seat, count: entry.count })
+      return t(entry.absorbed ? 'journal.foul.absorbed' : 'journal.foul', { n: entry.seat, count: entry.count })
 
     case 'foul_penalty':
       return t(entry.applied ? 'journal.foul.penalty' : 'journal.foul.declined', {

@@ -1,5 +1,5 @@
 import { dayState, nextOpener, nominationsOf } from './day'
-import { foulCounts, foulLevel, penaltyDay } from './fouls'
+import { decisionLevel, foulCounts, foulLevel, penaltyDay, upcomingPenalties } from './fouls'
 import { currentPhase, EMPTY_PATCH, eventsOf, lastOf, nextPhase, samePhase } from './log'
 import { actorMapper, deathSeats, nightState, stepIdOf } from './night'
 import { aliveSeats, isSeat, nightPlayers, playersAt, playersNow, seatsOf } from './players'
@@ -23,6 +23,8 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
   /** Кто в игре для записи в фазу p: в текущую — по статусам сейчас, в прошлую — на её начало. */
   const aliveFor = (p: PhaseRef): Set<Seat> =>
     new Set(aliveSeats(isNow(p) ? playersNow(session, registry) : playersAt(session, registry, p)))
+  /** Кто ждёт слова в сегодняшнем круге; ночью и до раздачи — никто. По этому считается ближайшая своя очередь игрока. */
+  const waitingNow = (): Seat[] => (phase.kind === 'day' ? dayState(session, registry, phase.n).waiting : [])
   /** Событие конца идущей речи, если она есть. */
   const endOpenSpeech = (): NewEvent[] => {
     const events = eventsOf(log, phase)
@@ -376,7 +378,11 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
     case 'giveFoul': {
       if (phase.kind === 'deal') return no('wrong_phase')
       if (!isSeat(session, cmd.seat) || !aliveFor(phase).has(cmd.seat)) return no('not_alive')
-      return add({ type: 'foul_given', phase, seat: cmd.seat })
+      // Наказания до исполнения не накапливаются: фол дошёл до порога, а прежнее наказание ещё не отбыто —
+      // фол считается, нового наказания и вопроса о нём нет. Это записывается в самом фоле.
+      const count = (foulCounts(session)[cmd.seat - 1] ?? 0) + 1
+      const absorbed = foulLevel(count) === count && upcomingPenalties(session, waitingNow()).some((p) => p.seat === cmd.seat)
+      return add({ type: 'foul_given', phase, seat: cmd.seat, ...(absorbed ? { absorbed: true } : {}) })
     }
 
     case 'removeFoul': {
@@ -390,14 +396,16 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
 
     case 'decideFoulPenalty': {
       if (!isSeat(session, cmd.seat)) return no('not_alive')
-      const level = foulLevel(foulCounts(session)[cmd.seat - 1] ?? 0)
+      // Нерешённый порог, иначе неотбытое наказание, иначе неприменённое последнее решение: счёт мог уйти дальше порога наказания.
+      // Отбытое наказание окончательно — решать по нему нечего.
+      const waiting = waitingNow()
+      const level = decisionLevel(session, cmd.seat, waiting)
       if (level === 0) return no('target_not_allowed')
       const previous = log.filter((e) => e.type === 'foul_penalty' && e.seat === cmd.seat && e.level === level)
       // День наказания считается в момент решения: ближайшая своя очередь игрока в круге.
-      const waiting = phase.kind === 'day' ? dayState(session, registry, phase.n).waiting : []
       return ok({
         remove: previous.map((e) => e.id),
-        add: [{ type: 'foul_penalty', phase, seat: cmd.seat, level, applied: cmd.apply, day: penaltyDay(session, cmd.seat, level, waiting) }],
+        add: [{ type: 'foul_penalty', phase, seat: cmd.seat, level, applied: cmd.apply, day: penaltyDay(session, cmd.seat, waiting) }],
       })
     }
 

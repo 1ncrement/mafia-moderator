@@ -106,6 +106,60 @@ test('решение меняется в панели игрока: «Отмен
   expect(app.getState().game!.day!.muted).toEqual([7])
 })
 
+test('шестой фол при неотбытом наказании: окна нет, счёт растёт; панель называет то же наказание и даёт его отменить', async () => {
+  const { app, user } = renderApp((a) => {
+    day2(3)(a); a.dispatch({ type: 'decideFoulPenalty', seat: 7, apply: true })
+    a.dispatch({ type: 'giveFoul', seat: 7 }); a.dispatch({ type: 'giveFoul', seat: 7 })
+  })
+  await foul(user, 7)
+  noDialog()
+  expect(app.getState().game!.fouls.counts[6]).toBe(6); expect(marks(7)).toEqual(['молчит', 'фолы: 6'])
+  await openPanel(user, 7)
+  expect(within(panel(7)).getByText('Фолы за игру: 6')).toBeInTheDocument()
+  expect(within(panel(7)).getByText('3 фола · День 2 без речи')).toBeInTheDocument()
+  expect(within(panel(7)).getByText('Пока наказание не отбыто, новое не добавляется. Фолы считаются.')).toBeInTheDocument()
+  await user.click(within(panel(7)).getByRole('button', { name: 'Отменить наказание' }))
+  noDialog()
+  expect(app.getState().game!.day!.muted).toEqual([]); expect(marks(7)).toEqual(['фолы: 6'])
+  // Отменённое можно вернуть: наказание по-прежнему одно.
+  await openPanel(user, 7)
+  expect(within(panel(7)).getByText('3 фола · наказание не применено')).toBeInTheDocument()
+  expect(within(panel(7)).queryByText('Пока наказание не отбыто, новое не добавляется. Фолы считаются.')).not.toBeInTheDocument()
+  await user.click(within(panel(7)).getByRole('button', { name: 'Применить наказание' }))
+  expect(app.getState().game!.day!.muted).toEqual([7]); expect(app.getState().game!.fouls.penalties).toHaveLength(1)
+})
+
+/** День 2: у №4 три фола и наказание на сегодня; №3 говорил, ход без речи №4 прошёл — наказание отбыто. */
+const served = (a: AppStore) => {
+  seedGame(a, TABLE_11, 2)
+  a.dispatch({ type: 'openCircle', first: 3 }); a.dispatch({ type: 'enterStep', step: 'speeches' })
+  for (let i = 0; i < 3; i++) a.dispatch({ type: 'giveFoul', seat: 4 })
+  a.dispatch({ type: 'decideFoulPenalty', seat: 4, apply: true })
+  a.dispatchAll([{ type: 'startSpeech', kind: 'speech', seat: 3 }, { type: 'endSpeech' }])
+  a.dispatchAll([{ type: 'startSpeech', kind: 'silent', seat: 4 }, { type: 'endSpeech' }])
+}
+
+test('отбытое наказание в панели не отменяется: после хода без речи кнопок о наказании нет, строка о нём остаётся', async () => {
+  const { user } = renderApp(served)
+  await openPanel(user, 4)
+  expect(within(panel(4)).getByText('3 фола · День 2 без речи')).toBeInTheDocument()
+  expect(within(panel(4)).queryByRole('button', { name: 'Отменить наказание' })).not.toBeInTheDocument()
+  expect(within(panel(4)).queryByRole('button', { name: 'Применить наказание' })).not.toBeInTheDocument()
+  expect(within(panel(4)).queryByText('Пока наказание не отбыто, новое не добавляется. Фолы считаются.')).not.toBeInTheDocument()
+})
+
+test('два решения у игрока: панель показывает наказание, которое впереди, и отменяет его, а не отбытое', async () => {
+  const { app, user } = renderApp((a) => {
+    served(a)
+    for (let i = 0; i < 3; i++) a.dispatch({ type: 'giveFoul', seat: 4 })
+    a.dispatch({ type: 'decideFoulPenalty', seat: 4, apply: true })
+  })
+  await openPanel(user, 4)
+  expect(within(panel(4)).getByText('6 фолов · День 3 без речи')).toBeInTheDocument()
+  await user.click(within(panel(4)).getByRole('button', { name: 'Отменить наказание' }))
+  expect(app.getState().game!.fouls.penalties).toMatchObject([{ level: 3, applied: true, day: 2 }, { level: 6, applied: false }])
+})
+
 test('выбывшему фол дать нельзя; счёт фолов виден и при скрытых ролях', async () => {
   const { user } = renderApp((a) => {
     day2(1)(a); a.dispatch({ type: 'setStatus', seat: 9, status: 'out', cause: 'voted' }); a.setSettings({ rolesHidden: true })

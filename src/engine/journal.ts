@@ -24,7 +24,7 @@ function commonEntry(session: Session, e: GameEvent): JournalEntry | null {
     case 'roles_swapped':
       return isSeat(session, e.a) && isSeat(session, e.b) ? { ...flags(e), kind: 'swap', a: e.a, b: e.b } : null
     case 'foul_given':
-      return isSeat(session, e.seat) ? { ...flags(e), kind: 'foul', seat: e.seat, count: foulOrdinal(session, e) } : null
+      return isSeat(session, e.seat) ? { ...flags(e), kind: 'foul', seat: e.seat, count: foulOrdinal(session, e), absorbed: e.absorbed === true } : null
     case 'foul_penalty':
       return isSeat(session, e.seat) ? { ...flags(e), kind: 'foul_penalty', seat: e.seat, level: e.level, applied: e.applied === true, day: e.day } : null
     case 'game_finished':

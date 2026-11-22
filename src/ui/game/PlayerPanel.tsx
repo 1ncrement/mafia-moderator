@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { entryText, phaseLabel, plural, roleText } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { foulLevel, journal } from '../../engine'
+import { journal } from '../../engine'
 import type { GameState, Seat } from '../../engine'
 import { Button } from '../common/Button'
 import { Close } from '../common/icons'
@@ -35,11 +35,12 @@ export function PlayerPanel({ game, seat, onClose, children }: Props) {
     store.dispatch({ type: 'setStatus', seat, status, cause })
     onClose()
   }
-  // Фолы: счёт за игру и решение ведущего по последнему достигнутому порогу (каждый третий фол).
+  // Фолы: счёт за игру и решение ведущего о наказании — неотбытое наказание, а если такого нет, последнее решение по игроку.
+  // Счёт может уйти дальше порога этого решения: пока наказание не отбыто, новые фолы считаются, но второго наказания не дают.
+  // Отменить можно только неотбытое наказание: после хода без речи оно окончательно, заново его тоже не применить.
   const fouls = game.fouls.counts[seat - 1] ?? 0
-  const penalty = game.fouls.penalties.find((p) => p.seat === seat && p.level === foulLevel(fouls))
-  // Ближайший день: идущий или тот, что наступит после ночи. Отбытое наказание уже не отменить.
-  const today = game.phase?.kind === 'day' ? game.phase.n : game.phase?.kind === 'night' ? game.phase.n + 1 : 1
+  const upcoming = game.fouls.upcoming.filter((p) => p.seat === seat).at(-1)
+  const penalty = upcoming ?? game.fouls.penalties.filter((p) => p.seat === seat).at(-1)
   const penaltyText = penalty && (penalty.applied
     ? t('panel.penalty.on', { fouls: plural(lang, penalty.level, 'fouls'), phase: phaseLabel(lang, { kind: 'day', n: penalty.day }) })
     : t('panel.penalty.off', { fouls: plural(lang, penalty.level, 'fouls') }))
@@ -76,10 +77,11 @@ export function PlayerPanel({ game, seat, onClose, children }: Props) {
       <div className="player-panel-fouls">
         <span className="player-panel-fouls-count">{t('panel.fouls', { n: fouls })}</span>
         {penaltyText && <span className="small muted">{penaltyText}</span>}
+        {upcoming && <span className="small muted">{t('panel.penalty.hold')}</span>}
         <div className="player-panel-actions">
           <Button size="l" variant="strong" disabled={out} onClick={() => foulAction('giveFoul')}>{t('panel.foul')}</Button>
           {fouls > 0 && <Button size="l" variant="outline" onClick={() => foulAction('removeFoul')}>{t('panel.foul.remove')}</Button>}
-          {penalty?.applied && penalty.day >= today && <Button size="l" variant="outline" onClick={() => decide(false)}>{t('panel.penalty.cancel')}</Button>}
+          {upcoming && <Button size="l" variant="outline" onClick={() => decide(false)}>{t('panel.penalty.cancel')}</Button>}
           {penalty && !penalty.applied && !out && <Button size="l" variant="outline" onClick={() => decide(true)}>{t('panel.penalty.apply')}</Button>}
         </div>
       </div>
