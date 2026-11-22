@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { entryText, phaseLabel, roleText } from '../../app/i18n'
+import { entryText, phaseLabel, plural, roleText } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { journal } from '../../engine'
+import { foulLevel, journal } from '../../engine'
 import type { GameState, Seat } from '../../engine'
 import { Button } from '../common/Button'
 import { Close } from '../common/icons'
@@ -12,7 +12,7 @@ import { useAskOnce } from './selection'
 
 type Props = { game: GameState; seat: Seat; onClose(): void; children?: ReactNode }
 
-/** Панель игрока: ручные статусы, обмен ролями и записи журнала с этим номером. Открывается с карточки в любой фазе. */
+/** Панель игрока: фолы, ручные статусы, обмен ролями и записи журнала с этим номером. Открывается с карточки в любой фазе. */
 export function PlayerPanel({ game, seat, onClose, children }: Props) {
   const { session, settings } = useApp()
   const store = useStore()
@@ -35,6 +35,22 @@ export function PlayerPanel({ game, seat, onClose, children }: Props) {
     store.dispatch({ type: 'setStatus', seat, status, cause })
     onClose()
   }
+  // Фолы: счёт за игру и решение ведущего по последнему достигнутому порогу (каждый третий фол).
+  const fouls = game.fouls.counts[seat - 1] ?? 0
+  const penalty = game.fouls.penalties.find((p) => p.seat === seat && p.level === foulLevel(fouls))
+  // Ближайший день: идущий или тот, что наступит после ночи. Отбытое наказание уже не отменить.
+  const today = game.phase?.kind === 'day' ? game.phase.n : game.phase?.kind === 'night' ? game.phase.n + 1 : 1
+  const penaltyText = penalty && (penalty.applied
+    ? t('panel.penalty.on', { fouls: plural(lang, penalty.level, 'fouls'), phase: phaseLabel(lang, { kind: 'day', n: penalty.day }) })
+    : t('panel.penalty.off', { fouls: plural(lang, penalty.level, 'fouls') }))
+  const foulAction = (command: 'giveFoul' | 'removeFoul') => {
+    store.dispatch({ type: command, seat })
+    onClose()
+  }
+  const decide = (apply: boolean) => {
+    store.dispatch({ type: 'decideFoulPenalty', seat, apply })
+    onClose()
+  }
   const swap = () => {
     onClose()
     askOnce({
@@ -55,6 +71,17 @@ export function PlayerPanel({ game, seat, onClose, children }: Props) {
           <span className="muted">{statusText(lang, player, settings.rolesHidden) ?? t('status.alive')}</span>
         </span>
         <button type="button" className="icon-btn" aria-label={t('panel.close')} onClick={onClose}><Close /></button>
+      </div>
+      {/* Фолы — первым блоком: ведущий даёт их на ходу, не отрываясь от стола. Счёт виден и при скрытых ролях. */}
+      <div className="player-panel-fouls">
+        <span className="player-panel-fouls-count">{t('panel.fouls', { n: fouls })}</span>
+        {penaltyText && <span className="small muted">{penaltyText}</span>}
+        <div className="player-panel-actions">
+          <Button size="l" variant="strong" disabled={out} onClick={() => foulAction('giveFoul')}>{t('panel.foul')}</Button>
+          {fouls > 0 && <Button size="l" variant="outline" onClick={() => foulAction('removeFoul')}>{t('panel.foul.remove')}</Button>}
+          {penalty?.applied && penalty.day >= today && <Button size="l" variant="outline" onClick={() => decide(false)}>{t('panel.penalty.cancel')}</Button>}
+          {penalty && !penalty.applied && !out && <Button size="l" variant="outline" onClick={() => decide(true)}>{t('panel.penalty.apply')}</Button>}
+        </div>
       </div>
       <div className="player-panel-actions">
         <Button size="l" disabled={out && player.cause === 'shot'} onClick={() => setStatus('out', 'shot')}>{t('panel.shot')}</Button>

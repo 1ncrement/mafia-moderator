@@ -1,3 +1,4 @@
+import { penalizedOn } from './fouls'
 import { currentPhase, eventsOf, lastOf, nextPhase, samePhase } from './log'
 import { visitsAt } from './night'
 import { aliveSeats, isSeat, leftAtNight, playersAt, playersBefore, playersNow } from './players'
@@ -103,6 +104,14 @@ export function silenceOf(session: Session, registry: Registry): Silence {
   return { noNominate: on(victim?.noNominate), noVote: on(victim?.noVote) }
 }
 
+/**
+ * Может ли игрок без своей минуты выставить в свой ход. Жертве ночного визита это запрещает опция роли;
+ * наказанному за фолы выставлять можно всегда.
+ */
+export function mayNominateSilent(day: Pick<DayState, 'silenced' | 'silence'>, seat: Seat): boolean {
+  return !(day.silence.noNominate && day.silenced.includes(seat))
+}
+
 /** Состояние дня n: круг речей, выставленные, туры голосования, очереди оправданий и прощаний. */
 export function dayState(session: Session, registry: Registry, n: number): DayState {
   const phase: PhaseRef = { kind: 'day', n }
@@ -164,8 +173,10 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
 
   // Доп. речь первых двоих — только в День 1 и только когда круг пройден: начинавший и следующий за ним по кругу игрок в игре.
   // Выбывший пропускается; речи считаются от последнего открытия круга — круг заново начинает и их заново.
+  // Наказанный за фолы сегодня не говорит вовсе: доп. минуты у него тоже нет.
+  const penalized = penalizedOn(session, n).filter((s) => alive.has(s))
   const closingSeats = n === 1 && opener !== null && waiting.length === 0
-    ? closingPair(opener, [...alive], session.config.playerCount)
+    ? closingPair(opener, [...alive], session.config.playerCount).filter((s) => !penalized.includes(s))
     : []
   const closingStarted = new Set(starts.filter((e) => e.kind === 'closing' && e.seq > circleSeq).map((e) => e.seat))
   const closingNow = speaking?.kind === 'closing' ? speaking.seat : null
@@ -178,6 +189,7 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
   const visited = n > 1 ? visitsAt(session, registry, n - 1) : []
   const silenced = visited.filter((s) => alive.has(s)).sort((a, b) => a - b)
   const silence = silenceOf(session, registry)
+  const muted = unique([...silenced, ...penalized]).sort((a, b) => a - b)
 
   // Выставление и голосование. Молчащие не голосуют, если так задано опцией. В тур уходят все, к кому приходили: кто из них
   // был в игре, тур решает сам — на свой момент. Иначе тур, подтверждённый до выбытия жертвы, после него пересчитался бы.
@@ -202,7 +214,7 @@ export function dayState(session: Session, registry: Registry, n: number): DaySt
     n,
     nominationsOpen: n >= session.config.rules.nominationsFromDay,
     opener, openerRandom, openerQueued, previousOpener, spoken, skipped, waiting, speaking,
-    nominations, ballots, closing, silenced, silence,
+    nominations, ballots, closing, silenced, silence, penalized, muted,
     defense: queue(nominations.filter((x) => x.active).map((x) => x.target), 'defense'),
     tiebreak: queue(byNomination(tie.filter((s) => alive.has(s))), 'tiebreak'),
     // Изгнание принял жилет: игрок в игре, в очередь прощания он не попадает.

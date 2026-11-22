@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { seatList } from '../../app/i18n'
 import { useApp, useLang, useStore, useT } from '../../app/StoreContext'
-import { balaganInDay } from '../../engine'
+import { balaganInDay, mayNominateSilent } from '../../engine'
 import type { Command, GameState, RejectCode, Seat } from '../../engine'
 import { Button } from '../common/Button'
 import { afterExpelled, aliveOf, sparedByVest } from './dayFlow'
@@ -82,7 +82,7 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
       const closingNow = speaking?.kind === 'closing' ? speaking.seat : null
       const closingOrder = [...day.closing.done, ...(closingNow !== null ? [closingNow] : []), ...day.closing.waiting]
       if (!started) main = { label: t('day.pickOpener'), onPress: askOpener }
-      else if (next !== undefined && day.silenced.includes(next)) {
+      else if (next !== undefined && day.muted.includes(next)) {
         // Очередь молчащего: ход без речи и без таймера — слово к нему переходит, чтобы он мог выставить.
         main = { label: t('day.silent.turn', { n: next }), onPress: () => store.speak('silent', next) }
       } else if (next !== undefined) {
@@ -93,8 +93,8 @@ export function SpeechPanel({ game, flash }: { game: GameState; flash?: boolean 
       else if (active.length > 0) main = { label: t('day.toDefense', { n: active.length }), onPress: () => go('defense') }
       else main = { label: t('day.noNominations', { n: day.n }), onPress: () => store.dispatch(toNight) }
 
-      // Выставляет тот, чей сейчас ход: говорящий — или молчащий, если опция роли не запрещает ему выставлять.
-      const speaker = speaking?.kind === 'speech' || (speaking?.kind === 'silent' && !day.silence.noNominate) ? speaking.seat : null
+      // Выставляет тот, чей сейчас ход: говорящий — или молчащий, если опция роли не запрещает ему выставлять (наказанному за фолы можно всегда).
+      const speaker = speaking && speaking.seat !== null && (speaking.kind === 'speech' || (speaking.kind === 'silent' && mayNominateSilent(day, speaking.seat))) ? speaking.seat : null
       const nominate = (by: Seat) => askOnce({
         question: t('day.nominate.question', { n: by }),
         allowed: aliveOf(game),

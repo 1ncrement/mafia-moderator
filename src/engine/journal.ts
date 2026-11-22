@@ -1,4 +1,5 @@
 import { dayState } from './day'
+import { foulOrdinal } from './fouls'
 import { currentPhase, eventsOf, phaseAt, phaseOrder, samePhase } from './log'
 import { nightState, quietNight } from './night'
 import { isSeat } from './players'
@@ -9,7 +10,7 @@ import type { GameEvent, JournalEntry, JournalGroup, PhaseRef, Registry, RoleId,
 
 const flags = (e: GameEvent) => ({ eventId: e.id, edited: e.edited === true, manual: e.manual === true })
 
-/** Записи, общие для любой фазы: ручной статус, жилет, обмен ролями, конец игры. */
+/** Записи, общие для любой фазы: ручной статус, жилет, обмен ролями, фолы, конец игры. */
 function commonEntry(session: Session, e: GameEvent): JournalEntry | null {
   switch (e.type) {
     case 'status_set':
@@ -22,6 +23,10 @@ function commonEntry(session: Session, e: GameEvent): JournalEntry | null {
       return isSeat(session, e.seat) ? { ...flags(e), kind: 'vest', seat: e.seat, used: e.used === true, source: e.source } : null
     case 'roles_swapped':
       return isSeat(session, e.a) && isSeat(session, e.b) ? { ...flags(e), kind: 'swap', a: e.a, b: e.b } : null
+    case 'foul_given':
+      return isSeat(session, e.seat) ? { ...flags(e), kind: 'foul', seat: e.seat, count: foulOrdinal(session, e) } : null
+    case 'foul_penalty':
+      return isSeat(session, e.seat) ? { ...flags(e), kind: 'foul_penalty', seat: e.seat, level: e.level, applied: e.applied === true, day: e.day } : null
     case 'game_finished':
       return { ...flags(e), kind: 'finish', winner: e.winner }
     default:

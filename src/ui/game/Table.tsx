@@ -31,8 +31,11 @@ function useCards(game: GameState): CardView[] {
       if (day?.skipped.includes(seat)) parts.push(t('card.skipped'))
       if (parts.length > 0) marks.push({ text: parts.join(' · '), tone: 'plain' })
     }
-    // Молчит сегодня: это знает весь стол — метка видна и при скрытых ролях.
-    if (day?.silenced.includes(seat)) marks.push({ text: t('card.silenced'), tone: 'silent' })
+    // Молчит сегодня — после ночного визита или за фолы: это знает весь стол, метка видна и при скрытых ролях.
+    if (day?.muted.includes(seat)) marks.push({ text: t('card.silenced'), tone: 'silent' })
+    // Фолы за игру: счёт на виду у ведущего в любой фазе и при скрытых ролях.
+    const fouls = game.fouls.counts[seat - 1] ?? 0
+    if (fouls > 0) marks.push({ text: t('card.fouls', { n: fouls }), tone: 'foul' })
     // Жилет снят — роль открыта всему столу: метка видна и при скрытых ролях.
     if (player.vest === 'used') marks.push({ text: t('card.vestOff'), tone: 'open' })
     // Одиночка помечен на карточке: его сторона — он сам. Метка скрывается вместе с ролями.

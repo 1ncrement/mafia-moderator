@@ -32,7 +32,7 @@ export function expectedSpeech(game: GameState): Expected {
     case 'speeches': {
       if (day.opener === null) return null
       const next = day.waiting[0]
-      if (next !== undefined && day.silenced.includes(next)) return { kind: 'silent', seat: next }
+      if (next !== undefined && day.muted.includes(next)) return { kind: 'silent', seat: next }
       return first(day.waiting, 'speech') ?? first(day.closing.waiting, 'closing')
     }
     case 'defense': return first(day.defense.waiting, 'defense')

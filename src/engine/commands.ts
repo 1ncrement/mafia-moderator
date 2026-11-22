@@ -1,4 +1,5 @@
 import { dayState, nextOpener, nominationsOf } from './day'
+import { foulCounts, foulLevel, penaltyDay } from './fouls'
 import { currentPhase, EMPTY_PATCH, eventsOf, lastOf, nextPhase, samePhase } from './log'
 import { actorMapper, deathSeats, nightState, stepIdOf } from './night'
 import { aliveSeats, isSeat, nightPlayers, playersAt, playersNow, seatsOf } from './players'
@@ -368,6 +369,36 @@ export function execute(session: Session, cmd: Command, registry: Registry): Com
       if (vest === undefined) return no('target_not_allowed')
       if ((vest === 'used') === cmd.used) return ok({})
       return add({ type: 'vest_set', phase, manual: true, seat: cmd.seat, used: cmd.used, source: 'manual' })
+    }
+
+    // ── Фолы ──────────────────────────────────────────────────────────────
+
+    case 'giveFoul': {
+      if (phase.kind === 'deal') return no('wrong_phase')
+      if (!isSeat(session, cmd.seat) || !aliveFor(phase).has(cmd.seat)) return no('not_alive')
+      return add({ type: 'foul_given', phase, seat: cmd.seat })
+    }
+
+    case 'removeFoul': {
+      const given = log.filter((e) => e.type === 'foul_given' && e.seat === cmd.seat).sort((a, b) => a.seq - b.seq)
+      const last = given.at(-1)
+      if (!last) return ok({})
+      // Счёт ушёл ниже порога — решение по нему снимается: на новом третьем фоле приложение спросит снова.
+      const decisions = log.filter((e) => e.type === 'foul_penalty' && e.seat === cmd.seat && e.level > given.length - 1)
+      return ok({ remove: [last.id, ...decisions.map((e) => e.id)] })
+    }
+
+    case 'decideFoulPenalty': {
+      if (!isSeat(session, cmd.seat)) return no('not_alive')
+      const level = foulLevel(foulCounts(session)[cmd.seat - 1] ?? 0)
+      if (level === 0) return no('target_not_allowed')
+      const previous = log.filter((e) => e.type === 'foul_penalty' && e.seat === cmd.seat && e.level === level)
+      // День наказания считается в момент решения: ближайшая своя очередь игрока в круге.
+      const waiting = phase.kind === 'day' ? dayState(session, registry, phase.n).waiting : []
+      return ok({
+        remove: previous.map((e) => e.id),
+        add: [{ type: 'foul_penalty', phase, seat: cmd.seat, level, applied: cmd.apply, day: penaltyDay(session, cmd.seat, level, waiting) }],
+      })
     }
 
     case 'setNightResult': {

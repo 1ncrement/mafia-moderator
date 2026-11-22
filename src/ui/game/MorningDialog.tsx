@@ -64,6 +64,8 @@ export function MorningDialog({ day, morning, seconds, first, onDone, onUndo }: 
       seat,
       text: [t('morning.silenced'), morning.silence.noNominate ? t('morning.silenced.noNominate') : '', morning.silence.noVote ? t('morning.silenced.noVote') : ''].filter(Boolean).join(', '),
     })),
+    // Наказанный за фолы: своей минуты нет, выставлять и голосовать может. Если он же жертва визита — хватит строки выше.
+    ...morning.penalized.filter((seat) => !morning.silenced.includes(seat)).map((seat) => ({ seat, text: t('morning.penalized') })),
   ]
   const count = morning.deaths.length
 

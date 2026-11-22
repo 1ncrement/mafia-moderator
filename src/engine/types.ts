@@ -156,6 +156,13 @@ export type GameEvent =
    * Возврат — тоже событие во времени: прошлые ночи он не переписывает.
    */
   | Ev<'vest_set', { seat: Seat; used: boolean; source: 'night' | 'vote' | 'manual' }>
+  /** Фол игроку: за перебивание или речь не в свою очередь. Считаются за всю игру. */
+  | Ev<'foul_given', { seat: Seat }>
+  /**
+   * Решение ведущего по порогу фолов (каждый третий): applied — наказание применено или отменено.
+   * level — на каком счёте фолов решение принято; day — в какой день игрок не говорит.
+   */
+  | Ev<'foul_penalty', { seat: Seat; level: number; applied: boolean; day: number }>
 
 export type EventOf<T extends GameEvent['type']> = Extract<GameEvent, { type: T }>
 export type NewEvent = GameEvent extends infer E ? (E extends GameEvent ? Omit<E, 'id' | 'seq' | 'tx'> : never) : never
@@ -270,6 +277,13 @@ export type Command =
   | { type: 'setNightResult'; night: number; died: Seat[] }
   /** Ведущий вручную снимает (used) или возвращает жилет игроку со второй жизнью. */
   | { type: 'setVest'; seat: Seat; used: boolean }
+  // фолы
+  /** Фол игроку в игре — в любой фазе после раздачи. */
+  | { type: 'giveFoul'; seat: Seat }
+  /** Снять последний фол игрока. Счёт ушёл ниже порога — решение по этому порогу снимается вместе с ним. */
+  | { type: 'removeFoul'; seat: Seat }
+  /** Решение по достигнутому порогу фолов: применить наказание или нет. Повторная команда заменяет прежнее решение. */
+  | { type: 'decideFoulPenalty'; seat: Seat; apply: boolean }
 
 export type RejectCode =
   | 'redeal_closed' | 'wrong_phase' | 'not_alive' | 'unknown_event' | 'nominations_closed'
@@ -309,6 +323,20 @@ export type GameState = {
   morning: Morning | null
   /** Кого проверяли действия check_side и find_role за всю игру. */
   permanentMarks: { seat: Seat; actionId: string }[]
+  fouls: FoulsState
+}
+
+// ── Фолы ────────────────────────────────────────────────────────────────────
+
+/** Решение ведущего по порогу фолов: наказание применено или нет; day — день, когда игрок не говорит. */
+export type FoulPenalty = { seat: Seat; level: number; applied: boolean; day: number; eventId: string }
+export type FoulsState = {
+  /** Фолы за игру по местам: counts[seat - 1]. */
+  counts: number[]
+  /** Последнее решение ведущего на каждый достигнутый порог. */
+  penalties: FoulPenalty[]
+  /** Порог достигнут, решения ещё нет: приложение спрашивает ведущего. day — когда игрок не будет говорить, если наказание применить. */
+  pending: { seat: Seat; level: number; day: number }[]
 }
 
 // ── Утро ────────────────────────────────────────────────────────────────────
@@ -316,9 +344,9 @@ export type GameState = {
 /**
  * Утреннее объявление: что сказать столу в начале дня. Ролей и причин здесь нет — окно открывается днём, когда роли скрыты.
  * deaths — кто покинул стол прошлой ночью; farewell — кто из них прощается со столом; spared — остался в игре благодаря жилету;
- * silenced — сегодня молчит. announced — ведущий нажал «Объявил».
+ * silenced — сегодня молчит из-за ночного визита; penalized — сегодня молчит за фолы. announced — ведущий нажал «Объявил».
  */
-export type Morning = { deaths: Seat[]; farewell: Seat[]; spared: Seat[]; silenced: Seat[]; silence: Silence; announced: boolean }
+export type Morning = { deaths: Seat[]; farewell: Seat[]; spared: Seat[]; silenced: Seat[]; silence: Silence; penalized: Seat[]; announced: boolean }
 /** Что ещё, кроме своей минуты в круге, запрещено сегодня молчащим — по опциям роли. */
 export type Silence = { noNominate: boolean; noVote: boolean }
 
@@ -368,6 +396,10 @@ export type DayState = {
   /** Сегодня молчат: игроки в игре, к которым прошлой ночью приходили с визитом. Своей минуты в круге у них нет. */
   silenced: Seat[]
   silence: Silence
+  /** Сегодня не говорят за фолы: наказание применено и пришлось на этот день. Выставлять и голосовать они могут. */
+  penalized: Seat[]
+  /** Все, у кого сегодня нет своей минуты в круге: silenced и penalized вместе, по возрастанию номеров. */
+  muted: Seat[]
   /** Прощание выбывших прошлой ночью — по возрастанию номеров. Говорится тем же видом речи, что и прощание выгнанного. */
   nightFarewell: SpeechQueue
 }
@@ -474,6 +506,10 @@ export type JournalEntry = { eventId: string | null; edited: boolean; manual: bo
   /** Жилет снят (used) или возвращён; source — чем: итогом ночи, голосованием, ведущим. */
   | { kind: 'vest'; seat: Seat; used: boolean; source: 'night' | 'vote' | 'manual' }
   | { kind: 'swap'; a: Seat; b: Seat }
+  /** count — который это фол игрока за игру. */
+  | { kind: 'foul'; seat: Seat; count: number }
+  /** Решение по порогу фолов: applied — наказание применено; day — день без речи. */
+  | { kind: 'foul_penalty'; seat: Seat; level: number; applied: boolean; day: number }
   | { kind: 'finish'; winner: SideId | null }
 )
 export type JournalGroup = { phase: PhaseRef; current: boolean; entries: JournalEntry[] }

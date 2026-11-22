@@ -8,8 +8,9 @@ import { useHotkeys } from '../common/useHotkeys'
 import type { HotkeyMap } from '../common/useHotkeys'
 import { toggleTimer } from '../game/dayFlow'
 import { DigitKeysContext } from '../game/digitKeys'
-import { SUMMARY_STEP } from '../../engine'
+import { mayNominateSilent, SUMMARY_STEP } from '../../engine'
 import type { GameState, JournalEntry, PhaseRef, Seat } from '../../engine'
+import { FoulDialog } from '../game/FoulDialog'
 import { Header } from '../game/Header'
 import type { GameModal } from '../game/Header'
 import { JournalPanel } from '../game/JournalPanel'
@@ -54,7 +55,8 @@ function DayActions({ game, seat, onDone }: { game: GameState; seat: Seat; onDon
   if (!day) return null
   const alive = game.players[seat - 1]?.status === 'alive'
   const nominated = day.nominations.some((x) => x.target === seat)
-  const speaker = day.speaking?.kind === 'speech' || (day.speaking?.kind === 'silent' && !day.silence.noNominate) ? day.speaking.seat : null
+  const turn = day.speaking
+  const speaker = turn && turn.seat !== null && (turn.kind === 'speech' || (turn.kind === 'silent' && mayNominateSilent(day, turn.seat))) ? turn.seat : null
   return (
     <>
       <Button size="l" disabled={!alive} onClick={() => { store.speak('speech', seat); onDone(null) }}>{t('panel.giveWord')}</Button>
@@ -108,6 +110,11 @@ function Game({ game }: { game: GameState }) {
   // Ведущий ушёл дальше через полосу шагов, а круг не закончен или не начат вовсе — предупреждение, не запрет.
   const day = game.day
   const morning = game.morning
+  const pendingFoul = game.fouls.pending[0]
+  // «Отменить фол» в окне наказания снимает именно фол: кнопка есть, только когда он — последнее действие ведущего.
+  const lastAdded = session?.undo.at(-1)?.added ?? []
+  const undoGivesFoul = pendingFoul !== undefined
+    && session?.log.some((e) => e.type === 'foul_given' && e.seat === pendingFoul.seat && lastAdded.includes(e.id)) === true
   const dayStart = session.log.findLast((e) => e.type === 'phase_started')
   const undoStartsDay = dayStart !== undefined && session.undo.at(-1)?.added.includes(dayStart.id) === true
   const notSpoken = day && game.step !== 'night_farewell' && game.step !== 'balagan' && game.step !== 'speeches' ? day.waiting : []
@@ -172,7 +179,9 @@ function Game({ game }: { game: GameState }) {
       {modal === 'timers' && <TimerSettings onClose={() => setModal(null)} />}
       {editing && <RecordEditor entry={editing.entry} phase={editing.phase} onClose={() => setEditing(null)} />}
       {adding && <AddRecord phase={adding} onClose={() => setAdding(null)} />}
-      {morning && day && (!morning.announced || morningOpen) && (
+      {/* Третий фол ждёт решения ведущего: окно открыто, пока решения нет, и стоит поверх остального. */}
+      {pendingFoul && <FoulDialog pending={pendingFoul} today={day?.n ?? null} onUndo={undoGivesFoul ? () => store.undo() : undefined} />}
+      {!pendingFoul && morning && day && (!morning.announced || morningOpen) && (
         <MorningDialog
           day={day.n} morning={morning} seconds={session.config.durations.farewell} first={!morning.announced}
           onDone={() => {

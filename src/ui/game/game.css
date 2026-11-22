@@ -1762,3 +1762,73 @@ button.journal-entry:hover {
 .curtain-where {
   overflow-wrap: anywhere;
 }
+
+/* Фолы: счёт на карточке, блок в панели игрока и окно подтверждения наказания. */
+.card-mark-foul {
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+.player-panel-fouls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.player-panel-fouls-count {
+  font-weight: 600;
+  font-size: 16px;
+}
+.foul {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 100%;
+  overflow: auto;
+  padding: 28px;
+  border-radius: 16px;
+  border: 1px solid var(--block);
+  background: var(--panel);
+  outline: none;
+}
+.foul-cap {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.foul-title {
+  font-weight: 600;
+  font-size: 44px;
+  line-height: 1.1;
+}
+.foul-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: var(--r-m);
+  background: var(--card);
+}
+.foul-main {
+  font-size: 18px;
+  font-weight: 500;
+}
+.foul-note {
+  font-size: 15px;
+  color: var(--text-2);
+}
+.foul-apply {
+  min-height: 64px;
+  font-size: 20px;
+}
+.foul-undo {
+  align-self: center;
+  color: var(--text-2);
+}

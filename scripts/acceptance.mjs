@@ -899,6 +899,89 @@ async function run() {
   await click('На главную')
   check(15, 'завершённая игра с победой одиночки — в списке на главной', await has('Победа маньяка'))
 
+  // ── Шаг 16: фолы (дополнение от 2026-11-22): счёт за игру, третий фол, наказание сегодня и завтра, отказ от наказания ──
+  const foulDialog = () => js(`(() => { const d = document.querySelector('[role=dialog][aria-label="Наказание за фолы"]'); return d ? d.textContent : null })()`)
+  const giveFoul = async (seat) => { await click(`Игрок №${seat}`); await click('Фол') }
+  const foulsOf = async (seat) => (await card15(seat)).marks.filter((m) => m.startsWith('фолы')).join()
+  await click('Новая игра'); await click('Сбросить к стандарту'); await click('Мафия: больше')
+  await click('Раздать роли')
+  await main('Город просыпается: День 1')
+  const opener16 = Number(/круг начал №(\d+)/.exec(await txt('.steps-note'))?.[1] ?? 0)
+  const count16 = (await table()).length                            // за столом столько мест, сколько оставил прошлый шаг
+  const seat16 = (k) => ((opener16 - 1 + k) % count16) + 1          // k-й по кругу от начинающего, с нуля
+  const A16 = seat16(3), C16 = opener16, D16 = seat16(6), T16 = seat16(5)
+
+  // Счёт на карточке и в панели; «Снять фол» возвращает.
+  await giveFoul(A16); await giveFoul(A16)
+  await click(`Игрок №${A16}`)
+  const panel16 = await txt('.player-panel-fouls-count')
+  await click('Снять фол')
+  const after16 = await foulsOf(A16)
+  await giveFoul(A16)
+  check(16, 'фол из панели игрока: счёт на карточке и в панели, «Снять фол» уменьшает; до третьего фола окна нет',
+    panel16 === 'Фолы за игру: 2' && after16 === 'фолы: 1' && (await foulsOf(A16)) === 'фолы: 2' && (await foulDialog()) === null, `${panel16} · ${after16} · ${await foulsOf(A16)}`)
+
+  // Третий фол до своей очереди: окно, «Отменить фол», затем наказание на сегодня.
+  await giveFoul(A16)
+  const dialog16 = (await foulDialog()) ?? ''
+  check(16, 'третий фол открывает окно: «3 фола», наказание на сегодня, выставить можно, фол уже записан',
+    dialog16.includes(`№${A16} — 3 фола`) && dialog16.includes(`Сегодня №${A16} не говорит`) && dialog16.includes('Выставить на голосование он может')
+    && dialog16.includes('Фол записан в любом случае') && (await foulsOf(A16)) === 'фолы: 3', dialog16)
+  await click('Отменить фол')
+  check(16, '«Отменить фол» в окне снимает третий фол и закрывает окно', (await foulDialog()) === null && (await foulsOf(A16)) === 'фолы: 2', await foulsOf(A16))
+  await giveFoul(A16)
+  await main('Применить наказание')
+  const a16 = await card15(A16)
+  check(16, 'наказание применено: окно закрыто, на карточке «молчит» и «фолы: 3» — и при скрытых ролях',
+    (await foulDialog()) === null && a16.marks.join() === 'молчит,фолы: 3' && (await has('роль скрыта')), a16.marks.join())
+
+  // Круг доходит до наказанного: ход без речи и без таймера.
+  await main(`Дать слово №${opener16}`); await enter(); await enter()
+  check(16, 'очередь наказанного в круге: главная кнопка «молчит · ход без речи»', await exists(`№${A16} молчит · ход без речи`), await txt('.main-button'))
+  await main(`№${A16} молчит · ход без речи`)
+  check(16, 'ход наказанного — без таймера', (await has(`№${A16} сегодня молчит`)) && !(await js(`!!document.querySelector('[role=timer]')`)), await txt('.timer'))
+
+  // Третий фол после своей речи: наказание на следующий день.
+  await giveFoul(C16); await giveFoul(C16); await giveFoul(C16)
+  const later16 = (await foulDialog()) ?? ''
+  await main('Применить наказание')
+  const c16 = await card15(C16)
+  check(16, 'третий фол после своей речи: окно называет День 2, сегодня игрок не молчит',
+    later16.includes(`В День 2 №${C16} не говорит`) && !c16.marks.includes('молчит') && c16.marks.includes('фолы: 3'), `${later16} · ${c16.marks.join()}`)
+  for (let i = 0; i < count16 - 4; i++) await enter()
+  await click('Пропустить доп. минуту'); await click('Пропустить доп. минуту')
+  await main('Город засыпает: Ночь 1')
+  await stepNav('Итог ночи'); await sleep(200)
+  await main('Никто не выбыл · начать День 2')
+  const lines16 = await morningLines()
+  check(16, 'утро Дня 2 называет наказанного за фолы', lines16.join(' | ') === `№${C16} сегодня молчит — наказание за фолы`, lines16.join(' | '))
+  await announce()
+
+  // День 2: наказанный в свой ход выставляет; вчерашнее наказание №A отбыто.
+  await click('Пропустить балаган'); await openWith(C16)
+  await main(`№${C16} молчит · ход без речи`)
+  check(16, 'День 2: наказанный начинает круг ходом без речи и может выставить', await exists(`№${C16} выставляет…`), await txt('.speech'))
+  await click(`№${C16} выставляет…`); await click(`Выбрать игрока №${T16}`)
+  const a16b = await card15(A16)
+  check(16, 'выставление наказанного записано; вчера наказанный сегодня говорит как все, счёт фолов остался',
+    (await js(`[...document.querySelectorAll('.card-badge')].some((b) => b.textContent.includes('выставлен'))`)) && a16b.marks.join() === 'фолы: 3', a16b.marks.join())
+
+  // Ведущий наказание не применяет: фолы считаются, решение можно изменить в панели.
+  await giveFoul(D16); await giveFoul(D16); await giveFoul(D16)
+  await click('Не применять')
+  const d16 = await card15(D16)
+  await click(`Игрок №${D16}`)
+  const note16 = await txt('.player-panel-fouls')
+  check(16, '«Не применять»: фолы остались, игрок не молчит; в панели «наказание не применено» и «Применить наказание»',
+    (await foulDialog()) === null && d16.marks.join() === 'фолы: 3' && note16.includes('3 фола · наказание не применено') && (await exists('Применить наказание')), `${d16.marks.join()} · ${note16}`)
+  await click('Закрыть')
+  await click('Показать роли')
+  check(16, 'журнал: фолы с порядковым номером и решения о наказании',
+    (await has(`Фол №${D16} · 3-й за игру`)) && (await has(`№${D16}: 3 фола — наказание не применено`)), await txt('.journal-groups'))
+  await cdp('Page.reload'); await sleep(900); await js(HELPERS)
+  check(16, 'после обновления страницы фолы и наказание на месте',
+    (await foulsOf(D16)) === 'фолы: 3' && (await card15(C16)).marks.includes('молчит') && (await foulDialog()) === null, `${await foulsOf(D16)} · ${(await card15(C16)).marks.join()}`)
+
   check('—', 'за весь сценарий нет ошибок в консоли и исключений', problems.length === 0, problems.slice(0, 3).join(' | '))
   check('—', 'страница не сделала ни одного сетевого запроса', network.length === 0, network.slice(0, 3).join(' | '))
   check('—', 'сохранение в хранилище браузера работает с диска', (await js(`Object.keys(localStorage).filter((k) => k.startsWith('mafia:')).length`)) >= 3)

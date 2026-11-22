@@ -35,7 +35,7 @@ test('партия со всеми новыми ролями: две ночи с
   expect(step(s, 'journalist_compare:11').answer).toEqual({ kind: 'same', same: false })
   expect(st(s).night!.complete).toBe(true)
   s = play(s, { type: 'confirmNight', died: [3, 7] })
-  expect(st(s).morning).toEqual({ deaths: [3, 7], farewell: [], spared: [], silenced: [4], silence: { noNominate: false, noVote: false }, announced: false })
+  expect(st(s).morning).toEqual({ deaths: [3, 7], farewell: [], spared: [], silenced: [4], silence: { noNominate: false, noVote: false }, penalized: [], announced: false })
   expect(lines(s, night(1))).toEqual(expect.arrayContaining(['Мясник → №3', 'Маньяк → №4 — первый визит', 'Журналист: №6 и №8 — разные стороны',
     'Шериф → №8 — заблокирован, проверка не состоялась', 'Охранник → №5', 'Итог ночи: выбыли №3 и №7']))
   s = play(s, { type: 'announceMorning' })

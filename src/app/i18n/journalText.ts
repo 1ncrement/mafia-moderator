@@ -95,6 +95,14 @@ export function entryText(lang: Lang, entry: JournalEntry, registry: Registry): 
     case 'swap':
       return t('journal.swap', { a: entry.a, b: entry.b })
 
+    case 'foul':
+      return t('journal.foul', { n: entry.seat, count: entry.count })
+
+    case 'foul_penalty':
+      return t(entry.applied ? 'journal.foul.penalty' : 'journal.foul.declined', {
+        n: entry.seat, fouls: plural(lang, entry.level, 'fouls'), phase: phaseLabel(lang, { kind: 'day', n: entry.day }),
+      })
+
     case 'finish':
       return t('journal.finish', { result: entry.winner === null ? t('journal.finish.nobody') : translateKey(lang, `side.${entry.winner}.win`).toLowerCase() })
   }

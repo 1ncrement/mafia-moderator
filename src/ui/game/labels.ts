@@ -47,6 +47,8 @@ export function entryMentions(entry: JournalEntry, seat: Seat): boolean {
     case 'vote_result': return entry.seats.includes(seat)
     case 'status': return entry.seat === seat
     case 'vest': return entry.seat === seat
+    case 'foul': return entry.seat === seat
+    case 'foul_penalty': return entry.seat === seat
     case 'swap': return entry.a === seat || entry.b === seat
     default: return false
   }

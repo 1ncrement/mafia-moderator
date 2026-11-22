@@ -38,8 +38,8 @@ export function phaseLabel(lang: Lang, phase: PhaseRef): string {
   return translate(lang, phase.kind === 'day' ? 'phase.day' : 'phase.night', { n: phase.n })
 }
 
-/** Форма числительного: 1 игрок, 2 игрока, 5 игроков. */
-export function plural(lang: Lang, n: number, base: 'players' | 'votes'): string {
+/** Форма числительного: 1 игрок, 2 игрока, 5 игроков; 3 фола, 6 фолов. */
+export function plural(lang: Lang, n: number, base: 'players' | 'votes' | 'fouls'): string {
   const d = n % 10, h = n % 100
   const form = d === 1 && h !== 11 ? 'one' : d >= 2 && d <= 4 && (h < 12 || h > 14) ? 'few' : 'many'
   return translate(lang, `${base}.${form}`, { n })

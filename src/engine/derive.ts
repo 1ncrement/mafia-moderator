@@ -1,4 +1,5 @@
 import { dayState, nightFarewellSeats } from './day'
+import { foulsState } from './fouls'
 import { currentPhase, lastOf, samePhase } from './log'
 import { actionOfStepId, deathSeats, nightState, permanentMarks } from './night'
 import { leftAtNight, playersNow } from './players'
@@ -66,7 +67,7 @@ export function deriveState(session: Session, registry: Registry): GameState {
     .filter((seat) => views[seat - 1]?.status === 'alive' && views[seat - 1]?.vest === 'used').sort((a, b) => a - b)
   // Утро выводится из статусов после прошлой ночи: ручная правка статуса и правка итога сразу меняют объявление.
   const morning: Morning | null = day && day.n >= 2 ? {
-    deaths: leftAtNight(views, day.n - 1), farewell, spared: sparedAt(day.n - 1), silenced: day.silenced, silence: day.silence,
+    deaths: leftAtNight(views, day.n - 1), farewell, spared: sparedAt(day.n - 1), silenced: day.silenced, silence: day.silence, penalized: day.penalized,
     // В сохранении до обновления события «объявил» нет: если день уже идёт (в нём есть что-то, кроме его начала),
     // утро считается объявленным — окно само посреди дня не открывается.
     // Начинающий круг по очереди ставится вместе с началом дня — это ещё не «день идёт».
@@ -87,5 +88,6 @@ export function deriveState(session: Session, registry: Registry): GameState {
     morning,
     // Ночей в журнале не больше, чем номер текущей фазы.
     permanentMarks: permanentMarks(session, registry, nights),
+    fouls: foulsState(session, registry, day?.waiting ?? []),
   }
 }
